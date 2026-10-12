@@ -1,0 +1,386 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // 0. GLOBAL DEFAULT DENY
+    // =========================================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // 1. IDENTITY & MULTI-TENANT RBAC HELPERS
+    // =========================================================================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && (
+        ('email_verified' in request.auth.token) &&
+        request.auth.token.email_verified == true
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Platform Superadmin (Root) - strictly requires email_verified == true
+    function isRootAdmin() {
+      return isSignedIn() && isEmailVerified() && (
+        (('admin' in request.auth.token) && request.auth.token.admin == true) ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Dynamic Workspace Membership (No hardcoded workspace bypasses)
+    function isMember(ws) {
+      return isSignedIn() && (
+        isRootAdmin() ||
+        (('workspaceId' in request.auth.token) && request.auth.token.workspaceId == ws) ||
+        (exists(/databases/$(database)/documents/workspaces/$(ws)/members/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/workspaces/$(ws)/members/$(request.auth.uid)).data.status == 'Aktif')
+      );
+    }
+
+    // Role verification strictly from token claims or workspace member record
+    function hasRole(ws, allowedRoles) {
+      return isSignedIn() && (
+        isRootAdmin() ||
+        (('role' in request.auth.token) && request.auth.token.role in allowedRoles &&
+         (('workspaceId' in request.auth.token) ? request.auth.token.workspaceId == ws : true)) ||
+        (exists(/databases/$(database)/documents/workspaces/$(ws)/members/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/workspaces/$(ws)/members/$(request.auth.uid)).data.status == 'Aktif' &&
+         get(/databases/$(database)/documents/workspaces/$(ws)/members/$(request.auth.uid)).data.role in allowedRoles)
+      );
+    }
+
+    function isWorkspaceAdmin(ws) {
+      return isSignedIn() && (
+        isRootAdmin() ||
+        hasRole(ws, ['Owner / Director'])
+      );
+    }
+
+    // Exact Project ID assignment check (replaces fuzzy name includes)
+    function isAssignedToProject(ws, projectId) {
+      return hasRole(ws, ['Owner / Director', 'Finance / Accounting', 'Read-only Auditor']) ||
+        (('assignedProjectIds' in request.auth.token) && ('*' in request.auth.token.assignedProjectIds || projectId in request.auth.token.assignedProjectIds)) ||
+        (exists(/databases/$(database)/documents/workspaces/$(ws)/members/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/workspaces/$(ws)/members/$(request.auth.uid)).data.status == 'Aktif' &&
+         (
+           ('*' in get(/databases/$(database)/documents/workspaces/$(ws)/members/$(request.auth.uid)).data.assignedProjectIds) ||
+           (projectId in get(/databases/$(database)/documents/workspaces/$(ws)/members/$(request.auth.uid)).data.assignedProjectIds)
+         ));
+    }
+
+    // Module permission check
+    function hasModulePerm(ws, module, action) {
+      return hasRole(ws, ['Owner / Director']) || (
+        // Project Manager
+        (hasRole(ws, ['Project Manager']) && (
+          (module in ['projects', 'schedule', 'materials', 'field_reports'] && action in ['view', 'create', 'edit', 'submit', 'approve']) ||
+          (module in ['budget', 'procurement'] && action in ['view', 'create', 'edit', 'submit', 'approve', 'reject']) ||
+          (module in ['team', 'reports', 'settings', 'audit'] && action == 'view')
+        )) ||
+        // Site Manager / Supervisor
+        (hasRole(ws, ['Site Manager / Supervisor']) && (
+          (module == 'field_reports' && action in ['view', 'create', 'edit', 'submit', 'approve']) ||
+          (module == 'schedule' && action in ['view', 'edit']) ||
+          (module == 'materials' && action in ['view', 'create', 'edit', 'submit']) ||
+          (module == 'procurement' && action in ['view', 'create', 'submit']) ||
+          (module in ['projects', 'budget', 'team', 'reports'] && action == 'view')
+        )) ||
+        // Quantity Surveyor / Estimator
+        (hasRole(ws, ['Quantity Surveyor / Estimator']) && (
+          (module == 'budget' && action in ['view', 'create', 'edit', 'submit']) ||
+          (module == 'procurement' && action in ['view', 'create', 'submit']) ||
+          (module in ['projects', 'schedule', 'materials', 'field_reports', 'reports'] && action == 'view')
+        )) ||
+        // Finance / Accounting
+        (hasRole(ws, ['Finance / Accounting']) && (
+          (module in ['budget', 'procurement'] && action in ['view', 'edit', 'submit', 'approve', 'reject']) ||
+          (module in ['projects', 'schedule', 'materials', 'field_reports', 'team', 'audit', 'reports', 'settings'] && action == 'view')
+        )) ||
+        // Procurement
+        (hasRole(ws, ['Procurement']) && (
+          (module == 'procurement' && action in ['view', 'create', 'edit', 'submit']) ||
+          (module == 'materials' && action in ['view', 'edit', 'submit']) ||
+          (module in ['projects', 'budget', 'schedule', 'field_reports', 'reports'] && action == 'view')
+        )) ||
+        // Warehouse / Inventory
+        (hasRole(ws, ['Warehouse / Inventory']) && (
+          (module == 'materials' && action in ['view', 'create', 'edit', 'submit', 'approve']) ||
+          (module in ['procurement', 'schedule', 'projects', 'field_reports', 'reports'] && action == 'view')
+        )) ||
+        // Read-only Auditor
+        (hasRole(ws, ['Read-only Auditor']) && action == 'view')
+      );
+    }
+
+    // =========================================================================
+    // 2. GLOBAL SYSTEM COLLECTIONS
+    // =========================================================================
+
+    // Admins Collection: server-only write
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // Global Users Collection
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isRootAdmin());
+      allow list: if isRootAdmin();
+      allow create: if isEmailVerified() && request.auth.uid == userId;
+      allow update: if isEmailVerified() && (
+        isRootAdmin() ||
+        (
+          request.auth.uid == userId &&
+          incoming().uid == existing().uid &&
+          incoming().email == existing().email &&
+          (!('role' in incoming()) || incoming().role == existing().role) &&
+          (!('status' in incoming()) || incoming().status == existing().status)
+        )
+      );
+      allow delete: if isRootAdmin();
+    }
+
+    // =========================================================================
+    // 3. HIERARCHICAL MULTI-TENANT WORKSPACE COLLECTIONS
+    // =========================================================================
+    match /workspaces/{wsId} {
+      allow read: if isMember(wsId);
+      allow create, update: if isEmailVerified() && isWorkspaceAdmin(wsId);
+      allow delete: if false;
+
+      // Workspace Members: /workspaces/{wsId}/members/{memberId}
+      match /members/{memberId} {
+        allow read: if isMember(wsId);
+        allow create, update: if isEmailVerified() && isWorkspaceAdmin(wsId);
+        allow delete: if isEmailVerified() && isWorkspaceAdmin(wsId);
+      }
+
+      // Projects: /workspaces/{wsId}/projects/{projectId}
+      match /projects/{projectId} {
+        allow read: if isMember(wsId);
+        allow create: if isEmailVerified() && isMember(wsId) && isValidId(projectId) &&
+          hasRole(wsId, ['Owner / Director', 'Project Manager']);
+        allow update: if isEmailVerified() && isMember(wsId) && isValidId(projectId) &&
+          incoming().code == existing().code &&
+          hasRole(wsId, ['Owner / Director', 'Project Manager']);
+        allow delete: if isEmailVerified() && isWorkspaceAdmin(wsId);
+
+        // Project Subcollection: budget_lines
+        match /budget_lines/{lineId} {
+          allow read: if isMember(wsId) && isAssignedToProject(wsId, projectId);
+          allow create, update: if isEmailVerified() && isMember(wsId) && isValidId(lineId) &&
+            hasRole(wsId, ['Owner / Director', 'Project Manager', 'Quantity Surveyor / Estimator']) &&
+            isAssignedToProject(wsId, projectId);
+          allow delete: if isEmailVerified() && isWorkspaceAdmin(wsId);
+        }
+
+        // Project Subcollection: milestones
+        match /milestones/{milestoneId} {
+          allow read: if isMember(wsId) && isAssignedToProject(wsId, projectId);
+          allow create: if isEmailVerified() && isMember(wsId) && isValidId(milestoneId) &&
+            hasRole(wsId, ['Owner / Director', 'Project Manager']) &&
+            isAssignedToProject(wsId, projectId);
+          allow update: if isEmailVerified() && isMember(wsId) && isValidId(milestoneId) &&
+            // Direct client sign-off prohibited; status must not transition to Selesai directly
+            incoming().status == existing().status &&
+            (!('signedOffBy' in incoming()) || incoming().signedOffBy == existing().signedOffBy) &&
+            hasRole(wsId, ['Owner / Director', 'Project Manager']) &&
+            isAssignedToProject(wsId, projectId);
+          allow delete: if isEmailVerified() && isWorkspaceAdmin(wsId);
+        }
+
+        // Project Subcollection: wbs_items
+        match /wbs_items/{wbsId} {
+          allow read: if isMember(wsId) && isAssignedToProject(wsId, projectId);
+          allow create, update: if isEmailVerified() && isMember(wsId) && isValidId(wbsId) &&
+            hasRole(wsId, ['Owner / Director', 'Project Manager', 'Site Manager / Supervisor']) &&
+            isAssignedToProject(wsId, projectId);
+          allow delete: if isEmailVerified() && isWorkspaceAdmin(wsId);
+        }
+
+        // Project Subcollection: activities
+        match /activities/{activityId} {
+          allow read: if isMember(wsId) && isAssignedToProject(wsId, projectId);
+          allow create: if isEmailVerified() && isMember(wsId) && isValidId(activityId) &&
+            isAssignedToProject(wsId, projectId);
+          allow update, delete: if false;
+        }
+
+        // Project Subcollection: budget_versions (v0 kontrak, addendum 1, 2, ...)
+        match /budget_versions/{versionId} {
+          allow read: if isMember(wsId) && isAssignedToProject(wsId, projectId);
+          allow create, update: if isEmailVerified() && isMember(wsId) && isValidId(versionId) &&
+            (isRootAdmin() || hasRole(wsId, ['Owner / Director', 'Project Manager', 'Finance / Accounting', 'Quantity Surveyor / Estimator'])) &&
+            isAssignedToProject(wsId, projectId);
+          allow delete: if isEmailVerified() && isWorkspaceAdmin(wsId);
+        }
+      }
+
+      // Materials: /workspaces/{wsId}/materials/{materialId}
+      match /materials/{materialId} {
+        allow read: if isMember(wsId);
+        allow create: if isEmailVerified() && isMember(wsId) && isValidId(materialId) &&
+          hasRole(wsId, ['Owner / Director', 'Project Manager', 'Warehouse / Inventory', 'Procurement']);
+        allow update: if isEmailVerified() && isMember(wsId) && isValidId(materialId) &&
+          incoming().code == existing().code &&
+          incoming().currentStock == existing().currentStock &&
+          incoming().status == existing().status &&
+          hasRole(wsId, ['Owner / Director', 'Project Manager', 'Warehouse / Inventory', 'Procurement']);
+        allow delete: if isEmailVerified() && isWorkspaceAdmin(wsId);
+      }
+
+      // Purchase Orders: /workspaces/{wsId}/purchase_orders/{poId}
+      match /purchase_orders/{poId} {
+        allow read: if isMember(wsId);
+        allow create: if isEmailVerified() && isMember(wsId) && isValidId(poId) &&
+          incoming().createdBy == request.auth.uid &&
+          incoming().status in ['Draft', 'Menunggu'] &&
+          (!('approvedBy' in incoming()) || incoming().approvedBy == null) &&
+          hasModulePerm(wsId, 'procurement', 'create') &&
+          isAssignedToProject(wsId, incoming().projectId);
+
+        allow update: if isEmailVerified() && isMember(wsId) && isValidId(poId) &&
+          incoming().poNumber == existing().poNumber &&
+          incoming().projectId == existing().projectId &&
+          incoming().createdBy == existing().createdBy &&
+          (
+            isWorkspaceAdmin(wsId) ||
+            // Draft modification only
+            (
+              existing().status == 'Draft' &&
+              incoming().status in ['Draft', 'Menunggu'] &&
+              (!('approvedBy' in incoming()) || incoming().approvedBy == null) &&
+              hasModulePerm(wsId, 'procurement', 'edit')
+            ) ||
+            // Logistics status progression for approved POs
+            (
+              existing().status == 'Disetujui' &&
+              incoming().status in ['Dikirim', 'Selesai'] &&
+              incoming().totalCost == existing().totalCost &&
+              incoming().approvedBy == existing().approvedBy &&
+              hasRole(wsId, ['Owner / Director', 'Project Manager', 'Procurement', 'Warehouse / Inventory'])
+            )
+          );
+        allow delete: if isEmailVerified() && isWorkspaceAdmin(wsId);
+      }
+
+      // Field Reports: /workspaces/{wsId}/field_reports/{reportId}
+      match /field_reports/{reportId} {
+        allow read: if isMember(wsId);
+        allow create: if isEmailVerified() && isMember(wsId) && isValidId(reportId) &&
+          incoming().createdBy == request.auth.uid &&
+          incoming().status in ['Draft', 'Menunggu'] &&
+          (!('approvedBy' in incoming()) || incoming().approvedBy == null) &&
+          hasRole(wsId, ['Owner / Director', 'Project Manager', 'Site Manager / Supervisor']) &&
+          isAssignedToProject(wsId, incoming().projectId);
+
+        allow update: if isEmailVerified() && isMember(wsId) && isValidId(reportId) &&
+          incoming().reportNumber == existing().reportNumber &&
+          incoming().projectId == existing().projectId &&
+          incoming().createdBy == existing().createdBy &&
+          (
+            isWorkspaceAdmin(wsId) ||
+            (
+              existing().status in ['Draft', 'Menunggu'] &&
+              incoming().status in ['Draft', 'Menunggu'] &&
+              (!('approvedBy' in incoming()) || incoming().approvedBy == null) &&
+              (!('verifiedBy' in incoming()) || incoming().verifiedBy == null) &&
+              hasRole(wsId, ['Owner / Director', 'Project Manager', 'Site Manager / Supervisor'])
+            )
+          );
+        allow delete: if isEmailVerified() && isWorkspaceAdmin(wsId);
+      }
+
+      // Stock Mutations: /workspaces/{wsId}/stock_mutations/{mutationId}
+      match /stock_mutations/{mutationId} {
+        allow read: if isMember(wsId);
+        allow write: if false; // Server transaction only
+      }
+
+      // Stock Adjustments: /workspaces/{wsId}/stock_adjustments/{adjId}
+      match /stock_adjustments/{adjId} {
+        allow read: if isMember(wsId);
+        allow create: if isEmailVerified() && isMember(wsId) && isValidId(adjId) &&
+          incoming().createdBy == request.auth.uid &&
+          incoming().status == 'Menunggu' &&
+          (!('reviewedBy' in incoming()) || incoming().reviewedBy == null) &&
+          hasRole(wsId, ['Owner / Director', 'Project Manager', 'Warehouse / Inventory', 'Site Manager / Supervisor']) &&
+          isAssignedToProject(wsId, incoming().projectId);
+        allow update, delete: if isEmailVerified() && isWorkspaceAdmin(wsId);
+      }
+
+      // Budget Revisions: /workspaces/{wsId}/budget_revisions/{revId}
+      match /budget_revisions/{revId} {
+        allow read: if isMember(wsId);
+        allow create: if isEmailVerified() && isMember(wsId) && isValidId(revId) &&
+          incoming().createdBy == request.auth.uid &&
+          incoming().status == 'Menunggu' &&
+          (!('reviewedBy' in incoming()) || incoming().reviewedBy == null) &&
+          hasRole(wsId, ['Owner / Director', 'Project Manager', 'Quantity Surveyor / Estimator']) &&
+          isAssignedToProject(wsId, incoming().projectId);
+        allow update, delete: if isEmailVerified() && isWorkspaceAdmin(wsId);
+      }
+
+      // Petty Cash: /workspaces/{wsId}/petty_cash/{cashId}
+      match /petty_cash/{cashId} {
+        allow read: if isMember(wsId);
+        allow create: if isEmailVerified() && isMember(wsId) && isValidId(cashId) &&
+          incoming().createdBy == request.auth.uid &&
+          incoming().status == 'Menunggu' &&
+          (!('reviewedBy' in incoming()) || incoming().reviewedBy == null) &&
+          hasRole(wsId, ['Owner / Director', 'Project Manager', 'Finance / Accounting', 'Site Manager / Supervisor']) &&
+          isAssignedToProject(wsId, incoming().projectId);
+        allow update, delete: if isEmailVerified() && isWorkspaceAdmin(wsId);
+      }
+
+      // Audit Logs: /workspaces/{wsId}/audit_logs/{logId}
+      match /audit_logs/{logId} {
+        allow read: if isMember(wsId) && (isWorkspaceAdmin(wsId) || hasRole(wsId, ['Finance / Accounting', 'Read-only Auditor']));
+        allow create: if isEmailVerified() && isMember(wsId) && isValidId(logId) &&
+          incoming().actor.uid == request.auth.uid;
+        allow update, delete: if false; // Append-only WORM
+      }
+
+      // Notifications: /workspaces/{wsId}/notifications/{notifId}
+      match /notifications/{notifId} {
+        allow read: if isMember(wsId) && (resource.data.recipientUid == request.auth.uid || isWorkspaceAdmin(wsId));
+        allow create: if isEmailVerified() && isMember(wsId) && isValidId(notifId);
+        allow update: if isEmailVerified() && isMember(wsId) && isValidId(notifId) &&
+          resource.data.recipientUid == request.auth.uid &&
+          incoming().recipientUid == existing().recipientUid &&
+          incoming().title == existing().title &&
+          incoming().read is bool;
+        allow delete: if false;
+      }
+
+      // Document Counters: /workspaces/{wsId}/counters/{counterId}
+      match /counters/{counterId} {
+        allow read: if isMember(wsId);
+        allow write: if false; // Server transaction only
+      }
+
+      // Workspace Settings: /workspaces/{wsId}/settings/{settingsId}
+      match /settings/{settingsId} {
+        allow read: if isMember(wsId);
+        allow create, update: if isEmailVerified() && isWorkspaceAdmin(wsId);
+        allow delete: if false;
+      }
+    }
+  }
+}

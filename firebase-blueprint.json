@@ -1,0 +1,487 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with role and workspace assignment",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 150 },
+        "email": { "type": "string", "maxLength": 150 },
+        "role": { "type": "string", "maxLength": 100 },
+        "department": { "type": "string", "maxLength": 100 },
+        "nip": { "type": "string", "maxLength": 50 },
+        "workspaceId": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["uid", "name", "email", "role"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "Construction project master record with contract value and schedule progress",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "code": { "type": "string", "maxLength": 50 },
+        "name": { "type": "string", "maxLength": 200 },
+        "client": { "type": "string", "maxLength": 200 },
+        "category": { "type": "string", "maxLength": 50 },
+        "location": { "type": "string", "maxLength": 250 },
+        "projectManager": { "type": "string", "maxLength": 150 },
+        "siteEngineer": { "type": "string", "maxLength": 150 },
+        "contractValue": { "type": "number" },
+        "approvedBudget": { "type": "number" },
+        "actualCost": { "type": "number" },
+        "startDate": { "type": "string", "maxLength": 30 },
+        "targetEndDate": { "type": "string", "maxLength": 30 },
+        "progressActual": { "type": "number" },
+        "progressPlanned": { "type": "number" },
+        "status": { "type": "string", "maxLength": 50 },
+        "scheduleStatus": { "type": "string", "maxLength": 50 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "createdBy": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["code", "name", "client", "contractValue", "approvedBudget", "status"]
+    },
+    "MaterialItem": {
+      "title": "MaterialItem",
+      "description": "Warehouse and site material stock record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "code": { "type": "string", "maxLength": 50 },
+        "name": { "type": "string", "maxLength": 200 },
+        "category": { "type": "string", "maxLength": 100 },
+        "specification": { "type": "string", "maxLength": 250 },
+        "currentStock": { "type": "number" },
+        "minStock": { "type": "number" },
+        "unit": { "type": "string", "maxLength": 30 },
+        "allocatedProject": { "type": "string", "maxLength": 200 },
+        "warehouseLocation": { "type": "string", "maxLength": 200 },
+        "primarySupplier": { "type": "string", "maxLength": 200 },
+        "status": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["code", "name", "currentStock", "minStock", "unit", "status"]
+    },
+    "PurchaseOrder": {
+      "title": "PurchaseOrder",
+      "description": "Procurement request and purchase order workflow record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "poNumber": { "type": "string", "maxLength": 50 },
+        "sppNumber": { "type": "string", "maxLength": 50 },
+        "projectId": { "type": "string", "maxLength": 64 },
+        "projectName": { "type": "string", "maxLength": 200 },
+        "supplierName": { "type": "string", "maxLength": 200 },
+        "itemDescription": { "type": "string", "maxLength": 500 },
+        "quantitySummary": { "type": "string", "maxLength": 250 },
+        "totalCost": { "type": "number" },
+        "requestDate": { "type": "string", "maxLength": 30 },
+        "targetDeliveryDate": { "type": "string", "maxLength": 30 },
+        "status": { "type": "string", "maxLength": 50 },
+        "requester": { "type": "string", "maxLength": 150 },
+        "requesterUid": { "type": "string", "maxLength": 128 },
+        "approvedBy": { "type": "string", "maxLength": 150 },
+        "approvedByUid": { "type": "string", "maxLength": 128 },
+        "rejectedBy": { "type": "string", "maxLength": 150 },
+        "rejectedByUid": { "type": "string", "maxLength": 128 },
+        "rejectionReason": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["poNumber", "sppNumber", "projectName", "supplierName", "totalCost", "status"]
+    },
+    "FieldReport": {
+      "title": "FieldReport",
+      "description": "Daily site diary and weather, workforce, and work execution record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "reportNumber": { "type": "string", "maxLength": 50 },
+        "projectId": { "type": "string", "maxLength": 64 },
+        "projectName": { "type": "string", "maxLength": 200 },
+        "date": { "type": "string", "maxLength": 30 },
+        "weatherMorning": { "type": "string", "maxLength": 50 },
+        "weatherAfternoon": { "type": "string", "maxLength": 50 },
+        "workingHours": { "type": "number" },
+        "siteSupervisor": { "type": "string", "maxLength": 150 },
+        "siteSupervisorUid": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["reportNumber", "projectId", "date", "siteSupervisor", "status"]
+    },
+    "StockMutation": {
+      "title": "StockMutation",
+      "description": "Surat jalan material transaction record (inbound/outbound)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "materialId": { "type": "string", "maxLength": 64 },
+        "materialName": { "type": "string", "maxLength": 200 },
+        "date": { "type": "string", "maxLength": 30 },
+        "type": { "type": "string", "maxLength": 20 },
+        "quantity": { "type": "number" },
+        "unit": { "type": "string", "maxLength": 30 },
+        "referenceNo": { "type": "string", "maxLength": 100 },
+        "project": { "type": "string", "maxLength": 200 },
+        "handler": { "type": "string", "maxLength": 150 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["materialName", "type", "quantity", "unit", "referenceNo"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Operational escalation alert or task notification",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "title": { "type": "string", "maxLength": 200 },
+        "message": { "type": "string", "maxLength": 1000 },
+        "timestamp": { "type": "string", "maxLength": 50 },
+        "type": { "type": "string", "maxLength": 50 },
+        "read": { "type": "boolean" },
+        "targetScreen": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["title", "message", "type", "read"]
+    },
+    "Activity": {
+      "title": "Activity",
+      "description": "Audit trail log of recent field operations and approvals",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "user": { "type": "string", "maxLength": 150 },
+        "action": { "type": "string", "maxLength": 500 },
+        "projectName": { "type": "string", "maxLength": 200 },
+        "timestamp": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["user", "action", "projectName", "timestamp"]
+    },
+    "BudgetRevision": {
+      "title": "BudgetRevision",
+      "description": "Budget addendum revision proposal and approval workflow record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "projectId": { "type": "string", "maxLength": 64 },
+        "projectName": { "type": "string", "maxLength": 200 },
+        "revisionNumber": { "type": "string", "maxLength": 50 },
+        "title": { "type": "string", "maxLength": 200 },
+        "divisionName": { "type": "string", "maxLength": 100 },
+        "originalAmount": { "type": "number" },
+        "proposedAmount": { "type": "number" },
+        "varianceAmount": { "type": "number" },
+        "justification": { "type": "string", "maxLength": 1000 },
+        "status": { "type": "string", "maxLength": 50 },
+        "submittedBy": { "type": "string", "maxLength": 150 },
+        "submittedByUid": { "type": "string", "maxLength": 128 },
+        "submittedAt": { "type": "string" },
+        "reviewedBy": { "type": "string", "maxLength": 150 },
+        "reviewedByUid": { "type": "string", "maxLength": 128 },
+        "reviewedAt": { "type": "string" },
+        "rejectionReason": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["projectId", "projectName", "revisionNumber", "title", "originalAmount", "proposedAmount", "varianceAmount", "status", "submittedBy"]
+    },
+    "PettyCash": {
+      "title": "PettyCash",
+      "description": "On-site petty cash disbursement and reimbursement workflow",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "pettyCashNo": { "type": "string", "maxLength": 50 },
+        "projectId": { "type": "string", "maxLength": 64 },
+        "projectName": { "type": "string", "maxLength": 200 },
+        "requester": { "type": "string", "maxLength": 150 },
+        "requesterUid": { "type": "string", "maxLength": 128 },
+        "amount": { "type": "number" },
+        "category": { "type": "string", "maxLength": 100 },
+        "purpose": { "type": "string", "maxLength": 500 },
+        "receiptProof": { "type": "string", "maxLength": 200 },
+        "status": { "type": "string", "maxLength": 50 },
+        "submittedAt": { "type": "string" },
+        "reviewedBy": { "type": "string", "maxLength": 150 },
+        "reviewedByUid": { "type": "string", "maxLength": 128 },
+        "reviewedAt": { "type": "string" },
+        "disbursedBy": { "type": "string", "maxLength": 150 },
+        "disbursedByUid": { "type": "string", "maxLength": 128 },
+        "disbursedAt": { "type": "string" },
+        "rejectionReason": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["pettyCashNo", "projectId", "projectName", "requester", "amount", "purpose", "status"]
+    },
+    "TeamMember": {
+      "title": "TeamMember",
+      "description": "Project structural personnel, assigned projects, and operational authorities",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 150 },
+        "nip": { "type": "string", "maxLength": 50 },
+        "role": { "type": "string", "maxLength": 100 },
+        "department": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "maxLength": 150 },
+        "status": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name", "nip", "role", "email", "status"]
+    },
+    "AuditLogEntry": {
+      "title": "AuditLogEntry",
+      "description": "Immutable append-only enterprise audit trail record for governance and compliance",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "action": { "type": "string", "maxLength": 100 },
+        "actor": { "type": "object" },
+        "workspaceId": { "type": "string", "maxLength": 64 },
+        "projectId": { "type": "string", "maxLength": 64 },
+        "projectName": { "type": "string", "maxLength": 200 },
+        "recordType": { "type": "string", "maxLength": 50 },
+        "recordId": { "type": "string", "maxLength": 64 },
+        "details": { "type": "string", "maxLength": 1000 },
+        "previousValue": { "type": "string", "maxLength": 200 },
+        "newValue": { "type": "string", "maxLength": 200 },
+        "timestamp": { "type": "string" },
+        "correlationId": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["action", "actor", "workspaceId", "recordType", "recordId", "details", "timestamp", "correlationId"]
+    },
+    "StockAdjustment": {
+      "title": "StockAdjustment",
+      "description": "Warehouse and site physical stock opname adjustment request",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "adjustmentNo": { "type": "string", "maxLength": 50 },
+        "materialId": { "type": "string", "maxLength": 64 },
+        "materialName": { "type": "string", "maxLength": 200 },
+        "projectId": { "type": "string", "maxLength": 64 },
+        "projectName": { "type": "string", "maxLength": 200 },
+        "previousStock": { "type": "number" },
+        "physicalStock": { "type": "number" },
+        "varianceQuantity": { "type": "number" },
+        "unit": { "type": "string", "maxLength": 30 },
+        "reason": { "type": "string", "maxLength": 500 },
+        "status": { "type": "string", "maxLength": 50 },
+        "submittedBy": { "type": "string", "maxLength": 150 },
+        "submittedByUid": { "type": "string", "maxLength": 128 },
+        "submittedAt": { "type": "string" },
+        "reviewedBy": { "type": "string", "maxLength": 150 },
+        "reviewedByUid": { "type": "string", "maxLength": 128 },
+        "reviewedAt": { "type": "string" },
+        "rejectionReason": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["adjustmentNo", "projectId", "projectName", "materialId", "materialName", "previousStock", "physicalStock", "varianceQuantity", "unit", "reason", "status"]
+    },
+    "BudgetLine": {
+      "title": "BudgetLine",
+      "description": "RAB and BOQ itemized financial line item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "projectId": { "type": "string", "maxLength": 64 },
+        "code": { "type": "string", "maxLength": 50 },
+        "divisionName": { "type": "string", "maxLength": 200 },
+        "category": { "type": "string", "maxLength": 100 },
+        "plannedAmount": { "type": "number" },
+        "actualAmount": { "type": "number" },
+        "unit": { "type": "string", "maxLength": 30 },
+        "volume": { "type": "number" },
+        "unitRate": { "type": "number" },
+        "varianceAmount": { "type": "number" },
+        "variancePercent": { "type": "number" },
+        "status": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["projectId", "code", "divisionName", "category", "plannedAmount", "actualAmount", "unit", "volume", "unitRate", "status"]
+    },
+    "Milestone": {
+      "title": "Milestone",
+      "description": "Major contractual and engineering milestone with sign-off assurance",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "projectId": { "type": "string", "maxLength": 64 },
+        "title": { "type": "string", "maxLength": 200 },
+        "wbsCode": { "type": "string", "maxLength": 50 },
+        "plannedDate": { "type": "string", "maxLength": 30 },
+        "actualDate": { "type": "string", "maxLength": 30 },
+        "progress": { "type": "number" },
+        "status": { "type": "string", "maxLength": 50 },
+        "weightPercent": { "type": "number" },
+        "signedOffBy": { "type": "string", "maxLength": 150 },
+        "signedOffByUid": { "type": "string", "maxLength": 128 },
+        "signedOffAt": { "type": "string" },
+        "bastRef": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["projectId", "title", "wbsCode", "progress", "status", "weightPercent"]
+    },
+    "WBSItem": {
+      "title": "WBSItem",
+      "description": "Work breakdown structure engineering task and schedule tracking",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "projectId": { "type": "string", "maxLength": 64 },
+        "code": { "type": "string", "maxLength": 50 },
+        "name": { "type": "string", "maxLength": 200 },
+        "category": { "type": "string", "maxLength": 100 },
+        "durationDays": { "type": "number" },
+        "startDate": { "type": "string", "maxLength": 30 },
+        "endDate": { "type": "string", "maxLength": 30 },
+        "plannedProgress": { "type": "number" },
+        "actualProgress": { "type": "number" },
+        "status": { "type": "string", "maxLength": 50 },
+        "criticalPath": { "type": "boolean" },
+        "assignedTeam": { "type": "string", "maxLength": 150 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["projectId", "code", "name", "category", "durationDays", "plannedProgress", "actualProgress", "status"]
+    },
+    "WorkspaceSettings": {
+      "title": "WorkspaceSettings",
+      "description": "Corporate enterprise workspace parameters and thresholds",
+      "type": "object",
+      "properties": {
+        "companyName": { "type": "string", "maxLength": 200 },
+        "companyAddress": { "type": "string", "maxLength": 500 },
+        "taxNumberNPWP": { "type": "string", "maxLength": 50 },
+        "tableDensity": { "type": "string", "maxLength": 30 },
+        "currency": { "type": "string", "maxLength": 30 },
+        "dateFormat": { "type": "string", "maxLength": 30 },
+        "alertScheduleDeviation": { "type": "boolean" },
+        "alertCriticalStock": { "type": "boolean" },
+        "alertHighValuePO": { "type": "boolean" },
+        "language": { "type": "string", "maxLength": 10 },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["companyName", "companyAddress", "taxNumberNPWP", "currency", "dateFormat"]
+    },
+    "DocumentCounter": {
+      "title": "DocumentCounter",
+      "description": "Server-side atomic sequential document number counter",
+      "type": "object",
+      "properties": {
+        "lastNumber": { "type": "number" },
+        "docType": { "type": "string", "maxLength": 50 },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["lastNumber", "docType"]
+    },
+    "BudgetVersion": {
+      "title": "BudgetVersion",
+      "description": "Historical revision snapshot of contract and approved budget addenda",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "projectId": { "type": "string", "maxLength": 64 },
+        "versionNumber": { "type": "string", "maxLength": 100 },
+        "effectiveDate": { "type": "string", "maxLength": 50 },
+        "approvedBy": { "type": "string", "maxLength": 150 },
+        "approvedByUid": { "type": "string", "maxLength": 128 },
+        "revisionId": { "type": "string", "maxLength": 64 },
+        "revisionNumber": { "type": "string", "maxLength": 50 },
+        "totalPlannedAmount": { "type": "number" },
+        "description": { "type": "string", "maxLength": 500 },
+        "notes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["projectId", "versionNumber", "effectiveDate", "approvedBy", "totalPlannedAmount"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Individual user identity profiles and workspace role"
+    },
+    "/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "Core construction projects and master tracking"
+    },
+    "/materials/{materialId}": {
+      "schema": { "$ref": "#/entities/MaterialItem" },
+      "description": "Warehouse and site inventory catalog"
+    },
+    "/purchase_orders/{poId}": {
+      "schema": { "$ref": "#/entities/PurchaseOrder" },
+      "description": "Purchase orders and procurement requests"
+    },
+    "/field_reports/{reportId}": {
+      "schema": { "$ref": "#/entities/FieldReport" },
+      "description": "Daily site inspection diaries and logs"
+    },
+    "/stock_mutations/{mutationId}": {
+      "schema": { "$ref": "#/entities/StockMutation" },
+      "description": "Material movement surat jalan records"
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "System operational alerts and notifications"
+    },
+    "/activities/{activityId}": {
+      "schema": { "$ref": "#/entities/Activity" },
+      "description": "Immutable operational activity stream"
+    },
+    "/budget_revisions/{revId}": {
+      "schema": { "$ref": "#/entities/BudgetRevision" },
+      "description": "Budget addenda and revision approval workflow documents"
+    },
+    "/petty_cash/{cashId}": {
+      "schema": { "$ref": "#/entities/PettyCash" },
+      "description": "On-site petty cash submissions and disbursement"
+    },
+    "/team_members/{memberId}": {
+      "schema": { "$ref": "#/entities/TeamMember" },
+      "description": "Team membership, roles, and project assignments"
+    },
+    "/audit_logs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLogEntry" },
+      "description": "Immutable append-only enterprise audit trail"
+    },
+    "/stock_adjustments/{adjId}": {
+      "schema": { "$ref": "#/entities/StockAdjustment" },
+      "description": "Physical stock opname variance and warehouse adjustment requests"
+    },
+    "/budget_lines/{lineId}": {
+      "schema": { "$ref": "#/entities/BudgetLine" },
+      "description": "RAB and BOQ itemized division lines and financial tracking"
+    },
+    "/milestones/{milestoneId}": {
+      "schema": { "$ref": "#/entities/Milestone" },
+      "description": "Contractual milestones with inspection and sign-off records"
+    },
+    "/wbs_items/{wbsId}": {
+      "schema": { "$ref": "#/entities/WBSItem" },
+      "description": "Work breakdown structure engineering tasks and schedules"
+    },
+    "/workspace_settings/{settingsId}": {
+      "schema": { "$ref": "#/entities/WorkspaceSettings" },
+      "description": "Corporate workspace settings, company entity info, and alert thresholds"
+    },
+    "/document_counters/{counterId}": {
+      "schema": { "$ref": "#/entities/DocumentCounter" },
+      "description": "Sequential document counters for PO, SPP, Addendum, LHP, Kas Kecil, and Opname"
+    },
+    "/budget_versions/{versionId}": {
+      "schema": { "$ref": "#/entities/BudgetVersion" },
+      "description": "Historical revision version records of project contract and addenda"
+    }
+  }
+}

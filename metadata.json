@@ -1,0 +1,8 @@
+{
+  "name": "Indotek Pro",
+  "description": "Enterprise construction management platform for monitoring multi-project progress, budget control, materials, procurement, and field operations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

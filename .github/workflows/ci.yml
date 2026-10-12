@@ -1,0 +1,59 @@
+name: CI Quality Gate & Emulator Test Suite
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Lint, Build, and Test (Emulator & Workflows)
+    runs-on: ubuntu-latest
+
+    # No repository secrets are passed to prevent secret leakage
+    env:
+      NODE_ENV: test
+      PORT: 3000
+      FIRESTORE_EMULATOR_HOST: 127.0.0.1:8085
+      FIREBASE_PROJECT_ID: demo-indotek-ci
+      FIRESTORE_DATABASE_ID: '(default)'
+      VITE_FIREBASE_PROJECT_ID: demo-indotek-ci
+      VITE_FIREBASE_DATABASE_ID: '(default)'
+
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Java Runtime (for Firebase Local Emulator)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install Firebase CLI Tools
+        run: npm install -g firebase-tools
+
+      - name: Install Application Dependencies
+        run: npm ci
+
+      - name: Run Typecheck & Static Lint
+        run: npm run lint
+
+      - name: Compile & Build Application Bundle
+        run: npm run build
+
+      - name: Run QA, Security Rules & Backend Workflow Test Suite
+        run: |
+          # Start Firestore emulator in the background on port 8085
+          firebase emulators:exec --only firestore --project demo-indotek-ci "npm test && npm run test:rules:emulator && npm run seed:emulator"
