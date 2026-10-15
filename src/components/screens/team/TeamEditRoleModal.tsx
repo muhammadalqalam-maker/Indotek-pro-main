@@ -72,7 +72,7 @@ export const TeamEditRoleModal: React.FC<TeamEditRoleModalProps> = ({
               </option>
             ))}
           </select>
-          <p className="text-[11px] text-[#69766F] mt-1">
+          <p className="text-xs text-[#69766F] mt-1">
             {ROLE_DEFINITIONS[editRoleForm.role]?.description}
           </p>
         </div>
@@ -116,7 +116,7 @@ export const TeamEditRoleModal: React.FC<TeamEditRoleModalProps> = ({
                       className="rounded text-[#12352B] focus:ring-[#12352B]"
                     />
                     <span className="text-[#202B26] font-medium">{proj.name}</span>
-                    <span className="text-[#69766F] text-[10px]">({proj.code})</span>
+                    <span className="text-[#69766F] text-xs">({proj.code})</span>
                   </label>
                 );
               })}
@@ -124,7 +124,7 @@ export const TeamEditRoleModal: React.FC<TeamEditRoleModalProps> = ({
           )}
         </div>
 
-        <div className="p-3 bg-[#FFF8EC] border border-[#FCE6B1] rounded-lg text-[11px] text-[#9E6B05] flex items-start gap-2">
+        <div className="p-3 bg-[#FFF8EC] border border-[#FCE6B1] rounded-lg text-xs text-[#9E6B05] flex items-start gap-2">
           <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
           <span>
             Perubahan peran dicatat secara permanen pada Jejak Audit Korporat dengan identitas

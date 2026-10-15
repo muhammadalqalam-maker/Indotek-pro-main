@@ -6,8 +6,8 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { AppSettings, firestoreService, DEFAULT_WORKSPACE_ID } from '../services/firestoreService';
-import { testConnection, isQuotaExhaustedError } from '../lib/firebase';
+import { useLocation } from 'react-router-dom';
+import { AppSettings, dataService, resolveWorkspaceId, type ActorInfo } from '../services/dataService';
 import { useAuth } from './AuthContext';
 import { NotificationItem, AuditLogEntry, AuditActionType } from '../types';
 
@@ -20,9 +20,28 @@ export type ScreenId =
   | 'materials'
   | 'procurement'
   | 'field-reports'
+  | 'resource-prices'
+  | 'ahsp-templates'
   | 'team'
   | 'reports'
   | 'settings';
+
+export function getScreenIdFromPathname(pathname: string): ScreenId {
+  if (pathname === '/') return 'dashboard';
+  if (pathname.startsWith('/projects/')) return 'project-detail';
+  if (pathname.startsWith('/projects')) return 'projects';
+  if (pathname.startsWith('/schedule')) return 'schedule';
+  if (pathname.startsWith('/budget')) return 'budget';
+  if (pathname.startsWith('/materials')) return 'materials';
+  if (pathname.startsWith('/procurement')) return 'procurement';
+  if (pathname.startsWith('/field-reports')) return 'field-reports';
+  if (pathname.startsWith('/resource-prices')) return 'resource-prices';
+  if (pathname.startsWith('/ahsp-templates')) return 'ahsp-templates';
+  if (pathname.startsWith('/team')) return 'team';
+  if (pathname.startsWith('/reports')) return 'reports';
+  if (pathname.startsWith('/settings')) return 'settings';
+  return 'dashboard';
+}
 
 export interface ToastMessage {
   id: string;
@@ -32,8 +51,6 @@ export interface ToastMessage {
 }
 
 export interface UIContextType {
-  currentScreen: ScreenId;
-  setCurrentScreen: (screen: ScreenId) => void;
   selectedProjectId: string;
   setSelectedProjectId: (id: string) => void;
   projectDetailTab: string;
@@ -63,10 +80,21 @@ export interface UIContextType {
   setIsLoadingData: (loading: boolean) => void;
   loadError: string | null;
   setLoadError: (err: string | null) => void;
-  isQuotaExhausted: boolean;
   isTabVisible: boolean;
-  isFirestoreSyncing: boolean;
-  setIsFirestoreSyncing: (syncing: boolean) => void;
+
+  // Per-domain loading states
+  loadingProjects: boolean;
+  setLoadingProjects: (loading: boolean) => void;
+  loadingBudget: boolean;
+  setLoadingBudget: (loading: boolean) => void;
+  loadingMaterials: boolean;
+  setLoadingMaterials: (loading: boolean) => void;
+  loadingTeam: boolean;
+  setLoadingTeam: (loading: boolean) => void;
+  loadingFieldReports: boolean;
+  setLoadingFieldReports: (loading: boolean) => void;
+  loadingProcurement: boolean;
+  setLoadingProcurement: (loading: boolean) => void;
 
   pendingActions: Record<string, boolean>;
   setPendingActions: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
@@ -89,12 +117,7 @@ export interface UIContextType {
     extra?: { previousValue?: string; newValue?: string; metadata?: any }
   ) => Promise<void>;
 
-  actorInfo: {
-    uid: string;
-    name: string;
-    role: any;
-    email: string;
-  };
+  actorInfo: ActorInfo;
   workspaceId: string;
 }
 
@@ -102,9 +125,9 @@ const UIContext = createContext<UIContextType | undefined>(undefined);
 
 export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { currentUser, userProfile, activeRole, isAdmin } = useAuth();
-  const workspaceId = userProfile?.workspaceId || DEFAULT_WORKSPACE_ID;
+  const workspaceId = resolveWorkspaceId(userProfile?.workspaceId);
+  const location = useLocation();
 
-  const [currentScreen, setCurrentScreen] = useState<ScreenId>('dashboard');
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [projectDetailTab, setProjectDetailTab] = useState<string>('overview');
   const [globalSearch, setGlobalSearch] = useState<string>('');
@@ -117,16 +140,23 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [isFirestoreSyncing, setIsFirestoreSyncing] = useState<boolean>(false);
   const [pendingActions, setPendingActions] = useState<Record<string, boolean>>({});
+
+  // Per-domain loading states
+  const [loadingProjects, setLoadingProjects] = useState<boolean>(true);
+  const [loadingBudget, setLoadingBudget] = useState<boolean>(true);
+  const [loadingMaterials, setLoadingMaterials] = useState<boolean>(true);
+  const [loadingTeam, setLoadingTeam] = useState<boolean>(true);
+  const [loadingFieldReports, setLoadingFieldReports] = useState<boolean>(true);
+  const [loadingProcurement, setLoadingProcurement] = useState<boolean>(true);
 
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
 
   const [settings, setSettings] = useState<AppSettings>({
-    companyName: 'PT Indotek Bangun Nusantara',
-    companyAddress: 'Gedung Graha Surveyor Indonesia Lt. 14, Jl. Gatot Subroto Kav. 56, Jakarta Selatan 12950',
-    taxNumberNPWP: '01.345.678.9-012.000',
+    companyName: '',
+    companyAddress: '',
+    taxNumberNPWP: '',
     tableDensity: 'comfortable',
     currency: 'IDR (Rp)',
     dateFormat: 'DD/MM/YYYY',
@@ -134,13 +164,12 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     alertCriticalStock: true,
     alertHighValuePO: true,
     language: 'id',
+    lastUpdated: '',
   });
 
-  const actorInfo = {
-    uid: currentUser?.uid || 'user',
-    name: userProfile?.name || currentUser?.displayName || 'Pengguna',
-    role: activeRole,
-    email: currentUser?.email || '',
+  const actorInfo: ActorInfo = {
+    actorName: userProfile?.name || currentUser?.displayName || 'Pengguna',
+    actorRole: activeRole || 'Viewer',
   };
 
   const isActionPending = (id: string): boolean => Boolean(pendingActions[id]);
@@ -148,11 +177,6 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isTabVisible, setIsTabVisible] = useState<boolean>(() => {
     return typeof document !== 'undefined' ? document.visibilityState === 'visible' : true;
   });
-  const [isQuotaExhausted, setIsQuotaExhausted] = useState<boolean>(false);
-
-  useEffect(() => {
-    testConnection();
-  }, []);
 
   // Tab visibility listener
   useEffect(() => {
@@ -166,26 +190,14 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     };
   }, []);
 
-  // Quota exhausted listener
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const handleQuota = () => {
-      setIsQuotaExhausted(true);
-    };
-    window.addEventListener('firestore:quota-exhausted', handleQuota);
-    return () => {
-      window.removeEventListener('firestore:quota-exhausted', handleQuota);
-    };
-  }, []);
-
   // Load corporate settings once
   useEffect(() => {
     if (!currentUser) return;
     let isMounted = true;
-    firestoreService.getSettings(false, workspaceId).then((s) => {
+    dataService.getSettings(workspaceId).then((s) => {
       if (isMounted && s) setSettings(s);
-    }).catch((err) => {
-      console.warn('Settings load notice:', err);
+    }).catch(() => {
+      // Settings load optional—use defaults
     });
     return () => { isMounted = false; };
   }, [currentUser, workspaceId]);
@@ -193,9 +205,8 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Notifications Realtime Subscription (Global when visible)
   useEffect(() => {
     if (!currentUser || !isTabVisible) return;
-    const unsub = firestoreService.subscribeNotifications(
-      (items) => setNotifications(items),
-      (err) => console.warn('Notifications sync notice:', err),
+    const unsub = dataService.subscribeNotifications(
+      (items: NotificationItem[]) => setNotifications(items),
       workspaceId
     );
     return () => { unsub?.(); };
@@ -203,16 +214,19 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
   // Load audit logs on demand for settings
   useEffect(() => {
-    if (!currentUser || currentScreen !== 'settings') return;
+    const screenId = getScreenIdFromPathname(location.pathname);
+    if (!currentUser || screenId !== 'settings') return;
     let isMounted = true;
-    firestoreService.getAuditLogsPaginated(50, undefined, workspaceId).then((a) => {
+    dataService.getAuditLogsPaged({ pageSize: 50, wsId: workspaceId }).then((a) => {
       if (isMounted && a) setAuditLogs(a.items);
-    }).catch(console.warn);
+    }).catch(() => {
+      // Audit logs optional—use empty
+    });
     return () => { isMounted = false; };
-  }, [currentUser, currentScreen, workspaceId]);
+  }, [currentUser, location.pathname, workspaceId]);
 
   const addToast = useCallback((toast: Omit<ToastMessage, 'id'>) => {
-    const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const id = `toast-${crypto.randomUUID()}`;
     setToasts((prev) => [...prev, { ...toast, id }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -226,7 +240,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const navigateToProjectDetail = (projectId: string, tab = 'overview') => {
     setSelectedProjectId(projectId);
     setProjectDetailTab(tab);
-    setCurrentScreen('project-detail');
+    // Navigation handled by router—no setCurrentScreen needed
   };
 
   const updateSettings = async (newSettings: Partial<AppSettings>) => {
@@ -241,31 +255,31 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
     const merged = { ...settings, ...newSettings };
     try {
-      await firestoreService.saveSettings(merged, actorInfo, workspaceId);
+      await dataService.saveSettings(merged, workspaceId);
       setSettings(merged);
       addToast({
         type: 'success',
         title: 'Pengaturan Disimpan',
-        message: `Konfigurasi perusahaan berhasil disimpan ke Firestore workspaces/${workspaceId}/settings.`,
+        message: `Konfigurasi perusahaan berhasil disimpan ke Supabase.`,
       });
     } catch (err: any) {
       addToast({
         type: 'danger',
         title: 'Gagal Menyimpan Pengaturan',
-        message: err?.message || 'Kesalahan aturan keamanan Firestore saat menyimpan konfigurasi.',
+        message: err?.message || 'Kesalahan saat menyimpan konfigurasi.',
       });
       throw err;
     }
   };
 
   const markNotificationAsRead = (id: string) => {
-    firestoreService.markNotificationAsRead(id, workspaceId);
+    dataService.markNotificationAsRead(id, workspaceId);
   };
 
   const markAllNotificationsRead = () => {
     const unreadIds = notifications.filter((n) => !n.read).map((n) => n.id);
     if (unreadIds.length > 0) {
-      firestoreService.markAllNotificationsRead(unreadIds, workspaceId);
+      dataService.markAllNotificationsRead(workspaceId);
     }
   };
 
@@ -278,7 +292,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     projectName?: string,
     extra?: { previousValue?: string; newValue?: string; metadata?: any }
   ) => {
-    await firestoreService.logAuditEvent({
+    await dataService.logAuditEvent({
       action,
       recordType,
       recordId,
@@ -298,8 +312,6 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   return (
     <UIContext.Provider
       value={{
-        currentScreen,
-        setCurrentScreen,
         selectedProjectId,
         setSelectedProjectId,
         projectDetailTab,
@@ -324,10 +336,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         setIsLoadingData,
         loadError,
         setLoadError,
-        isQuotaExhausted,
         isTabVisible,
-        isFirestoreSyncing,
-        setIsFirestoreSyncing,
         pendingActions,
         setPendingActions,
         isActionPending,
@@ -340,6 +349,18 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         recordAuditEvent,
         actorInfo,
         workspaceId,
+        loadingProjects,
+        setLoadingProjects,
+        loadingBudget,
+        setLoadingBudget,
+        loadingMaterials,
+        setLoadingMaterials,
+        loadingTeam,
+        setLoadingTeam,
+        loadingFieldReports,
+        setLoadingFieldReports,
+        loadingProcurement,
+        setLoadingProcurement,
       }}
     >
       {children}

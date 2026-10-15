@@ -16,6 +16,8 @@ import { useApp } from '../../context/AppContext';
 import { MetricCard } from '../common/MetricCard';
 import { Button } from '../common/Button';
 import { Badge } from '../common/Badge';
+import { DataCard } from '../common/DataCard';
+import { ResponsiveTable } from '../common/ResponsiveTable';
 import {
   formatCurrencyIDR,
   formatCompactIDR,
@@ -244,61 +246,92 @@ export const ReportsScreen: React.FC = () => {
               </p>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-[#FAFBFB] text-[#69766F] border-b border-[#E2E8E4]">
-                    <th className="py-2.5 px-4 font-semibold text-left">Nama Proyek</th>
-                    <th className="py-2.5 px-4 font-semibold text-right">Progres Aktual</th>
-                    <th className="py-2.5 px-4 font-semibold text-right">Deviasi Jadwal</th>
-                    <th className="py-2.5 px-4 font-semibold text-right">Utilisasi RAB</th>
-                    <th className="py-2.5 px-4 font-semibold text-right">Indeks Biaya (CPI)</th>
-                    <th className="py-2.5 px-4 font-semibold text-left">Status HSE</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E2E8E4]/70">
-                  {projects.slice(0, 5).map((p) => {
-                    const dev = p.progressActual - p.progressPlanned;
-                    const isPositive = dev >= 0;
-                    const cpiVal = (p.approvedBudget * (p.progressActual / 100)) / (p.actualCost || 1);
-
-                    return (
-                      <tr key={p.id} className="hover:bg-[#F5F7F6]/80 transition-colors">
-                        <td className="py-3 px-4">
-                          <div className="font-semibold text-[#202B26] leading-snug">{p.name}</div>
-                          <div className="text-[11px] text-[#69766F] font-mono tabular-nums">{p.code}</div>
-                        </td>
-
-                        <td className="py-3 px-4 font-mono font-bold text-[#202B26] tabular-nums text-right">
-                          {formatPercent(p.progressActual)}
-                        </td>
-
-                        <td className="py-3 px-4 font-mono font-medium tabular-nums whitespace-nowrap text-right">
-                          <span className={isPositive ? 'text-[#1C6843]' : 'text-[#A82A20]'}>
-                            {isPositive ? '+' : ''}
-                            {dev.toFixed(1)}%
-                          </span>
-                        </td>
-
-                        <td className="py-3 px-4 font-mono tabular-nums text-[#202B26] text-right">
-                          {formatPercent((p.actualCost / p.approvedBudget) * 100)}
-                        </td>
-
-                        <td className="py-3 px-4 font-mono font-medium text-[#202B26] tabular-nums text-right">
-                          {cpiVal > 1.05 ? '1.04 (Efisien)' : cpiVal > 0.95 ? '1.01 (Normal)' : '0.94 (Kritis)'}
-                        </td>
-
-                        <td className="py-3 px-4 whitespace-nowrap">
-                          <Badge variant="success" size="sm">
-                            Zero Accident
-                          </Badge>
-                        </td>
+            <ResponsiveTable
+              data={projects.slice(0, 5)}
+              renderTable={() => (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-[#FAFBFB] text-[#69766F] border-b border-[#E2E8E4]">
+                        <th className="py-2.5 px-4 font-semibold text-left">Nama Proyek</th>
+                        <th className="py-2.5 px-4 font-semibold text-right">Progres Aktual</th>
+                        <th className="py-2.5 px-4 font-semibold text-right">Deviasi Jadwal</th>
+                        <th className="py-2.5 px-4 font-semibold text-right">Utilisasi RAB</th>
+                        <th className="py-2.5 px-4 font-semibold text-right">Indeks Biaya (CPI)</th>
+                        <th className="py-2.5 px-4 font-semibold text-left">Status HSE</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                    </thead>
+                    <tbody className="divide-y divide-[#E2E8E4]/70">
+                      {projects.slice(0, 5).map((p) => {
+                        const dev = p.progressActual - p.progressPlanned;
+                        const isPositive = dev >= 0;
+                        const cpiVal = (p.approvedBudget * (p.progressActual / 100)) / (p.actualCost || 1);
+
+                        return (
+                          <tr key={p.id} className="hover:bg-[#F5F7F6]/80 transition-colors">
+                            <td className="py-3 px-4">
+                              <div className="font-semibold text-[#202B26] leading-snug">{p.name}</div>
+                              <div className="text-xs text-[#69766F] font-mono tabular-nums">{p.code}</div>
+                            </td>
+
+                            <td className="py-3 px-4 font-mono font-bold text-[#202B26] tabular-nums text-right">
+                              {formatPercent(p.progressActual)}
+                            </td>
+
+                            <td className="py-3 px-4 font-mono font-medium tabular-nums whitespace-nowrap text-right">
+                              <span className={isPositive ? 'text-[#1C6843]' : 'text-[#A82A20]'}>
+                                {isPositive ? '+' : ''}
+                                {dev.toFixed(1)}%
+                              </span>
+                            </td>
+
+                            <td className="py-3 px-4 font-mono tabular-nums text-[#202B26] text-right">
+                              {formatPercent((p.actualCost / p.approvedBudget) * 100)}
+                            </td>
+
+                            <td className="py-3 px-4 font-mono font-medium text-[#202B26] tabular-nums text-right">
+                              {cpiVal > 1.05 ? '1.04 (Efisien)' : cpiVal > 0.95 ? '1.01 (Normal)' : '0.94 (Kritis)'}
+                            </td>
+
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              <Badge variant="success" size="sm">
+                                Zero Accident
+                              </Badge>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              renderCard={(p) => {
+                const dev = p.progressActual - p.progressPlanned;
+                const isPositive = dev >= 0;
+                const cpiVal = (p.approvedBudget * (p.progressActual / 100)) / (p.actualCost || 1);
+                
+                return (
+                  <DataCard
+                    title={p.name}
+                    subtitle={p.code}
+                    metadata={[
+                      { label: 'Progres Aktual', value: formatPercent(p.progressActual), highlight: true },
+                      {
+                        label: 'Deviasi Jadwal',
+                        value: (
+                          <span className={isPositive ? 'text-[#1C6843]' : 'text-[#A82A20]'}>
+                            {isPositive ? '+' : ''}{dev.toFixed(1)}%
+                          </span>
+                        ),
+                      },
+                      { label: 'Utilisasi RAB', value: formatPercent((p.actualCost / p.approvedBudget) * 100) },
+                      { label: 'Indeks Biaya (CPI)', value: cpiVal > 1.05 ? '1.04 (Efisien)' : cpiVal > 0.95 ? '1.01 (Normal)' : '0.94 (Kritis)' },
+                      { label: 'Status HSE', value: <Badge variant="success" size="sm">Zero Accident</Badge> },
+                    ]}
+                  />
+                );
+              }}
+            />
           </div>
 
           <div className="p-4 bg-[#FAFBFB] border-t border-[#E2E8E4] flex items-center justify-between text-xs text-[#69766F]">

@@ -111,7 +111,7 @@ export const SettingsScreen: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-[#E2E8E4]">
         <div>
-          <div className="flex items-center gap-2 text-xs text-[#69766F] mb-1">
+          <div className="flex items-center gap-2 text-xs text-text-muted mb-1">
             <span>Konfigurasi Workspace & Tata Kelola</span>
             <span aria-hidden="true">·</span>
             <span>Indotek Pro v1.0.4 Enterprise</span>
@@ -119,7 +119,7 @@ export const SettingsScreen: React.FC = () => {
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#202B26]">
             Pengaturan & Tata Kelola Workspace
           </h1>
-          <p className="text-xs text-[#69766F] mt-0.5">
+          <p className="text-xs text-text-muted mt-0.5">
             Sesuaikan identitas badan usaha, format mata uang, ambang batas alert, dan auditabilitas korporat
           </p>
         </div>
@@ -156,16 +156,16 @@ export const SettingsScreen: React.FC = () => {
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-medium transition-colors text-left cursor-pointer ${
                   isActive
                     ? 'bg-[#12352B] text-white shadow-2xs font-semibold'
-                    : 'text-[#69766F] hover:bg-white hover:text-[#202B26]'
+                    : 'text-text-muted hover:bg-white hover:text-[#202B26]'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-[#D6A85C]' : 'text-[#69766F]'}`} />
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-accent-gold' : 'text-text-muted'}`} />
                   <span>{tab.label}</span>
                 </div>
                 {tab.badge !== undefined && (
                   <span
-                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                    className={`px-1.5 py-0.2 rounded-full text-xs font-mono ${
                       isActive ? 'bg-[#285744] text-white' : 'bg-[#EAEFEA] text-[#12352B]'
                     }`}
                   >
@@ -185,7 +185,7 @@ export const SettingsScreen: React.FC = () => {
               <div className="space-y-4">
                 <div className="border-b border-[#E2E8E4] pb-3">
                   <h3 className="text-sm font-bold text-[#202B26]">Identitas Badan Usaha Jasa Konstruksi</h3>
-                  <p className="text-xs text-[#69766F] mt-0.5">
+                  <p className="text-xs text-text-muted mt-0.5">
                     Informasi kop surat dan verifikasi legalitas pada laporan resmi
                   </p>
                 </div>
@@ -227,10 +227,63 @@ export const SettingsScreen: React.FC = () => {
                       type="text"
                       disabled
                       value="Besar (B2) - LPJK / PUPR RI"
-                      className="w-full p-2.5 bg-[#F5F7F6] border border-[#E2E8E4] rounded-lg text-[#69766F]"
+                      className="w-full p-2.5 bg-[#F5F7F6] border border-[#E2E8E4] rounded-lg text-text-muted"
                     />
                   </div>
+
+                  {/* SoD Mode — hanya tampil untuk Owner */}
+                  <div className="sm:col-span-2 pt-2 border-t border-[#E2E8E4]">
+                    <label className="block font-medium text-[#202B26] mb-2">
+                      Mode Segregation of Duties (SoD)
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Strict */}
+                      <label className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                        (formState as any).sodMode !== 'owner_override'
+                          ? 'border-[#12352B] bg-[#EEF4F0]'
+                          : 'border-[#E2E8E4] bg-white hover:border-[#A2C4B2]'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="sodMode"
+                          value="strict"
+                          checked={(formState as any).sodMode !== 'owner_override'}
+                          onChange={() => setFormState({ ...formState, sodMode: 'strict' } as any)}
+                          className="mt-0.5"
+                        />
+                        <div>
+                          <p className="font-semibold text-[#202B26] text-xs">🔒 Strict (Default)</p>
+                          <p className="text-xs text-text-muted mt-0.5">
+                            Tidak ada pengecualian. Creator tidak bisa menyetujui dokumennya sendiri, termasuk Owner.
+                          </p>
+                        </div>
+                      </label>
+
+                      {/* Owner Override */}
+                      <label className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                        (formState as any).sodMode === 'owner_override'
+                          ? 'border-amber-500 bg-amber-50'
+                          : 'border-[#E2E8E4] bg-white hover:border-amber-300'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="sodMode"
+                          value="owner_override"
+                          checked={(formState as any).sodMode === 'owner_override'}
+                          onChange={() => setFormState({ ...formState, sodMode: 'owner_override' } as any)}
+                          className="mt-0.5"
+                        />
+                        <div>
+                          <p className="font-semibold text-amber-800 text-xs">⚠️ Owner Override</p>
+                          <p className="text-xs text-amber-700 mt-0.5">
+                            Owner boleh menyetujui dokumennya sendiri dengan alasan wajib (min. 15 karakter). Setiap override dicatat audit dan Auditor diberi notifikasi.
+                          </p>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
                 </div>
+
               </div>
 
               <div className="pt-4 border-t border-[#E2E8E4] flex justify-end gap-3">
@@ -250,7 +303,7 @@ export const SettingsScreen: React.FC = () => {
               <div className="space-y-4">
                 <div className="border-b border-[#E2E8E4] pb-3">
                   <h3 className="text-sm font-bold text-[#202B26]">Format Tanggal, Mata Uang & Bahasa</h3>
-                  <p className="text-xs text-[#69766F] mt-0.5">Konvensi tampilan numerik laporan</p>
+                  <p className="text-xs text-text-muted mt-0.5">Konvensi tampilan numerik laporan</p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -311,7 +364,7 @@ export const SettingsScreen: React.FC = () => {
               <div className="space-y-4">
                 <div className="border-b border-[#E2E8E4] pb-3">
                   <h3 className="text-sm font-bold text-[#202B26]">Ambang Batas Peringatan Dini (Early Warning)</h3>
-                  <p className="text-xs text-[#69766F] mt-0.5">
+                  <p className="text-xs text-text-muted mt-0.5">
                     Trigger otomatis pemberitahuan bila terjadi anomali di lapangan
                   </p>
                 </div>
@@ -328,7 +381,7 @@ export const SettingsScreen: React.FC = () => {
                     />
                     <div>
                       <div className="font-semibold text-[#202B26]">Peringatan Deviasi Kurva-S & Terlambat</div>
-                      <div className="text-[11px] text-[#69766F] mt-0.5">
+                      <div className="text-xs text-text-muted mt-0.5">
                         Kirim notifikasi bila progres aktual tertinggal lebih dari 5,0% di bawah baseline rencana.
                       </div>
                     </div>
@@ -345,7 +398,7 @@ export const SettingsScreen: React.FC = () => {
                     />
                     <div>
                       <div className="font-semibold text-[#202B26]">Peringatan Buffer Stok Material Kritis</div>
-                      <div className="text-[11px] text-[#69766F] mt-0.5">
+                      <div className="text-xs text-text-muted mt-0.5">
                         Trigger peringatan saat persediaan material gudang site mendekati batas minimum reorder.
                       </div>
                     </div>
@@ -362,7 +415,7 @@ export const SettingsScreen: React.FC = () => {
                     />
                     <div>
                       <div className="font-semibold text-[#202B26]">Eskalasi SPP Nilai Tinggi (&gt; Rp 100 Juta)</div>
-                      <div className="text-[11px] text-[#69766F] mt-0.5">
+                      <div className="text-xs text-text-muted mt-0.5">
                         Wajibkan tanda tangan digital Project Director untuk pengadaan di atas ambang batas.
                       </div>
                     </div>
@@ -387,7 +440,7 @@ export const SettingsScreen: React.FC = () => {
               <div className="space-y-4">
                 <div className="border-b border-[#E2E8E4] pb-3">
                   <h3 className="text-sm font-bold text-[#202B26]">Kerapatan Baris Tabel (Data Density)</h3>
-                  <p className="text-xs text-[#69766F] mt-0.5">Optimalisasi tampilan untuk layar operasional</p>
+                  <p className="text-xs text-text-muted mt-0.5">Optimalisasi tampilan untuk layar operasional</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -401,7 +454,7 @@ export const SettingsScreen: React.FC = () => {
                     }`}
                   >
                     <div className="font-semibold text-[#202B26] mb-1">Nyaman (Comfortable)</div>
-                    <p className="text-[#69766F] text-[11px]">
+                    <p className="text-text-muted text-xs">
                       Jarak baris lega dengan padding optimal untuk kenyamanan membaca di tablet dan laptop.
                     </p>
                   </button>
@@ -416,7 +469,7 @@ export const SettingsScreen: React.FC = () => {
                     }`}
                   >
                     <div className="font-semibold text-[#202B26] mb-1">Padat (High-Density)</div>
-                    <p className="text-[#69766F] text-[11px]">
+                    <p className="text-text-muted text-xs">
                       Kerapatan baris tinggi untuk monitor desktop lebar dengan banyak kolom angka.
                     </p>
                   </button>
@@ -442,18 +495,18 @@ export const SettingsScreen: React.FC = () => {
                   <h3 className="text-sm font-bold text-[#202B26]">
                     Jejak Audit & Tata Kelola Korporat (Immutable Audit Trail)
                   </h3>
-                  <p className="text-xs text-[#69766F] mt-0.5">
+                  <p className="text-xs text-text-muted mt-0.5">
                     Rekaman append-only peristiwa penting sistem dengan identitas aktor, korelasi event, dan stempel waktu
                   </p>
                 </div>
-                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#E5F4EB] text-[#1C6843] rounded-lg border border-[#CDE9D7] text-[11px] font-medium">
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#E5F4EB] text-[#1C6843] rounded-lg border border-[#CDE9D7] text-xs font-medium">
                   <ShieldCheck className="w-3.5 h-3.5" />
                   <span>WORM Protected (Append-Only)</span>
                 </div>
               </div>
 
               {/* Informational Security Notice */}
-              <div className="p-3 bg-[#FAFBFB] border border-[#E2E8E4] rounded-lg text-[#4F5D56] text-[11px] leading-relaxed">
+              <div className="p-3 bg-[#FAFBFB] border border-[#E2E8E4] rounded-lg text-[#4F5D56] text-xs leading-relaxed">
                 Log audit dilindungi oleh aturan keamanan Cloud Firestore (<code>allow update, delete: if false</code>).
                 Tidak ada pengguna yang dapat mengubah atau menghapus riwayat transaksi finansial, persetujuan addendum RAB, atau mutasi personil.
               </div>
@@ -479,10 +532,10 @@ export const SettingsScreen: React.FC = () => {
                     <button
                       key={cat}
                       onClick={() => setAuditFilterCategory(cat)}
-                      className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors whitespace-nowrap cursor-pointer ${
+                      className={`px-2.5 py-1 rounded text-xs font-medium transition-colors whitespace-nowrap cursor-pointer ${
                         auditFilterCategory === cat
                           ? 'bg-[#12352B] text-white'
-                          : 'bg-[#FAFBFB] border border-[#E2E8E4] text-[#69766F] hover:bg-white'
+                          : 'bg-[#FAFBFB] border border-[#E2E8E4] text-text-muted hover:bg-white'
                       }`}
                     >
                       {cat}
@@ -495,7 +548,7 @@ export const SettingsScreen: React.FC = () => {
               <div className="border border-[#E2E8E4] rounded-lg overflow-hidden">
                 <div className="overflow-x-auto max-h-[500px]">
                   <table className="w-full text-left text-xs border-collapse">
-                    <thead className="sticky top-0 bg-[#FAFBFB] text-[#69766F] border-b border-[#E2E8E4] z-10">
+                    <thead className="sticky top-0 bg-[#FAFBFB] text-text-muted border-b border-[#E2E8E4] z-10">
                       <tr>
                         <th className="py-2.5 px-3 font-semibold">Waktu & Korelasi</th>
                         <th className="py-2.5 px-3 font-semibold">Aktor Pelaksana</th>
@@ -507,7 +560,7 @@ export const SettingsScreen: React.FC = () => {
                     <tbody className="divide-y divide-[#E2E8E4]/70">
                       {filteredAuditLogs.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="py-8 text-center text-[#69766F]">
+                          <td colSpan={5} className="py-8 text-center text-text-muted">
                             Tidak ada rekaman audit yang cocok dengan filter pencarian.
                           </td>
                         </tr>
@@ -533,14 +586,14 @@ export const SettingsScreen: React.FC = () => {
                                 <div className="font-mono text-[#202B26] tabular-nums font-medium">
                                   {formatDateIndo(log.timestamp.split('T')[0])}
                                 </div>
-                                <div className="font-mono text-[10px] text-[#69766F] truncate max-w-[130px]">
+                                <div className="font-mono text-xs text-text-muted truncate max-w-[130px]">
                                   {log.correlationId}
                                 </div>
                               </td>
 
                               <td className="py-2.5 px-3 whitespace-nowrap">
                                 <div className="font-semibold text-[#202B26]">{log.actor.name}</div>
-                                <div className="text-[10px] text-[#12352B] font-medium">
+                                <div className="text-xs text-[#12352B] font-medium">
                                   {log.actor.role}
                                 </div>
                               </td>
@@ -556,7 +609,7 @@ export const SettingsScreen: React.FC = () => {
                                   {log.details}
                                 </div>
                                 {log.projectName && (
-                                  <div className="text-[10px] text-[#69766F] truncate">
+                                  <div className="text-xs text-text-muted truncate">
                                     Proyek: {log.projectName}
                                   </div>
                                 )}
@@ -601,26 +654,26 @@ export const SettingsScreen: React.FC = () => {
           <div className="space-y-3.5 text-xs">
             <div className="p-3 bg-[#FAFBFB] rounded-lg border border-[#E2E8E4] space-y-2">
               <div className="flex justify-between">
-                <span className="text-[#69766F]">Waktu Tercatat:</span>
+                <span className="text-text-muted">Waktu Tercatat:</span>
                 <span className="font-mono text-[#202B26]">{selectedAuditLog.timestamp}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#69766F]">Aktor Pelaksana:</span>
+                <span className="text-text-muted">Aktor Pelaksana:</span>
                 <span className="font-semibold text-[#202B26]">{selectedAuditLog.actor.name}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#69766F]">Peran & Email:</span>
+                <span className="text-text-muted">Peran & Email:</span>
                 <span className="text-[#202B26]">{selectedAuditLog.actor.role} ({selectedAuditLog.actor.email})</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#69766F]">Tipe Record:</span>
+                <span className="text-text-muted">Tipe Record:</span>
                 <span className="font-mono text-[#12352B] font-bold">
                   {selectedAuditLog.recordType.toUpperCase()} ({selectedAuditLog.recordId})
                 </span>
               </div>
               {selectedAuditLog.projectName && (
                 <div className="flex justify-between">
-                  <span className="text-[#69766F]">Proyek Konteks:</span>
+                  <span className="text-text-muted">Proyek Konteks:</span>
                   <span className="text-[#202B26]">{selectedAuditLog.projectName}</span>
                 </div>
               )}
@@ -636,15 +689,15 @@ export const SettingsScreen: React.FC = () => {
             {(selectedAuditLog.previousValue || selectedAuditLog.newValue) && (
               <div className="p-3 bg-[#FAFBFB] rounded-lg border border-[#E2E8E4] space-y-1">
                 <div className="font-semibold text-[#202B26] mb-1">State Transition:</div>
-                <div className="flex items-center gap-2 font-mono text-[11px]">
+                <div className="flex items-center gap-2 font-mono text-xs">
                   <span className="text-[#A82A20]">{selectedAuditLog.previousValue || '(None)'}</span>
-                  <ArrowRight className="w-3 h-3 text-[#69766F]" />
+                  <ArrowRight className="w-3 h-3 text-text-muted" />
                   <span className="text-[#1C6843] font-bold">{selectedAuditLog.newValue || '(None)'}</span>
                 </div>
               </div>
             )}
 
-            <div className="p-2.5 bg-[#E5F4EB] border border-[#CDE9D7] rounded-lg text-[11px] text-[#1C6843] flex items-center gap-2">
+            <div className="p-2.5 bg-[#E5F4EB] border border-[#CDE9D7] rounded-lg text-xs text-[#1C6843] flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 shrink-0" />
               <span>Integritas Kriptografis Terverifikasi. Log ini tidak dapat diedit atau dimanipulasi.</span>
             </div>

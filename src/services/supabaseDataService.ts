@@ -5,6 +5,13 @@
  * Supabase Data Service
  * Client-side data provider directly querying Supabase PostgreSQL tables & Realtime channels.
  * Provides transparent drop-in compatibility for Indotek Pro enterprise domain entities.
+ *
+ * ATURAN PENULISAN DATA:
+ * - Klien TIDAK boleh menulis langsung kolom uang (planned_amount, actual_amount, contract_value,
+ *   approved_budget, actual_cost), status workflow, atau nilai turunan (variance_*, progress_*,
+ *   completed_milestones, total_milestones, updated_at).
+ * - Semua mutasi sensitif wajib lewat RPC security definer.
+ * - Setiap error Supabase wajib dilempar (throw), bukan console.warn lalu lanjut.
  */
 
 import { supabase } from '../lib/supabase';
@@ -26,8 +33,39 @@ import {
   WBSItem,
   BudgetVersion,
   AppRole,
+  ResourcePrice,
+  ResourceType,
+  AHSPTemplate,
+  AHSPComponent,
+  AHSPUnitPriceCalculation,
+  BOQItem,
+  BOQSummary,
+  DivisionCategory,
+  PaymentTerm,
+  PaymentSchedule,
+  AttachmentItem,
+  AttachmentRecordType,
 } from '../types';
 import { DB_ROLE_TO_APP_ROLE } from '../types/rbac';
+
+export interface ActorInfo {
+  actorName: string;
+  actorRole: AppRole;
+}
+
+export interface AppSettings {
+  companyName: string;
+  companyAddress: string;
+  taxNumberNPWP: string;
+  tableDensity: 'compact' | 'comfortable' | 'spacious';
+  currency: string;
+  dateFormat: string;
+  alertScheduleDeviation: boolean;
+  alertCriticalStock: boolean;
+  alertHighValuePO: boolean;
+  language: string;
+  lastUpdated: string;
+}
 
 export const DEFAULT_WORKSPACE_UUID = '5afb9797-5b33-48e6-ab33-e0c84d7c25f9';
 export const DEFAULT_WORKSPACE_SLUG = 'indotek-jkt';
@@ -88,8 +126,8 @@ export function mapMaterial(row: any): MaterialItem {
     specification: row.specification || '',
     category: row.category,
     unit: row.unit,
-    currentStock: Number(row.current_stock) ?? 0,
-    minStock: Number(row.min_stock) ?? 0,
+    currentStock: Number(row.current_stock) || 0,
+    minStock: Number(row.min_stock) || 0,
     allocatedProject: row.allocated_project_name || 'Semua Proyek',
     allocatedProjectId: row.allocated_project_id || undefined,
     warehouseLocation: row.warehouse_location || '',
@@ -352,6 +390,79 @@ export function mapAuditLog(row: any): AuditLogEntry {
   };
 }
 
+export function mapResourcePrice(row: any): ResourcePrice {
+  return {
+    id: row.id,
+    workspaceId: row.workspace_id,
+    jenis: row.jenis as ResourceType,
+    kode: row.kode,
+    uraian: row.uraian,
+    satuan: row.satuan,
+    harga: Number(row.harga) || 0,
+    wilayah: row.wilayah || '',
+    berlakuMulai: row.berlaku_mulai || '',
+    berlakuSampai: row.berlaku_sampai || null,
+    spesifikasi: row.spesifikasi || null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function mapAHSPComponent(row: any): AHSPComponent {
+  return {
+    id: row.id,
+    workspaceId: row.workspace_id,
+    templateId: row.template_id,
+    resourceId: row.resource_id || null,
+    jenis: row.jenis,
+    kodeSumberDaya: row.kode_sumber_daya,
+    uraian: row.uraian,
+    satuan: row.satuan,
+    koefisien: Number(row.koefisien) || 0,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function mapAHSPTemplate(row: any): AHSPTemplate {
+  return {
+    id: row.id,
+    workspaceId: row.workspace_id,
+    kode: row.kode,
+    nama: row.nama,
+    satuan: row.satuan,
+    kategori: row.kategori || 'Umum',
+    overheadProfitPct: Number(row.overhead_profit_pct) || 10,
+    dasarHukum: row.dasar_hukum || 'Permen PUPR No. 8 Tahun 2023',
+    keterangan: row.keterangan || null,
+    components: (row.ahsp_components || []).map(mapAHSPComponent),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function mapBOQItem(row: any): BOQItem {
+  return {
+    id: row.id,
+    workspaceId: row.workspace_id,
+    projectId: row.project_id,
+    parentId: row.parent_id || null,
+    ahspId: row.ahsp_id || null,
+    divisionCategory: row.division_category as DivisionCategory,
+    kode: row.kode,
+    uraian: row.uraian,
+    satuan: row.satuan,
+    volume: Number(row.volume) || 0,
+    hargaSatuan: Number(row.harga_satuan) || 0,
+    jumlahHarga: Number(row.jumlah_harga) || 0,
+    bobotPersen: Number(row.bobot_persen) || 0,
+    progresPersen: Number(row.progres_persen) || 0,
+    urutan: Number(row.urutan) || 0,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 export function mapTeamMember(row: any): TeamMember {
   const profile = row.profiles || {};
   const dbRole = row.role as string;
@@ -393,27 +504,17 @@ export const supabaseDataService = {
       .eq('workspace_id', ws)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.warn('[Supabase getProjects Notice]:', error.message);
-      return [];
-    }
+    if (error) throw new Error(`[getProjects] ${error.message}`);
     return (data || []).map(mapProject);
   },
 
+  /** Projects tidak ada di supabase_realtime publication — one-shot fetch, invalidasi setelah mutasi di context. */
   subscribeProjects(callback: (items: Project[]) => void, wsId?: string): () => void {
     const ws = resolveWorkspaceId(wsId);
-    this.getProjects(ws).then(callback);
-
-    const channel = supabase
-      .channel(`public:projects:${ws}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => {
-        this.getProjects(ws).then(callback);
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    this.getProjects(ws).then(callback).catch((err: any) => {
+      console.error(`[subscribeProjects] ${err.message}`);
+    });
+    return () => {}; // no channel to clean up
   },
 
   // 2. Project Subcollections (Milestones, Budget Lines, WBS, Budget Versions)
@@ -439,6 +540,11 @@ export const supabaseDataService = {
       supabase.from('wbs_items').select('*').eq('workspace_id', ws).eq('project_id', pid).order('code', { ascending: true }),
       supabase.from('budget_versions').select('*').eq('workspace_id', ws).eq('project_id', pid).order('created_at', { ascending: true }),
     ]);
+
+    if (linesRes.error) throw new Error(`[getBudgetLines] ${linesRes.error.message}`);
+    if (msRes.error) throw new Error(`[getMilestones] ${msRes.error.message}`);
+    if (wbsRes.error) throw new Error(`[getWbsItems] ${wbsRes.error.message}`);
+    if (verRes.error) throw new Error(`[getBudgetVersions] ${verRes.error.message}`);
 
     return {
       budgetLines: (linesRes.data || []).map(mapBudgetLine),
@@ -468,27 +574,15 @@ export const supabaseDataService = {
       .eq('workspace_id', ws)
       .order('code', { ascending: true });
 
-    if (error) {
-      console.warn('[Supabase getMaterials Notice]:', error.message);
-      return [];
-    }
+    if (error) throw new Error(`[getMaterials] ${error.message}`);
     return (data || []).map(mapMaterial);
   },
 
+  /** Materials tidak ada di supabase_realtime publication — one-shot fetch. */
   subscribeMaterials(callback: (items: MaterialItem[]) => void, wsId?: string): () => void {
     const ws = resolveWorkspaceId(wsId);
     this.getMaterials(ws).then(callback);
-
-    const channel = supabase
-      .channel(`public:materials:${ws}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'materials' }, () => {
-        this.getMaterials(ws).then(callback);
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => {};
   },
 
   // 4. Purchase Orders
@@ -500,10 +594,7 @@ export const supabaseDataService = {
       .eq('workspace_id', ws)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.warn('[Supabase getPurchaseOrders Notice]:', error.message);
-      return [];
-    }
+    if (error) throw new Error(`[getPurchaseOrders] ${error.message}`);
     return (data || []).map(mapPurchaseOrder);
   },
 
@@ -532,27 +623,15 @@ export const supabaseDataService = {
       .eq('workspace_id', ws)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.warn('[Supabase getBudgetRevisions Notice]:', error.message);
-      return [];
-    }
+    if (error) throw new Error(`[getBudgetRevisions] ${error.message}`);
     return (data || []).map(mapBudgetRevision);
   },
 
+  /** budget_revisions tidak ada di supabase_realtime publication — one-shot fetch. */
   subscribeBudgetRevisions(callback: (items: BudgetRevision[]) => void, wsId?: string): () => void {
     const ws = resolveWorkspaceId(wsId);
     this.getBudgetRevisions(ws).then(callback);
-
-    const channel = supabase
-      .channel(`public:budget_revisions:${ws}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'budget_revisions' }, () => {
-        this.getBudgetRevisions(ws).then(callback);
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => {};
   },
 
   // 6. Petty Cash
@@ -564,27 +643,15 @@ export const supabaseDataService = {
       .eq('workspace_id', ws)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.warn('[Supabase getPettyCash Notice]:', error.message);
-      return [];
-    }
+    if (error) throw new Error(`[getPettyCash] ${error.message}`);
     return (data || []).map(mapPettyCash);
   },
 
+  /** petty_cash tidak ada di supabase_realtime publication — one-shot fetch. */
   subscribePettyCash(callback: (items: PettyCashEntry[]) => void, wsId?: string): () => void {
     const ws = resolveWorkspaceId(wsId);
     this.getPettyCash(ws).then(callback);
-
-    const channel = supabase
-      .channel(`public:petty_cash:${ws}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'petty_cash' }, () => {
-        this.getPettyCash(ws).then(callback);
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => {};
   },
 
   // 7. Field Reports
@@ -596,27 +663,15 @@ export const supabaseDataService = {
       .eq('workspace_id', ws)
       .order('report_date', { ascending: false });
 
-    if (error) {
-      console.warn('[Supabase getFieldReports Notice]:', error.message);
-      return [];
-    }
+    if (error) throw new Error(`[getFieldReports] ${error.message}`);
     return (data || []).map(mapFieldReport);
   },
 
+  /** field_reports tidak ada di supabase_realtime publication — one-shot fetch. */
   subscribeFieldReports(callback: (items: FieldReport[]) => void, wsId?: string): () => void {
     const ws = resolveWorkspaceId(wsId);
     this.getFieldReports(ws).then(callback);
-
-    const channel = supabase
-      .channel(`public:field_reports:${ws}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'field_reports' }, () => {
-        this.getFieldReports(ws).then(callback);
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => {};
   },
 
   // 8. Stock Adjustments & Mutations
@@ -628,10 +683,7 @@ export const supabaseDataService = {
       .eq('workspace_id', ws)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.warn('[Supabase getStockMutations Notice]:', error.message);
-      return [];
-    }
+    if (error) throw new Error(`[getStockMutations] ${error.message}`);
     return (data || []).map(mapStockMutation);
   },
 
@@ -643,27 +695,15 @@ export const supabaseDataService = {
       .eq('workspace_id', ws)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.warn('[Supabase getStockAdjustments Notice]:', error.message);
-      return [];
-    }
+    if (error) throw new Error(`[getStockAdjustments] ${error.message}`);
     return (data || []).map(mapStockAdjustment);
   },
 
+  /** stock_adjustments tidak ada di supabase_realtime publication — one-shot fetch. */
   subscribeStockAdjustments(callback: (items: StockAdjustment[]) => void, wsId?: string): () => void {
     const ws = resolveWorkspaceId(wsId);
     this.getStockAdjustments(ws).then(callback);
-
-    const channel = supabase
-      .channel(`public:stock_adjustments:${ws}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_adjustments' }, () => {
-        this.getStockAdjustments(ws).then(callback);
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => {};
   },
 
   // 9. Team Members
@@ -674,34 +714,25 @@ export const supabaseDataService = {
       .select('*')
       .eq('workspace_id', ws);
 
-    if (error || !members) {
-      console.warn('[Supabase getTeamMembers Notice]:', error?.message);
-      return [];
-    }
+    if (error) throw new Error(`[getTeamMembers] ${error.message}`);
+    if (!members) return [];
 
     const userIds = members.map((m: any) => m.user_id);
-    const { data: profiles } = userIds.length > 0
+    const { data: profiles, error: profErr } = userIds.length > 0
       ? await supabase.from('profiles').select('*').in('id', userIds)
-      : { data: [] };
+      : { data: [], error: null };
+
+    if (profErr) throw new Error(`[getTeamMembers/profiles] ${profErr.message}`);
 
     const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
     return members.map((m: any) => mapTeamMember({ ...m, profiles: profileMap.get(m.user_id) || {} }));
   },
 
+  /** workspace_members tidak ada di supabase_realtime publication — one-shot fetch. */
   subscribeTeamMembers(callback: (items: TeamMember[]) => void, wsId?: string): () => void {
     const ws = resolveWorkspaceId(wsId);
     this.getTeamMembers(ws).then(callback);
-
-    const channel = supabase
-      .channel(`public:workspace_members:${ws}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'workspace_members' }, () => {
-        this.getTeamMembers(ws).then(callback);
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => {};
   },
 
   // 10. Notifications
@@ -713,10 +744,7 @@ export const supabaseDataService = {
       .eq('workspace_id', ws)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.warn('[Supabase getNotifications Notice]:', error.message);
-      return [];
-    }
+    if (error) throw new Error(`[getNotifications] ${error.message}`);
     return (data || []).map(mapNotification);
   },
 
@@ -746,37 +774,67 @@ export const supabaseDataService = {
       .order('created_at', { ascending: false })
       .limit(100);
 
-    if (error) {
-      console.warn('[Supabase getAuditLogs Notice]:', error.message);
-      return [];
-    }
+    if (error) throw new Error(`[getAuditLogs] ${error.message}`);
     return (data || []).map(mapAuditLog);
   },
 
+  /** audit_logs tidak ada di supabase_realtime publication — one-shot fetch. */
   subscribeAuditLogs(callback: (items: AuditLogEntry[]) => void, wsId?: string): () => void {
     const ws = resolveWorkspaceId(wsId);
     this.getAuditLogs(ws).then(callback);
+    return () => {};
+  },
 
-    const channel = supabase
-      .channel(`public:audit_logs:${ws}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'audit_logs' }, () => {
-        this.getAuditLogs(ws).then(callback);
-      })
-      .subscribe();
+  /** Transform recent audit logs to ProjectActivity format for dashboard */
+  async getActivities(limit = 20, wsId?: string): Promise<ProjectActivity[]> {
+    const ws = resolveWorkspaceId(wsId);
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .select('*')
+      .eq('workspace_id', ws)
+      .order('created_at', { ascending: false })
+      .limit(limit);
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    if (error) throw new Error(`[getActivities] ${error.message}`);
+    
+    return (data || []).map((log: any): ProjectActivity => {
+      // Map audit action types to activity types
+      let type: 'progress' | 'cost' | 'material' | 'report' | 'milestone' = 'progress';
+      if (log.action_type?.includes('budget') || log.action_type?.includes('petty_cash')) {
+        type = 'cost';
+      } else if (log.action_type?.includes('material') || log.action_type?.includes('stock')) {
+        type = 'material';
+      } else if (log.action_type?.includes('field_report')) {
+        type = 'report';
+      } else if (log.action_type?.includes('milestone')) {
+        type = 'milestone';
+      }
+
+      return {
+        id: log.id || '',
+        workspaceId: log.workspace_id || '',
+        projectId: log.project_id || '',
+        projectName: log.project_name || 'Unknown Project',
+        user: log.performed_by || 'System',
+        action: log.description || log.action_type || 'Activity',
+        timestamp: log.created_at || new Date().toISOString(),
+        type,
+        createdAt: log.created_at || new Date().toISOString(),
+        updatedAt: log.created_at || new Date().toISOString(),
+      };
+    });
   },
 
   // 12. Corporate Settings
   async getSettings(wsId?: string) {
     const ws = resolveWorkspaceId(wsId);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('workspaces')
       .select('name, settings, updated_at')
       .eq('id', ws)
       .maybeSingle();
+
+    if (error) throw new Error(`[getSettings] ${error.message}`);
 
     return {
       companyName: data?.name || 'PT Indotek Karya Nusantara',
@@ -793,52 +851,1323 @@ export const supabaseDataService = {
     };
   },
 
-  async saveSettings(settings: any, wsId?: string) {
+  /**
+   * Menyimpan pengaturan perusahaan via RPC security definer.
+   * Klien tidak boleh menulis updated_at langsung ke tabel workspaces.
+   */
+  async saveSettings(settings: any, wsId?: string): Promise<void> {
     const ws = resolveWorkspaceId(wsId);
-    await supabase
-      .from('workspaces')
-      .update({
-        name: settings.companyName,
-        settings: {
-          companyAddress: settings.companyAddress || settings.officeAddress,
-          taxNumberNPWP: settings.taxNumberNPWP || settings.companyTaxId,
-          tableDensity: settings.tableDensity,
-          currency: settings.currency,
-          dateFormat: settings.dateFormat,
-          alertScheduleDeviation: settings.alertScheduleDeviation,
-          alertCriticalStock: settings.alertCriticalStock,
-          alertHighValuePO: settings.alertHighValuePO,
-          language: settings.language,
-        },
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', ws);
+    const { error } = await supabase.rpc('save_workspace_settings', {
+      p_workspace_id: ws,
+      p_name: settings.companyName || null,
+      p_settings: {
+        companyAddress: settings.companyAddress || settings.officeAddress,
+        taxNumberNPWP: settings.taxNumberNPWP || settings.companyTaxId,
+        tableDensity: settings.tableDensity,
+        currency: settings.currency,
+        dateFormat: settings.dateFormat,
+        alertScheduleDeviation: settings.alertScheduleDeviation,
+        alertCriticalStock: settings.alertCriticalStock,
+        alertHighValuePO: settings.alertHighValuePO,
+        language: settings.language,
+      },
+    });
+
+    if (error) throw new Error(`[saveSettings] ${error.message}`);
   },
 
+  /**
+   * Mencatat audit log via RPC security definer.
+   * Klien tidak boleh insert langsung ke audit_logs — semua lewat RPC.
+   * Kolom previous_value / new_value bertipe text; kirim sebagai string.
+   */
   async logAuditEvent(logData: any, wsId?: string): Promise<string> {
     const ws = resolveWorkspaceId(wsId);
-    const id = `aud-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`;
-    const now = new Date().toISOString();
 
-    try {
-      await supabase.from('audit_logs').insert({
-        workspace_id: ws,
-        action: logData.action,
-        actor_id: logData.actor?.uid || null,
-        actor_name: logData.actor?.name || 'User',
-        actor_role: logData.actor?.role || 'owner',
-        record_type: logData.recordType || 'system',
-        record_id: logData.recordId || null,
-        details: logData.details || '',
-        previous_value: logData.previousValue ? { val: logData.previousValue } : null,
-        new_value: logData.newValue ? { val: logData.newValue } : null,
-        metadata: logData.metadata || {},
-        created_at: now,
-      });
-    } catch (e) {
-      console.warn('[Supabase logAuditEvent Notice]:', e);
+    const { data, error } = await supabase.rpc('log_audit_event', {
+      p_workspace_id: ws,
+      p_action: logData.action,
+      p_record_type: logData.recordType || 'system',
+      p_record_id: logData.recordId && logData.recordId.length === 36 ? logData.recordId : null,
+      p_project_id: logData.projectId && logData.projectId.length === 36 ? logData.projectId : null,
+      p_details: logData.details || '',
+      p_previous: typeof logData.previousValue === 'string'
+        ? logData.previousValue
+        : logData.previousValue != null ? JSON.stringify(logData.previousValue) : '',
+      p_new: typeof logData.newValue === 'string'
+        ? logData.newValue
+        : logData.newValue != null ? JSON.stringify(logData.newValue) : '',
+      p_metadata: logData.metadata && typeof logData.metadata === 'object' ? logData.metadata : {},
+    });
+
+    if (error) throw new Error(`[logAuditEvent] ${error.message}`);
+    return String(data || '');
+  },
+
+  // ---------------------------------------------------------------------------
+  // Write operations: RPC wrappers for client-side workflow calls
+  // All write operations use security definer RPCs to enforce authorization
+  // ---------------------------------------------------------------------------
+
+  // Projects
+  async addProject(
+    projectData: Omit<Project, 'id' | 'totalMilestones' | 'completedMilestones'>,
+    actorInfo: ActorInfo,
+    wsId?: string
+  ): Promise<string> {
+    const ws = resolveWorkspaceId(wsId);
+    const { data, error } = await supabase.rpc('create_project', {
+      p_workspace_id: ws,
+      p_name: projectData.name,
+      p_code: projectData.code,
+      p_client: projectData.client,
+      p_location: projectData.location,
+      p_start_date: projectData.startDate,
+      p_end_date: projectData.targetEndDate,
+      p_contract_value: projectData.contractValue,
+      p_manager: projectData.projectManager,
+      p_description: projectData.description || '',
+      p_actor_name: actorInfo.actorName,
+      p_actor_role: actorInfo.actorRole,
+    });
+    if (error) throw new Error(`[addProject] ${error.message}`);
+    return String(data);
+  },
+
+  async updateProject(
+    projectId: string,
+    updates: Partial<Project>,
+    actorInfo: ActorInfo,
+    wsId?: string
+  ): Promise<void> {
+    const ws = resolveWorkspaceId(wsId);
+    const { error } = await supabase.rpc('update_project', {
+      p_project_id: projectId,
+      p_workspace_id: ws,
+      p_updates: updates,
+      p_actor_name: actorInfo.actorName,
+      p_actor_role: actorInfo.actorRole,
+    });
+    if (error) throw new Error(`[updateProject] ${error.message}`);
+  },
+
+  async addProjectBudgetLine(
+    projectId: string,
+    lineData: Omit<BudgetLine, 'id'>,
+    actorInfo: ActorInfo,
+    wsId?: string
+  ): Promise<string> {
+    const ws = resolveWorkspaceId(wsId);
+    const { data, error } = await supabase.rpc('add_budget_line', {
+      p_project_id: projectId,
+      p_workspace_id: ws,
+      p_line_data: lineData,
+      p_actor_name: actorInfo.actorName,
+      p_actor_role: actorInfo.actorRole,
+    });
+    if (error) throw new Error(`[addProjectBudgetLine] ${error.message}`);
+    return String(data);
+  },
+
+  async updateProjectBudgetLine(
+    projectId: string,
+    lineId: string,
+    updates: Partial<BudgetLine>,
+    actorInfo: ActorInfo,
+    wsId?: string
+  ): Promise<void> {
+    const ws = resolveWorkspaceId(wsId);
+    const { error } = await supabase.rpc('update_budget_line', {
+      p_project_id: projectId,
+      p_line_id: lineId,
+      p_workspace_id: ws,
+      p_updates: updates,
+      p_actor_name: actorInfo.actorName,
+      p_actor_role: actorInfo.actorRole,
+    });
+    if (error) throw new Error(`[updateProjectBudgetLine] ${error.message}`);
+  },
+
+  async signOffProjectMilestone(
+    projectId: string,
+    milestoneId: string,
+    signOffData: { notes?: string; attachments?: string[] },
+    actorInfo: ActorInfo,
+    wsId?: string
+  ): Promise<void> {
+    const ws = resolveWorkspaceId(wsId);
+    const { error } = await supabase.rpc('sign_off_milestone', {
+      p_project_id: projectId,
+      p_milestone_id: milestoneId,
+      p_workspace_id: ws,
+      p_notes: signOffData.notes || '',
+      p_attachments: signOffData.attachments || [],
+      p_actor_name: actorInfo.actorName,
+      p_actor_role: actorInfo.actorRole,
+    });
+    if (error) throw new Error(`[signOffProjectMilestone] ${error.message}`);
+  },
+
+  async updateProjectWBSProgress(
+    projectId: string,
+    wbsId: string,
+    progressPersen: number,
+    actorInfo: ActorInfo,
+    wsId?: string
+  ): Promise<void> {
+    const ws = resolveWorkspaceId(wsId);
+    const { error } = await supabase.rpc('update_wbs_progress', {
+      p_project_id: projectId,
+      p_wbs_id: wbsId,
+      p_workspace_id: ws,
+      p_progress_persen: progressPersen,
+      p_actor_name: actorInfo.actorName,
+      p_actor_role: actorInfo.actorRole,
+    });
+    if (error) throw new Error(`[updateProjectWBSProgress] ${error.message}`);
+  },
+
+  // Team
+  // DEPRECATED: Use /api/invite-member endpoint instead
+  async addTeamMember(
+    memberData: Omit<TeamMember, 'id' | 'lastActive' | 'permissions'>,
+    actorInfo: ActorInfo,
+    wsId?: string
+  ): Promise<string> {
+    const ws = resolveWorkspaceId(wsId);
+    const { data, error } = await supabase.rpc('add_team_member', {
+      p_workspace_id: ws,
+      p_name: memberData.name,
+      p_email: memberData.email,
+      p_role: memberData.role,
+      p_assigned_projects: memberData.assignedProjects || [],
+      p_status: memberData.status,
+      p_actor_name: actorInfo.actorName,
+      p_actor_role: actorInfo.actorRole,
+    });
+    if (error) throw new Error(`[addTeamMember] ${error.message}`);
+    return String(data);
+  },
+
+  async updateTeamMember(
+    memberId: string,
+    updates: Partial<TeamMember>,
+    actorInfo: ActorInfo,
+    wsId?: string
+  ): Promise<void> {
+    const ws = resolveWorkspaceId(wsId);
+    const { error } = await supabase.rpc('update_team_member', {
+      p_member_id: memberId,
+      p_workspace_id: ws,
+      p_updates: updates,
+      p_actor_name: actorInfo.actorName,
+      p_actor_role: actorInfo.actorRole,
+    });
+    if (error) throw new Error(`[updateTeamMember] ${error.message}`);
+  },
+
+  // Budget Revisions
+  async submitBudgetRevision(
+    revData: Omit<BudgetRevision, 'id' | 'revisionNumber' | 'status' | 'submittedAt'>,
+    actorInfo: ActorInfo,
+    wsId?: string
+  ): Promise<string> {
+    const ws = resolveWorkspaceId(wsId);
+    const { data, error } = await supabase.rpc('create_budget_revision', {
+      p_workspace_id: ws,
+      p_project_id: revData.projectId,
+      p_division_name: revData.divisionName,
+      p_original_amount: revData.originalAmount,
+      p_revised_amount: revData.proposedAmount,
+      p_reason: revData.justification,
+      p_submitted_by: revData.submittedBy,
+      p_actor_name: actorInfo.actorName,
+      p_actor_role: actorInfo.actorRole,
+    });
+    if (error) throw new Error(`[submitBudgetRevision] ${error.message}`);
+    return String(data);
+  },
+
+  async approveBudgetRevision(
+    revisionId: string,
+    approverName: string,
+    actorInfo: ActorInfo,
+    wsId?: string
+  ): Promise<void> {
+    const ws = resolveWorkspaceId(wsId);
+    const { error } = await supabase.rpc('decide_budget_revision', {
+      p_revision_id: revisionId,
+      p_workspace_id: ws,
+      p_decision: 'approved',
+      p_approver_name: approverName,
+      p_reason: null,
+      p_actor_name: actorInfo.actorName,
+      p_actor_role: actorInfo.actorRole,
+    });
+    if (error) throw new Error(`[approveBudgetRevision] ${error.message}`);
+  },
+
+  async rejectBudgetRevision(
+    revisionId: string,
+    rejectorName: string,
+    reason: string,
+    actorInfo: ActorInfo,
+    wsId?: string
+  ): Promise<void> {
+    const ws = resolveWorkspaceId(wsId);
+    const { error } = await supabase.rpc('decide_budget_revision', {
+      p_revision_id: revisionId,
+      p_workspace_id: ws,
+      p_decision: 'rejected',
+      p_approver_name: rejectorName,
+      p_reason: reason,
+      p_actor_name: actorInfo.actorName,
+      p_actor_role: actorInfo.actorRole,
+    });
+    if (error) throw new Error(`[rejectBudgetRevision] ${error.message}`);
+  },
+
+  // Petty Cash
+  async addPettyCash(
+    cashData: Omit<PettyCashEntry, 'id' | 'pettyCashNo' | 'status' | 'submittedAt' | 'createdAt' | 'updatedAt'>,
+    actorInfo: ActorInfo,
+    wsId?: string
+  ): Promise<string> {
+    const ws = resolveWorkspaceId(wsId);
+    const { data, error } = await supabase.rpc('create_petty_cash', {
+      p_workspace_id: ws,
+      p_project_id: cashData.projectId,
+      p_category: cashData.category,
+      p_description: cashData.purpose,
+      p_amount: cashData.amount,
+      p_requested_by: cashData.requester,
+      p_actor_name: actorInfo.actorName,
+      p_actor_role: actorInfo.actorRole,
+    });
+    if (error) throw new Error(`[addPettyCash] ${error.message}`);
+    return String(data);
+  },
+
+  async approvePettyCash(
+    cashId: string,
+    approverName: string,
+    actorInfo: ActorInfo,
+    wsId?: string
+  ): Promise<void> {
+    const ws = resolveWorkspaceId(wsId);
+    const { error } = await supabase.rpc('decide_petty_cash', {
+      p_cash_id: cashId,
+      p_workspace_id: ws,
+      p_decision: 'approved',
+      p_approver_name: approverName,
+      p_reason: null,
+      p_actor_name: actorInfo.actorName,
+      p_actor_role: actorInfo.actorRole,
+    });
+    if (error) throw new Error(`[approvePettyCash] ${error.message}`);
+  },
+
+  async rejectPettyCash(
+    cashId: string,
+    rejectorName: string,
+    reason: string,
+    actorInfo: ActorInfo,
+    wsId?: string
+  ): Promise<void> {
+    const ws = resolveWorkspaceId(wsId);
+    const { error } = await supabase.rpc('decide_petty_cash', {
+      p_cash_id: cashId,
+      p_workspace_id: ws,
+      p_decision: 'rejected',
+      p_approver_name: rejectorName,
+      p_reason: reason,
+      p_actor_name: actorInfo.actorName,
+      p_actor_role: actorInfo.actorRole,
+    });
+    if (error) throw new Error(`[rejectPettyCash] ${error.message}`);
+  },
+
+  async disbursePettyCash(
+    cashId: string,
+    disburserName: string,
+    actorInfo: ActorInfo,
+    wsId?: string
+  ): Promise<void> {
+    const ws = resolveWorkspaceId(wsId);
+    const { error } = await supabase.rpc('disburse_petty_cash', {
+      p_cash_id: cashId,
+      p_workspace_id: ws,
+      p_disburser_name: disburserName,
+      p_actor_name: actorInfo.actorName,
+      p_actor_role: actorInfo.actorRole,
+    });
+    if (error) throw new Error(`[disbursePettyCash] ${error.message}`);
+  },
+
+  // Procurement
+  async addPurchaseOrder(
+    poData: Omit<PurchaseOrder, 'id' | 'poNumber' | 'status' | 'requestDate'>,
+    actorInfo: ActorInfo,
+    wsId?: string
+  ): Promise<string> {
+    const ws = resolveWorkspaceId(wsId);
+    const { data, error } = await supabase.rpc('create_purchase_order', {
+      p_workspace_id: ws,
+      p_spp_number: poData.sppNumber,
+      p_supplier_name: poData.supplierName,
+      p_item_description: poData.itemDescription,
+      p_quantity_summary: poData.quantitySummary,
+      p_total_cost: poData.totalCost,
+      p_target_delivery_date: poData.targetDeliveryDate,
+      p_requester_name: poData.requester,
+      p_project_id: poData.projectId,
+      p_actor_name: actorInfo.actorName,
+      p_actor_role: actorInfo.actorRole,
+    });
+    if (error) throw new Error(`[addPurchaseOrder] ${error.message}`);
+    return String(data);
+  },
+
+  async approvePurchaseOrder(
+    poId: string,
+    approverName: string,
+    overrideReason: string | undefined,
+    actorInfo: ActorInfo,
+    wsId?: string
+  ): Promise<void> {
+    const ws = resolveWorkspaceId(wsId);
+    const { error } = await supabase.rpc('decide_purchase_order', {
+      p_po_id: poId,
+      p_workspace_id: ws,
+      p_decision: 'approved',
+      p_approver_name: approverName,
+      p_reason: overrideReason || null,
+      p_actor_name: actorInfo.actorName,
+      p_actor_role: actorInfo.actorRole,
+    });
+    if (error) throw new Error(`[approvePurchaseOrder] ${error.message}`);
+  },
+
+  async rejectPurchaseOrder(
+    poId: string,
+    rejectorName: string,
+    reason: string,
+    actorInfo: ActorInfo,
+    wsId?: string
+  ): Promise<void> {
+    const ws = resolveWorkspaceId(wsId);
+    const { error } = await supabase.rpc('decide_purchase_order', {
+      p_po_id: poId,
+      p_workspace_id: ws,
+      p_decision: 'rejected',
+      p_approver_name: rejectorName,
+      p_reason: reason,
+      p_actor_name: actorInfo.actorName,
+      p_actor_role: actorInfo.actorRole,
+    });
+    if (error) throw new Error(`[rejectPurchaseOrder] ${error.message}`);
+  },
+
+  // Field Reports
+  async addFieldReport(
+    reportData: Omit<FieldReport, 'id' | 'reportNumber' | 'status' | 'createdAt' | 'updatedAt'>,
+    actorInfo: ActorInfo,
+    wsId?: string
+  ): Promise<string> {
+    const ws = resolveWorkspaceId(wsId);
+    const { data, error } = await supabase.rpc('create_field_report', {
+      p_workspace_id: ws,
+      p_report_number: '',
+      p_project_id: reportData.projectId,
+      p_report_date: reportData.date,
+      p_reported_by: reportData.siteSupervisor,
+      p_weather_condition: `${reportData.weatherMorning}/${reportData.weatherAfternoon}`,
+      p_progress: reportData.completedWorks.join('; '),
+      p_workforce_present: JSON.stringify(reportData.workforce),
+      p_material_usage: JSON.stringify(reportData.materialsUsed),
+      p_equipment_status: JSON.stringify(reportData.equipmentUsed),
+      p_observations: reportData.blockers || '',
+      p_safety_incidents: '',
+      p_photos: reportData.photos || [],
+      p_actor_name: actorInfo.actorName,
+      p_actor_role: actorInfo.actorRole,
+    });
+    if (error) throw new Error(`[addFieldReport] ${error.message}`);
+    return String(data);
+  },
+
+  async reviewFieldReport(
+    reportId: string,
+    decision: 'approved' | 'rejected',
+    reviewerName: string,
+    notes: string | undefined,
+    actorInfo: ActorInfo,
+    wsId?: string
+  ): Promise<void> {
+    const ws = resolveWorkspaceId(wsId);
+    const rpcName = decision === 'approved' ? 'approve_field_report' : 'revise_field_report';
+    const { error } = await supabase.rpc(rpcName, {
+      p_report_id: reportId,
+      p_workspace_id: ws,
+      p_reviewer_name: reviewerName,
+      p_notes: notes || '',
+      p_actor_name: actorInfo.actorName,
+      p_actor_role: actorInfo.actorRole,
+    });
+    if (error) throw new Error(`[reviewFieldReport] ${error.message}`);
+  },
+
+  // Materials
+  async addStockMutation(
+    mutationData: Omit<StockMutation, 'id'>,
+    actorInfo: ActorInfo,
+    wsId?: string
+  ): Promise<string> {
+    const ws = resolveWorkspaceId(wsId);
+    const { data, error } = await supabase.rpc('record_stock_mutation', {
+      p_workspace_id: ws,
+      p_material_id: mutationData.materialId,
+      p_material_name: mutationData.materialName,
+      p_mutation_type: mutationData.type,
+      p_quantity: mutationData.quantity,
+      p_unit_of_measure: mutationData.unit,
+      p_reference_doc: mutationData.referenceNo,
+      p_project_id: mutationData.projectId,
+      p_notes: mutationData.handler,
+      p_actor_name: actorInfo.actorName,
+      p_actor_role: actorInfo.actorRole,
+    });
+    if (error) throw new Error(`[addStockMutation] ${error.message}`);
+    return String(data);
+  },
+
+  async submitStockAdjustment(
+    adjData: Omit<StockAdjustment, 'id' | 'status' | 'submittedAt'>,
+    actorInfo: ActorInfo,
+    wsId?: string
+  ): Promise<string> {
+    const ws = resolveWorkspaceId(wsId);
+    const { data, error } = await supabase.rpc('create_stock_adjustment', {
+      p_workspace_id: ws,
+      p_material_id: adjData.materialId,
+      p_material_name: adjData.materialName,
+      p_adjustment_type: adjData.reason,
+      p_quantity_before: adjData.previousStock,
+      p_quantity_after: adjData.physicalStock,
+      p_reason: adjData.reason,
+      p_submitted_by: adjData.submittedBy,
+      p_actor_name: actorInfo.actorName,
+      p_actor_role: actorInfo.actorRole,
+    });
+    if (error) throw new Error(`[submitStockAdjustment] ${error.message}`);
+    return String(data);
+  },
+
+  async approveStockAdjustment(
+    adjId: string,
+    approverName: string,
+    actorInfo: ActorInfo,
+    wsId?: string
+  ): Promise<void> {
+    const ws = resolveWorkspaceId(wsId);
+    const { error } = await supabase.rpc('decide_stock_adjustment', {
+      p_adjustment_id: adjId,
+      p_workspace_id: ws,
+      p_decision: 'approved',
+      p_approver_name: approverName,
+      p_reason: null,
+      p_actor_name: actorInfo.actorName,
+      p_actor_role: actorInfo.actorRole,
+    });
+    if (error) throw new Error(`[approveStockAdjustment] ${error.message}`);
+  },
+
+  async rejectStockAdjustment(
+    adjId: string,
+    rejectorName: string,
+    reason: string,
+    actorInfo: ActorInfo,
+    wsId?: string
+  ): Promise<void> {
+    const ws = resolveWorkspaceId(wsId);
+    const { error } = await supabase.rpc('decide_stock_adjustment', {
+      p_adjustment_id: adjId,
+      p_workspace_id: ws,
+      p_decision: 'rejected',
+      p_approver_name: rejectorName,
+      p_reason: reason,
+      p_actor_name: actorInfo.actorName,
+      p_actor_role: actorInfo.actorRole,
+    });
+    if (error) throw new Error(`[rejectStockAdjustment] ${error.message}`);
+  },
+
+  // Notifications
+  async markNotificationAsRead(
+    notificationId: string,
+    wsId?: string
+  ): Promise<void> {
+    const ws = resolveWorkspaceId(wsId);
+    const { error } = await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('id', notificationId)
+      .eq('workspace_id', ws);
+    if (error) throw new Error(`[markNotificationAsRead] ${error.message}`);
+  },
+
+  async markAllNotificationsRead(wsId?: string): Promise<void> {
+    const ws = resolveWorkspaceId(wsId);
+    const { error } = await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('workspace_id', ws)
+      .eq('read', false);
+    if (error) throw new Error(`[markAllNotificationsRead] ${error.message}`);
+  },
+
+  // ---------------------------------------------------------------------------
+  // Paginated list helpers (server-side, no select('*') on large tables)
+  // PAGE_SIZE = 50 per request. Caller passes page (0-indexed).
+  // ---------------------------------------------------------------------------
+
+  /** Daftar PO dengan paginasi, filter status/proyek, dan pencarian. */
+  async getPurchaseOrdersPaged(opts: {
+    page?: number;
+    pageSize?: number;
+    status?: string;
+    projectId?: string;
+    search?: string;
+    wsId?: string;
+  }): Promise<{ items: PurchaseOrder[]; total: number }> {
+    const ws = resolveWorkspaceId(opts.wsId);
+    const page = opts.page ?? 0;
+    const size = opts.pageSize ?? 50;
+    const from = page * size;
+    const to = from + size - 1;
+
+    let q = supabase
+      .from('purchase_orders')
+      .select(
+        'id,po_number,spp_number,supplier_name,item_description,quantity_summary,total_cost,request_date,target_delivery_date,status,requester_name,approved_by_name,approved_at,rejected_at,rejection_reason,created_at,projects(name,legacy_id)',
+        { count: 'exact' }
+      )
+      .eq('workspace_id', ws)
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (opts.status && opts.status !== 'Semua') q = q.eq('status', opts.status);
+    if (opts.projectId) q = q.eq('project_id', opts.projectId);
+    if (opts.search) {
+      q = q.or(
+        `po_number.ilike.%${opts.search}%,supplier_name.ilike.%${opts.search}%,item_description.ilike.%${opts.search}%`
+      );
     }
-    return id;
+
+    const { data, error, count } = await q;
+    if (error) throw new Error(`[getPurchaseOrdersPaged] ${error.message}`);
+    return { items: (data || []).map(mapPurchaseOrder), total: count ?? 0 };
+  },
+
+  /** Daftar mutasi stok dengan paginasi. */
+  async getStockMutationsPaged(opts: {
+    page?: number;
+    pageSize?: number;
+    materialId?: string;
+    type?: 'Masuk' | 'Keluar';
+    wsId?: string;
+  }): Promise<{ items: StockMutation[]; total: number }> {
+    const ws = resolveWorkspaceId(opts.wsId);
+    const page = opts.page ?? 0;
+    const size = opts.pageSize ?? 50;
+    const from = page * size;
+    const to = from + size - 1;
+
+    let q = supabase
+      .from('stock_mutations')
+      .select(
+        'id,material_id,material_name,type,quantity,unit,reference_no,project_id,handler,created_at,materials(legacy_id)',
+        { count: 'exact' }
+      )
+      .eq('workspace_id', ws)
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (opts.materialId) q = q.eq('material_id', opts.materialId);
+    if (opts.type) q = q.eq('type', opts.type);
+
+    const { data, error, count } = await q;
+    if (error) throw new Error(`[getStockMutationsPaged] ${error.message}`);
+    return { items: (data || []).map(mapStockMutation), total: count ?? 0 };
+  },
+
+  /** Daftar kas kecil dengan paginasi dan filter status. */
+  async getPettyCashPaged(opts: {
+    page?: number;
+    pageSize?: number;
+    status?: string;
+    projectId?: string;
+    wsId?: string;
+  }): Promise<{ items: PettyCashEntry[]; total: number }> {
+    const ws = resolveWorkspaceId(opts.wsId);
+    const page = opts.page ?? 0;
+    const size = opts.pageSize ?? 50;
+    const from = page * size;
+    const to = from + size - 1;
+
+    let q = supabase
+      .from('petty_cash')
+      .select(
+        'id,petty_cash_no,project_id,category,description,amount,status,submitted_by_name,approved_by_name,disbursed_at,submitted_at,created_at,rejection_reason,projects(name,legacy_id)',
+        { count: 'exact' }
+      )
+      .eq('workspace_id', ws)
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (opts.status && opts.status !== 'Semua') q = q.eq('status', opts.status);
+    if (opts.projectId) q = q.eq('project_id', opts.projectId);
+
+    const { data, error, count } = await q;
+    if (error) throw new Error(`[getPettyCashPaged] ${error.message}`);
+    return { items: (data || []).map(mapPettyCash), total: count ?? 0 };
+  },
+
+  /** Daftar laporan harian dengan paginasi dan filter status. */
+  async getFieldReportsPaged(opts: {
+    page?: number;
+    pageSize?: number;
+    status?: string;
+    projectId?: string;
+    search?: string;
+    wsId?: string;
+  }): Promise<{ items: FieldReport[]; total: number }> {
+    const ws = resolveWorkspaceId(opts.wsId);
+    const page = opts.page ?? 0;
+    const size = opts.pageSize ?? 50;
+    const from = page * size;
+    const to = from + size - 1;
+
+    let q = supabase
+      .from('field_reports')
+      .select(
+        'id,report_date,project_id,reporter_name,weather,overall_progress,status,submitted_at,verified_by_name,approved_at,rejection_reason,created_at,projects(name,legacy_id)',
+        { count: 'exact' }
+      )
+      .eq('workspace_id', ws)
+      .order('report_date', { ascending: false })
+      .range(from, to);
+
+    if (opts.status && opts.status !== 'Semua') q = q.eq('status', opts.status);
+    if (opts.projectId) q = q.eq('project_id', opts.projectId);
+    if (opts.search) {
+      q = q.or(
+        `reporter_name.ilike.%${opts.search}%,project_id.eq.${opts.search}`
+      );
+    }
+
+    const { data, error, count } = await q;
+    if (error) throw new Error(`[getFieldReportsPaged] ${error.message}`);
+    return { items: (data || []).map(mapFieldReport), total: count ?? 0 };
+  },
+
+  /** Audit log dengan paginasi — kolom spesifik, bukan select('*'). */
+  async getAuditLogsPaged(opts: {
+    page?: number;
+    pageSize?: number;
+    action?: string;
+    recordType?: string;
+    wsId?: string;
+  }): Promise<{ items: AuditLogEntry[]; total: number }> {
+    const ws = resolveWorkspaceId(opts.wsId);
+    const page = opts.page ?? 0;
+    const size = opts.pageSize ?? 50;
+    const from = page * size;
+    const to = from + size - 1;
+
+    let q = supabase
+      .from('audit_logs')
+      .select(
+        'id,action,actor_name,actor_role,record_type,record_id,project_id,details,previous_value,new_value,created_at',
+        { count: 'exact' }
+      )
+      .eq('workspace_id', ws)
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (opts.action) q = q.eq('action', opts.action);
+    if (opts.recordType) q = q.eq('record_type', opts.recordType);
+
+    const { data, error, count } = await q;
+    if (error) throw new Error(`[getAuditLogsPaged] ${error.message}`);
+    return { items: (data || []).map(mapAuditLog), total: count ?? 0 };
+  },
+
+  /** Mengambil daftar harga satuan dasar (resource_prices) */
+  async getResourcePrices(opts?: {
+    jenis?: string;
+    search?: string;
+    wilayah?: string;
+    wsId?: string;
+  }): Promise<ResourcePrice[]> {
+    const ws = resolveWorkspaceId(opts?.wsId);
+    let q = supabase
+      .from('resource_prices')
+      .select('id,workspace_id,jenis,kode,uraian,satuan,harga,wilayah,berlaku_mulai,berlaku_sampai,spesifikasi,created_at,updated_at')
+      .eq('workspace_id', ws)
+      .order('kode', { ascending: true });
+
+    if (opts?.jenis && opts.jenis !== 'Semua') {
+      q = q.eq('jenis', opts.jenis);
+    }
+    if (opts?.wilayah && opts.wilayah !== 'Semua') {
+      q = q.eq('wilayah', opts.wilayah);
+    }
+    if (opts?.search) {
+      q = q.or(`kode.ilike.%${opts.search}%,uraian.ilike.%${opts.search}%`);
+    }
+
+    const { data, error } = await q;
+    if (error) throw new Error(`[getResourcePrices] ${error.message}`);
+    return (data || []).map(mapResourcePrice);
+  },
+
+  /** Upsert item harga dasar via RPC security definer */
+  async upsertResourcePrice(payload: {
+    workspaceId?: string;
+    jenis: string;
+    kode: string;
+    uraian: string;
+    satuan: string;
+    harga: number;
+    wilayah?: string;
+    berlakuMulai?: string;
+    berlakuSampai?: string | null;
+    spesifikasi?: string | null;
+    id?: string;
+  }): Promise<{ success: boolean; id: string; message: string }> {
+    const ws = resolveWorkspaceId(payload.workspaceId);
+    const { data, error } = await supabase.rpc('upsert_resource_price', {
+      p_workspace_id: ws,
+      p_jenis: payload.jenis,
+      p_kode: payload.kode,
+      p_uraian: payload.uraian,
+      p_satuan: payload.satuan,
+      p_harga: Math.round(payload.harga),
+      p_wilayah: payload.wilayah ?? '',
+      p_berlaku_mulai: payload.berlakuMulai || new Date().toISOString().split('T')[0],
+      p_berlaku_sampai: payload.berlakuSampai || null,
+      p_spesifikasi: payload.spesifikasi || null,
+      p_id: payload.id || null,
+    });
+    if (error) throw new Error(`[upsertResourcePrice] ${error.message}`);
+    return data;
+  },
+
+  /** Hapus item harga dasar via RPC security definer */
+  async deleteResourcePrice(id: string, workspaceId?: string): Promise<{ success: boolean; message: string }> {
+    const ws = resolveWorkspaceId(workspaceId);
+    const { data, error } = await supabase.rpc('delete_resource_price', {
+      p_workspace_id: ws,
+      p_id: id,
+    });
+    if (error) throw new Error(`[deleteResourcePrice] ${error.message}`);
+    return data;
+  },
+
+  /** Batch import item harga dasar via RPC security definer */
+  async importResourcePricesBatch(
+    rows: Array<{
+      jenis?: string;
+      kode: string;
+      uraian: string;
+      satuan: string;
+      harga: number;
+      wilayah?: string;
+      berlaku_mulai?: string;
+      spesifikasi?: string;
+    }>,
+    workspaceId?: string
+  ): Promise<{ success: boolean; total: number; inserted: number; updated: number; skipped: number; message: string }> {
+    const ws = resolveWorkspaceId(workspaceId);
+    const { data, error } = await supabase.rpc('import_resource_prices_batch', {
+      p_workspace_id: ws,
+      p_rows: rows,
+    });
+    if (error) throw new Error(`[importResourcePricesBatch] ${error.message}`);
+    return data;
+  },
+
+  /** Mengambil daftar template AHSP dengan komponennya */
+  async getAHSPTemplates(opts?: {
+    kategori?: string;
+    search?: string;
+    wsId?: string;
+  }): Promise<AHSPTemplate[]> {
+    const ws = resolveWorkspaceId(opts?.wsId);
+    let q = supabase
+      .from('ahsp_templates')
+      .select('*, ahsp_components(*)')
+      .eq('workspace_id', ws)
+      .order('kode', { ascending: true });
+
+    if (opts?.kategori && opts.kategori !== 'Semua') {
+      q = q.eq('kategori', opts.kategori);
+    }
+    if (opts?.search) {
+      q = q.or(`kode.ilike.%${opts.search}%,nama.ilike.%${opts.search}%`);
+    }
+
+    const { data, error } = await q;
+    if (error) throw new Error(`[getAHSPTemplates] ${error.message}`);
+    return (data || []).map(mapAHSPTemplate);
+  },
+
+  /** Mengambil kalkulasi harga satuan AHSP breakdown */
+  async calculateAHSPUnitPrice(templateId: string, wilayah?: string, wsId?: string): Promise<AHSPUnitPriceCalculation> {
+    const ws = resolveWorkspaceId(wsId);
+    const { data, error } = await supabase.rpc('calculate_ahsp_unit_price', {
+      p_workspace_id: ws,
+      p_template_id: templateId,
+      p_wilayah: wilayah || '',
+    });
+    if (error) throw new Error(`[calculateAHSPUnitPrice] ${error.message}`);
+    return data;
+  },
+
+  /** Upsert template AHSP */
+  async upsertAHSPTemplate(payload: {
+    workspaceId?: string;
+    kode: string;
+    nama: string;
+    satuan: string;
+    kategori?: string;
+    overheadProfitPct?: number;
+    keterangan?: string | null;
+    id?: string;
+  }): Promise<{ success: boolean; id: string; message: string }> {
+    const ws = resolveWorkspaceId(payload.workspaceId);
+    const { data, error } = await supabase.rpc('upsert_ahsp_template', {
+      p_workspace_id: ws,
+      p_kode: payload.kode,
+      p_nama: payload.nama,
+      p_satuan: payload.satuan,
+      p_kategori: payload.kategori || 'Umum',
+      p_overhead_profit_pct: payload.overheadProfitPct ?? 10.0,
+      p_keterangan: payload.keterangan || null,
+      p_id: payload.id || null,
+    });
+    if (error) throw new Error(`[upsertAHSPTemplate] ${error.message}`);
+    return data;
+  },
+
+  /** Hapus template AHSP */
+  async deleteAHSPTemplate(id: string, workspaceId?: string): Promise<{ success: boolean; message: string }> {
+    const ws = resolveWorkspaceId(workspaceId);
+    const { data, error } = await supabase.rpc('delete_ahsp_template', {
+      p_workspace_id: ws,
+      p_id: id,
+    });
+    if (error) throw new Error(`[deleteAHSPTemplate] ${error.message}`);
+    return data;
+  },
+
+  /** Upsert komponen AHSP */
+  async upsertAHSPComponent(payload: {
+    workspaceId?: string;
+    templateId: string;
+    jenis: string;
+    kodeSumberDaya: string;
+    uraian: string;
+    satuan: string;
+    koefisien: number;
+    resourceId?: string | null;
+    id?: string;
+  }): Promise<{ success: boolean; id: string; message: string }> {
+    const ws = resolveWorkspaceId(payload.workspaceId);
+    const { data, error } = await supabase.rpc('upsert_ahsp_component', {
+      p_workspace_id: ws,
+      p_template_id: payload.templateId,
+      p_jenis: payload.jenis,
+      p_kode_sumber_daya: payload.kodeSumberDaya,
+      p_uraian: payload.uraian,
+      p_satuan: payload.satuan,
+      p_koefisien: payload.koefisien,
+      p_resource_id: payload.resourceId || null,
+      p_id: payload.id || null,
+    });
+    if (error) throw new Error(`[upsertAHSPComponent] ${error.message}`);
+    return data;
+  },
+
+  /** Hapus komponen AHSP */
+  async deleteAHSPComponent(id: string, workspaceId?: string): Promise<{ success: boolean; message: string }> {
+    const ws = resolveWorkspaceId(workspaceId);
+    const { data, error } = await supabase.rpc('delete_ahsp_component', {
+      p_workspace_id: ws,
+      p_id: id,
+    });
+    if (error) throw new Error(`[deleteAHSPComponent] ${error.message}`);
+    return data;
+  },
+
+  /** Seed 20 item standar PUPR Permen PUPR 8/2023 */
+  async seedPUPRAHSPTemplates(workspaceId?: string): Promise<{ success: boolean; total: number; message: string }> {
+    const ws = resolveWorkspaceId(workspaceId);
+    const { data, error } = await supabase.rpc('seed_pupr_ahsp_templates', {
+      p_workspace_id: ws,
+    });
+    if (error) throw new Error(`[seedPUPRAHSPTemplates] ${error.message}`);
+    return data;
+  },
+
+  /** Mengambil daftar item BOQ untuk proyek tertentu */
+  async getBOQItems(projectId: string, wsId?: string): Promise<BOQItem[]> {
+    const ws = resolveWorkspaceId(wsId);
+    const { data, error } = await supabase
+      .from('boq_items')
+      .select('*')
+      .eq('workspace_id', ws)
+      .eq('project_id', projectId)
+      .order('urutan', { ascending: true })
+      .order('kode', { ascending: true });
+
+    if (error) throw new Error(`[getBOQItems] ${error.message}`);
+    return (data || []).map(mapBOQItem);
+  },
+
+  /** Mengambil rekapitulasi BOQ (Subtotal, PPN, Grand Total, Terbilang, Divisi) */
+  async getProjectBOQSummary(projectId: string, wsId?: string): Promise<BOQSummary> {
+    const ws = resolveWorkspaceId(wsId);
+    const { data, error } = await supabase.rpc('get_project_boq_summary', {
+      p_workspace_id: ws,
+      p_project_id: projectId,
+    });
+    if (error) throw new Error(`[getProjectBOQSummary] ${error.message}`);
+    return data;
+  },
+
+  /** Upsert item BOQ via RPC */
+  async upsertBOQItem(payload: {
+    workspaceId?: string;
+    projectId: string;
+    kode: string;
+    uraian: string;
+    satuan?: string;
+    volume: number;
+    hargaSatuan: number;
+    divisionCategory: string;
+    ahspId?: string | null;
+    parentId?: string | null;
+    urutan?: number;
+    id?: string;
+  }): Promise<{ success: boolean; id: string; message: string }> {
+    const ws = resolveWorkspaceId(payload.workspaceId);
+    const { data, error } = await supabase.rpc('upsert_boq_item', {
+      p_workspace_id: ws,
+      p_project_id: payload.projectId,
+      p_kode: payload.kode,
+      p_uraian: payload.uraian,
+      p_satuan: payload.satuan || 'ls',
+      p_volume: payload.volume,
+      p_harga_satuan: Math.round(payload.hargaSatuan),
+      p_division_category: payload.divisionCategory,
+      p_ahsp_id: payload.ahspId || null,
+      p_parent_id: payload.parentId || null,
+      p_urutan: payload.urutan || 0,
+      p_id: payload.id || null,
+    });
+    if (error) throw new Error(`[upsertBOQItem] ${error.message}`);
+    return data;
+  },
+
+  /** Hapus item BOQ via RPC */
+  async deleteBOQItem(projectId: string, id: string, workspaceId?: string): Promise<{ success: boolean; message: string }> {
+    const ws = resolveWorkspaceId(workspaceId);
+    const { data, error } = await supabase.rpc('delete_boq_item', {
+      p_workspace_id: ws,
+      p_project_id: projectId,
+      p_id: id,
+    });
+    if (error) throw new Error(`[deleteBOQItem] ${error.message}`);
+    return data;
+  },
+
+  /** Update progres fisik item BOQ via RPC */
+  async updateBOQItemProgress(projectId: string, id: string, progresPersen: number, workspaceId?: string): Promise<{ success: boolean; message: string }> {
+    const ws = resolveWorkspaceId(workspaceId);
+    const { data, error } = await supabase.rpc('update_boq_item_progress', {
+      p_workspace_id: ws,
+      p_project_id: projectId,
+      p_id: id,
+      p_progres_persen: progresPersen,
+    });
+    if (error) throw new Error(`[updateBOQItemProgress] ${error.message}`);
+    return data;
+  },
+
+  /** Update persentase PPN proyek */
+  async updateProjectPPN(projectId: string, ppnPercent: number, workspaceId?: string): Promise<{ success: boolean; message: string }> {
+    const ws = resolveWorkspaceId(workspaceId);
+    const { data, error } = await supabase.rpc('update_project_ppn', {
+      p_workspace_id: ws,
+      p_project_id: projectId,
+      p_ppn_percent: ppnPercent,
+    });
+    if (error) throw new Error(`[updateProjectPPN] ${error.message}`);
+    return data;
+  },
+
+  // ─── Phase F: Payment Terms ──────────────────────────────────
+
+  /** Ambil jadwal termin lengkap untuk satu proyek */
+  async getPaymentSchedule(projectId: string, workspaceId?: string): Promise<PaymentSchedule> {
+    const ws = resolveWorkspaceId(workspaceId);
+    const { data, error } = await supabase.rpc('get_payment_schedule', {
+      p_workspace_id: ws,
+      p_project_id: projectId,
+    });
+    if (error) throw new Error(`[getPaymentSchedule] ${error.message}`);
+    const terms: PaymentTerm[] = (data?.terms || []).map((r: any): PaymentTerm => ({
+      id: r.id,
+      workspaceId: ws,
+      projectId,
+      jenis: r.jenis,
+      urutan: r.urutan,
+      label: r.label,
+      persen: Number(r.persen),
+      nominal: Number(r.nominal),
+      milestoneId: r.milestone_id || null,
+      milestoneTitle: r.milestone_title || null,
+      masaPemeliharaanHari: r.masa_pemeliharaan_hari ?? null,
+      status: r.status,
+      tanggalTagih: r.tanggal_tagih || null,
+      tanggalLunas: r.tanggal_lunas || null,
+      keterangan: r.keterangan || null,
+      createdAt: r.created_at,
+      updatedAt: r.created_at,
+    }));
+    const s = data?.summary || {};
+    return {
+      terms,
+      summary: {
+        totalPersen: Number(s.total_persen || 0),
+        totalNominal: Number(s.total_nominal || 0),
+        totalTagih: Number(s.total_tagih || 0),
+        totalLunas: Number(s.total_lunas || 0),
+        countDraft: Number(s.count_draft || 0),
+        countTagih: Number(s.count_tagih || 0),
+        countLunas: Number(s.count_lunas || 0),
+      },
+    };
+  },
+
+  /** Buat atau perbarui satu baris termin */
+  async upsertPaymentTerm(payload: {
+    workspaceId?: string;
+    projectId: string;
+    id?: string;
+    jenis: 'UangMuka' | 'Termin' | 'Retensi';
+    urutan: number;
+    label?: string;
+    persen: number;
+    milestoneId?: string | null;
+    masaPemeliharaanHari?: number | null;
+    keterangan?: string | null;
+  }): Promise<{ id: string; nominal: number; message: string }> {
+    const ws = resolveWorkspaceId(payload.workspaceId);
+    const { data, error } = await supabase.rpc('upsert_payment_term', {
+      p_workspace_id: ws,
+      p_project_id: payload.projectId,
+      p_id: payload.id || null,
+      p_jenis: payload.jenis,
+      p_urutan: payload.urutan,
+      p_label: payload.label || '',
+      p_persen: payload.persen,
+      p_milestone_id: payload.milestoneId || null,
+      p_masa_pemeliharaan_hari: payload.masaPemeliharaanHari || null,
+      p_keterangan: payload.keterangan || null,
+    });
+    if (error) throw new Error(`[upsertPaymentTerm] ${error.message}`);
+    return data;
+  },
+
+  /** Hapus satu baris termin (hanya jika Draft) */
+  async deletePaymentTerm(projectId: string, id: string, workspaceId?: string): Promise<{ message: string }> {
+    const ws = resolveWorkspaceId(workspaceId);
+    const { data, error } = await supabase.rpc('delete_payment_term', {
+      p_workspace_id: ws,
+      p_project_id: projectId,
+      p_id: id,
+    });
+    if (error) throw new Error(`[deletePaymentTerm] ${error.message}`);
+    return data;
+  },
+
+  /** Ubah status termin (Finance Manager / Owner only) */
+  async updatePaymentTermStatus(payload: {
+    workspaceId?: string;
+    projectId: string;
+    id: string;
+    status: 'Tagih' | 'Lunas';
+    tanggal?: string;
+    keterangan?: string;
+  }): Promise<{ message: string }> {
+    const ws = resolveWorkspaceId(payload.workspaceId);
+    const { data, error } = await supabase.rpc('update_payment_term_status', {
+      p_workspace_id: ws,
+      p_project_id: payload.projectId,
+      p_id: payload.id,
+      p_status: payload.status,
+      p_tanggal: payload.tanggal || new Date().toISOString().split('T')[0],
+      p_keterangan: payload.keterangan || null,
+    });
+    if (error) throw new Error(`[updatePaymentTermStatus] ${error.message}`);
+    return data;
+  },
+
+  // -------------------------------------------------------------------------
+  // Lampiran / Storage (Attachments & Compressed Photos)
+  // -------------------------------------------------------------------------
+
+  /** Unggah lampiran foto/dokumen ke bucket storage 'attachments' dan simpan record ke tabel attachments */
+  async uploadAttachment(payload: {
+    workspaceId?: string;
+    recordType: AttachmentRecordType;
+    recordId: string;
+    fileBlob: Blob | File;
+    fileName: string;
+    mimeType: string;
+    sizeBytes: number;
+    caption?: string;
+    userId?: string;
+  }): Promise<AttachmentItem> {
+    const ws = resolveWorkspaceId(payload.workspaceId);
+    const fileExt = payload.fileName.split('.').pop() || 'jpg';
+    const fileUuid = crypto.randomUUID();
+    const storagePath = `${ws}/${payload.recordType}/${payload.recordId}/${fileUuid}.${fileExt}`;
+
+    // 1. Upload ke Storage Supabase
+    const { error: uploadError } = await supabase.storage
+      .from('attachments')
+      .upload(storagePath, payload.fileBlob, {
+        contentType: payload.mimeType,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      throw new Error(`[uploadAttachment] Gagal mengunggah file ke storage: ${uploadError.message}`);
+    }
+
+    // 2. Simpan baris ke public.attachments
+    const { data: rowData, error: dbError } = await supabase
+      .from('attachments')
+      .insert({
+        workspace_id: ws,
+        record_type: payload.recordType,
+        record_id: payload.recordId,
+        storage_path: storagePath,
+        caption: payload.caption || '',
+        mime_type: payload.mimeType,
+        size_bytes: payload.sizeBytes,
+        uploaded_by: payload.userId || null,
+      })
+      .select()
+      .single();
+
+    if (dbError) {
+      // Rollback file jika insert database gagal
+      await supabase.storage.from('attachments').remove([storagePath]);
+      throw new Error(`[uploadAttachment] Gagal menyimpan data lampiran: ${dbError.message}`);
+    }
+
+    // 3. Buat signed URL (60 detik)
+    const { data: signedData } = await supabase.storage
+      .from('attachments')
+      .createSignedUrl(storagePath, 60);
+
+    return {
+      id: rowData.id,
+      workspace_id: rowData.workspace_id,
+      record_type: rowData.record_type,
+      record_id: rowData.record_id,
+      storage_path: rowData.storage_path,
+      caption: rowData.caption,
+      mime_type: rowData.mime_type,
+      size_bytes: rowData.size_bytes,
+      uploaded_by: rowData.uploaded_by,
+      created_at: rowData.created_at,
+      signed_url: signedData?.signedUrl || '',
+    };
+  },
+
+  /** Mengambil daftar lampiran untuk record tertentu dan menghasilkan signed URL (60 detik) */
+  async getAttachments(payload: {
+    workspaceId?: string;
+    recordType: AttachmentRecordType;
+    recordId: string;
+  }): Promise<AttachmentItem[]> {
+    const ws = resolveWorkspaceId(payload.workspaceId);
+    const { data, error } = await supabase
+      .from('attachments')
+      .select('*')
+      .eq('workspace_id', ws)
+      .eq('record_type', payload.recordType)
+      .eq('record_id', payload.recordId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw new Error(`[getAttachments] Gagal memuat lampiran: ${error.message}`);
+    }
+
+    if (!data || data.length === 0) return [];
+
+    // Hasilkan signed URL untuk setiap lampiran
+    const itemsWithUrls = await Promise.all(
+      data.map(async (row) => {
+        const { data: signedData } = await supabase.storage
+          .from('attachments')
+          .createSignedUrl(row.storage_path, 60);
+
+        return {
+          id: row.id,
+          workspace_id: row.workspace_id,
+          record_type: row.record_type,
+          record_id: row.record_id,
+          storage_path: row.storage_path,
+          caption: row.caption,
+          mime_type: row.mime_type,
+          size_bytes: row.size_bytes,
+          uploaded_by: row.uploaded_by,
+          created_at: row.created_at,
+          signed_url: signedData?.signedUrl || '',
+        };
+      })
+    );
+
+    return itemsWithUrls;
+  },
+
+  /** Menghapus lampiran dari database dan bucket storage */
+  async deleteAttachment(payload: {
+    id: string;
+    storagePath: string;
+  }): Promise<{ message: string }> {
+    const { error: dbError } = await supabase
+      .from('attachments')
+      .delete()
+      .eq('id', payload.id);
+
+    if (dbError) {
+      throw new Error(`[deleteAttachment] Gagal menghapus record lampiran: ${dbError.message}`);
+    }
+
+    await supabase.storage.from('attachments').remove([payload.storagePath]);
+
+    return { message: 'Lampiran berhasil dihapus.' };
   },
 };
+
+
+
 

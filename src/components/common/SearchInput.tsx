@@ -18,14 +18,15 @@ export const SearchInput: React.FC<SearchInputProps> = ({
 }) => {
   return (
     <div className={`relative flex items-center ${className}`}>
-      <Search className="w-4 h-4 text-[#69766F] absolute left-3 pointer-events-none shrink-0" />
+      <Search className="w-4 h-4 text-text-muted absolute left-3 pointer-events-none shrink-0" />
       <input
         type="text"
+        inputMode="search"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        aria-label={placeholder}
+        aria-label="Search"
         placeholder={placeholder}
-        className="w-full h-9 pl-9 pr-8 text-xs bg-white border border-[#E2E8E4] rounded-lg text-[#202B26] placeholder-[#69766F]/70 focus:outline-none focus:border-[#12352B] focus:ring-1 focus:ring-[#12352B] transition-colors"
+        className="w-full min-h-[44px] md:h-9 pl-9 pr-10 py-2 md:py-0 text-xs bg-white border border-border-subtle rounded-lg text-text-primary placeholder-text-muted/70 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
       />
       {value && (
         <button
@@ -34,10 +35,10 @@ export const SearchInput: React.FC<SearchInputProps> = ({
             onChange('');
             if (onClear) onClear();
           }}
-          className="absolute right-2.5 text-[#69766F] hover:text-[#202B26] p-0.5 rounded transition-colors"
+          className="absolute right-2.5 text-text-muted hover:text-text-primary p-1.5 md:p-0.5 rounded transition-colors min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
           aria-label="Hapus pencarian"
         >
-          <X className="w-3.5 h-3.5" />
+          <X className="w-4 h-4 md:w-3.5 md:h-3.5" />
         </button>
       )}
     </div>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Badge } from '../../common/Badge';
 import { StockMutation } from '../../../types';
-import { formatDateIndo } from '../../../utils/formatters';
+import { formatDateIndo, formatQuantity } from '../../../utils/formatters';
 
 interface StockMutationsTableProps {
   stockMutations: StockMutation[];
@@ -41,7 +41,7 @@ export const StockMutationsTable: React.FC<StockMutationsTableProps> = ({ stockM
                   {mut.materialName}
                 </td>
                 <td className="py-3.5 px-4 font-mono font-bold tabular-nums text-[#202B26] whitespace-nowrap text-right">
-                  {mut.quantity.toLocaleString('id-ID')} {mut.unit}
+                  {formatQuantity(mut.quantity, mut.unit)}
                 </td>
                 <td className="py-3.5 px-4 text-[#4F5D56]">{mut.project}</td>
                 <td className="py-3.5 px-4 text-[#69766F]">{mut.handler}</td>

@@ -8,9 +8,7 @@ import {
   handlePettyCashAction,
   handleFieldReportAction,
   handleMilestoneSignOffAction,
-  generateTransactionalDocNumber,
 } from './workflowEngine';
-import { adminDb } from './firebaseAdmin';
 import { supabaseWorkflowService, isSupabaseConfigured } from './supabaseWorkflowService';
 import {
   ValidationError,
@@ -391,26 +389,13 @@ workflowRouter.post('/document-number', async (req: Request, res: Response, next
     const validated = validateRequestBody(DocumentNumberActionRequestSchema, req.body);
     const { type, projectCodeOrAbbr, year } = validated;
 
-    if (isSupabaseConfigured()) {
-      const docNumber = await supabaseWorkflowService.generateDocumentNumber(
-        actor,
-        type,
-        projectCodeOrAbbr || 'IND',
-        year || '2026'
-      );
-      return res.json({ success: true, docNumber });
-    }
-
-    const docNumber = await adminDb.runTransaction(async (tx: any) => {
-      return await generateTransactionalDocNumber(
-        tx,
-        type,
-        projectCodeOrAbbr || 'IND',
-        actor.workspaceId,
-        year || '2026'
-      );
-    });
-
+    const docNumber = await supabaseWorkflowService.generateDocumentNumber(
+      actor,
+      type,
+      projectCodeOrAbbr || 'IND',
+      year || '2026'
+    );
+    
     res.json({ success: true, docNumber });
   } catch (err) {
     next(err);

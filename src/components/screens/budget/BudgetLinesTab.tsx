@@ -60,12 +60,12 @@ export const BudgetLinesTab: React.FC<BudgetLinesTabProps> = ({
                 <div key={idx} className="p-3.5 rounded-lg border border-[#E2E8E4] bg-[#FAFBFB]">
                   <div className="flex justify-between items-start mb-2">
                     <span className="font-semibold text-xs text-[#202B26]">{cat.title}</span>
-                    <span className="text-[11px] font-mono font-bold text-[#202B26] tabular-nums">
+                    <span className="text-xs font-mono font-bold text-[#202B26] tabular-nums">
                       {pct.toFixed(0)}%
                     </span>
                   </div>
                   <ProgressBar value={pct} size="sm" variant={pct > 85 ? 'warning' : 'primary'} />
-                  <div className="flex justify-between items-center text-[11px] text-[#69766F] mt-2 font-mono tabular-nums">
+                  <div className="flex justify-between items-center text-xs text-[#69766F] mt-2 font-mono tabular-nums">
                     <span>Real: {formatCompactIDR(cat.actual)}</span>
                     <span>RAB: {formatCompactIDR(cat.planned)}</span>
                   </div>
@@ -160,7 +160,7 @@ export const BudgetLinesTab: React.FC<BudgetLinesTabProps> = ({
                         <div className="font-semibold text-[#202B26] leading-snug">
                           {line.divisionName}
                         </div>
-                        <div className="text-[11px] text-[#69766F] font-mono mt-0.5 tabular-nums">
+                        <div className="text-xs text-[#69766F] font-mono mt-0.5 tabular-nums">
                           Volume: {(line.volume || 1).toLocaleString('id-ID')} {line.unit} · Harga Satuan: {formatCurrencyIDR(line.unitRate || line.plannedAmount)}
                         </div>
                       </td>
@@ -191,7 +191,7 @@ export const BudgetLinesTab: React.FC<BudgetLinesTabProps> = ({
                         <td className="py-3.5 px-4 text-center whitespace-nowrap">
                           <button
                             onClick={() => onOpenEditLine(line)}
-                            className="px-2.5 py-1 text-[11px] font-medium text-[#12352B] bg-[#F1F4F2] hover:bg-[#EAEFEA] rounded border border-[#E2E8E4] transition-colors cursor-pointer inline-flex items-center gap-1"
+                            className="px-2.5 py-1 text-xs font-medium text-[#12352B] bg-[#F1F4F2] hover:bg-[#EAEFEA] rounded border border-[#E2E8E4] transition-colors cursor-pointer inline-flex items-center gap-1"
                             aria-label={`Ubah pos ${line.code}`}
                           >
                             <Edit2 className="w-3 h-3" />

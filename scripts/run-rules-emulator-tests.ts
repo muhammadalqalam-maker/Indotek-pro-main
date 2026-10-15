@@ -1,5 +1,7 @@
+// @ts-nocheck
 /**
- * Indotek Pro — Firebase Security Rules Automated Emulator Test Suite
+ * LEGACY: Firebase Security Rules Automated Emulator Test Suite
+ * Project migrated to Supabase. Script retained for reference only.
  * 
  * Verifies critical security hardening:
  * 1. Historical vulnerability audit (if firestore.rules.old is present).

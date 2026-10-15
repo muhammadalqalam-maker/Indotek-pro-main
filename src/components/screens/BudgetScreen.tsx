@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   RotateCcw,
   ShieldAlert,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
@@ -23,6 +24,8 @@ import { BudgetLinesTab } from './budget/BudgetLinesTab';
 import { BudgetRevisionsTab } from './budget/BudgetRevisionsTab';
 import { BudgetVersionsTab } from './budget/BudgetVersionsTab';
 import { PettyCashTab } from './budget/PettyCashTab';
+import { BOQItemizedTab } from './budget/BOQItemizedTab';
+import { PaymentTermsTab } from './budget/PaymentTermsTab';
 
 export const BudgetScreen: React.FC = () => {
   const {
@@ -44,6 +47,7 @@ export const BudgetScreen: React.FC = () => {
     disbursePettyCash,
     addToast,
     isLoadingData,
+    loadingBudget,
     loadError,
     refreshData,
     setIsAddProjectModalOpen,
@@ -51,7 +55,7 @@ export const BudgetScreen: React.FC = () => {
 
   const { activeRole, canAccessProject, userProfile } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'rab' | 'revisions' | 'versions' | 'petty_cash'>('rab');
+  const [activeTab, setActiveTab] = useState<'boq' | 'rab' | 'revisions' | 'versions' | 'petty_cash' | 'payment_terms'>('boq');
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Semua');
 
@@ -108,7 +112,7 @@ export const BudgetScreen: React.FC = () => {
     }
   }, [budgetVersions, compareVersionAId, compareVersionBId]);
 
-  if (isLoadingData) {
+  if (loadingBudget) {
     return (
       <div className="p-6">
         <LoadingSkeleton count={4} />
@@ -403,6 +407,20 @@ export const BudgetScreen: React.FC = () => {
       <div className="flex items-center gap-2 border-b border-[#E2E8E4] pb-px overflow-x-auto" role="tablist">
         <button
           role="tab"
+          aria-selected={activeTab === 'boq'}
+          onClick={() => setActiveTab('boq')}
+          className={`px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors cursor-pointer border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
+            activeTab === 'boq'
+              ? 'border-[#12352B] text-[#12352B] bg-white font-bold'
+              : 'border-transparent text-[#69766F] hover:text-[#202B26]'
+          }`}
+        >
+          <FileSpreadsheet className="w-3.5 h-3.5 text-blue-600" />
+          <span>BOQ & RAB Rinci (Itemized)</span>
+        </button>
+
+        <button
+          role="tab"
           aria-selected={activeTab === 'rab'}
           onClick={() => setActiveTab('rab')}
           className={`px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors cursor-pointer border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
@@ -412,8 +430,8 @@ export const BudgetScreen: React.FC = () => {
           }`}
         >
           <Coins className="w-3.5 h-3.5" />
-          <span>RAB & BOQ Lapangan</span>
-          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-[#EAEFEA] text-[#12352B]">
+          <span>Rekap Divisi Pagu</span>
+          <span className="text-xs font-mono px-1.5 py-0.2 rounded-full bg-[#EAEFEA] text-[#12352B]">
             {budgetLines.length}
           </span>
         </button>
@@ -431,7 +449,7 @@ export const BudgetScreen: React.FC = () => {
           <FileText className="w-3.5 h-3.5" />
           <span>Addendum Revisi Anggaran</span>
           {projectRevisions.filter((r) => r.status === 'Menunggu').length > 0 && (
-            <span className="px-1.5 py-0.2 bg-[#A82A20] text-white rounded-full text-[10px] font-mono">
+            <span className="px-1.5 py-0.2 bg-[#A82A20] text-white rounded-full text-xs font-mono">
               {projectRevisions.filter((r) => r.status === 'Menunggu').length}
             </span>
           )}
@@ -449,7 +467,7 @@ export const BudgetScreen: React.FC = () => {
         >
           <History className="w-3.5 h-3.5" />
           <span>Riwayat Versi Addendum</span>
-          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-[#EAEFEA] text-[#12352B]">
+          <span className="text-xs font-mono px-1.5 py-0.2 rounded-full bg-[#EAEFEA] text-[#12352B]">
             {budgetVersions.length}
           </span>
         </button>
@@ -467,10 +485,24 @@ export const BudgetScreen: React.FC = () => {
           <Wallet className="w-3.5 h-3.5" />
           <span>Kas Kecil Site (Petty Cash)</span>
           {projectPettyCash.filter((p) => p.status === 'Menunggu').length > 0 && (
-            <span className="px-1.5 py-0.2 bg-[#9E6B05] text-white rounded-full text-[10px] font-mono">
+            <span className="px-1.5 py-0.2 bg-[#9E6B05] text-white rounded-full text-xs font-mono">
               {projectPettyCash.filter((p) => p.status === 'Menunggu').length}
             </span>
           )}
+        </button>
+
+        <button
+          role="tab"
+          aria-selected={activeTab === 'payment_terms'}
+          onClick={() => setActiveTab('payment_terms')}
+          className={`px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors cursor-pointer border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
+            activeTab === 'payment_terms'
+              ? 'border-[#12352B] text-[#12352B] bg-white font-bold'
+              : 'border-transparent text-[#69766F] hover:text-[#202B26]'
+          }`}
+        >
+          <span>💳</span>
+          <span>Jadwal Termin</span>
         </button>
       </div>
 
@@ -483,6 +515,23 @@ export const BudgetScreen: React.FC = () => {
         cpi={cpi}
         utilization={utilization}
       />
+
+      {/* Tab 0: BOQ Itemized */}
+      {activeTab === 'boq' && (
+        <BOQItemizedTab
+          projectId={currentProject.id}
+          projectName={currentProject.name}
+          onRefreshProject={refreshData}
+        />
+      )}
+
+      {/* Tab F: Jadwal Termin Pembayaran */}
+      {activeTab === 'payment_terms' && (
+        <PaymentTermsTab
+          projectId={currentProject.id}
+          projectName={currentProject.name}
+        />
+      )}
 
       {/* Tab 1: RAB Lines */}
       {activeTab === 'rab' && (

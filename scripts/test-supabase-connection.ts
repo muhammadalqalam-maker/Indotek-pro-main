@@ -8,8 +8,8 @@ async function testSupabaseConnection() {
   console.log('============================================================');
 
   const { supabaseUrl, serviceRoleKey } = loadSupabaseServerConfig();
-  console.log(`[Config] Supabase URL      : ${supabaseUrl}`);
-  console.log(`[Config] Service Role Key  : ${serviceRoleKey.slice(0, 16)}... (length: ${serviceRoleKey.length})`);
+  console.log(`[Config] Supabase URL      : ${supabaseUrl ? 'Terkonfigurasi' : 'Tidak ada'}`);
+  console.log(`[Config] Service Role Key  : ${serviceRoleKey ? 'Terkonfigurasi (Masked)' : 'Tidak ada'}`);
   console.log(`[Config] Anon Key Present  : ${Boolean(process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY)}`);
 
   let allOk = true;

@@ -62,17 +62,17 @@ export const BudgetVersionsTab: React.FC<BudgetVersionsTabProps> = ({
                   <span className="font-mono text-xs font-bold text-[#12352B] px-2 py-0.5 bg-[#EAEFEA] rounded">
                     {ver.versionNumber}
                   </span>
-                  <span className="text-[10px] font-mono text-[#69766F]">
+                  <span className="text-xs font-mono text-[#69766F]">
                     {formatDateIndo(ver.effectiveDate || ver.createdAt || '')}
                   </span>
                 </div>
                 <div className="text-xs font-bold text-[#202B26] mb-1">
                   {formatCurrencyIDR(ver.totalPlannedAmount)}
                 </div>
-                <p className="text-[11px] text-[#69766F] line-clamp-2 mb-3">
+                <p className="text-xs text-[#69766F] line-clamp-2 mb-3">
                   {ver.description}
                 </p>
-                <div className="text-[10px] text-[#69766F] font-mono pt-2 border-t border-[#E2E8E4] flex justify-between items-center">
+                <div className="text-xs text-[#69766F] font-mono pt-2 border-t border-[#E2E8E4] flex justify-between items-center">
                   <span>Disahkan: {ver.approvedBy}</span>
                   {ver.revisionNumber && <span className="font-semibold text-[#12352B]">{ver.revisionNumber}</span>}
                 </div>
@@ -138,19 +138,19 @@ export const BudgetVersionsTab: React.FC<BudgetVersionsTabProps> = ({
               {/* High Level Diff Summary */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-[#FAFBFB] border border-[#E2E8E4]">
                 <div>
-                  <div className="text-[11px] text-[#69766F] font-medium">Total Pagu: {versionA.versionNumber}</div>
+                  <div className="text-xs text-[#69766F] font-medium">Total Pagu: {versionA.versionNumber}</div>
                   <div className="text-sm font-bold font-mono text-[#202B26] mt-0.5">
                     {formatCurrencyIDR(versionA.totalPlannedAmount)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-[11px] text-[#69766F] font-medium">Total Pagu: {versionB.versionNumber}</div>
+                  <div className="text-xs text-[#69766F] font-medium">Total Pagu: {versionB.versionNumber}</div>
                   <div className="text-sm font-bold font-mono text-[#202B26] mt-0.5">
                     {formatCurrencyIDR(versionB.totalPlannedAmount)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-[11px] text-[#69766F] font-medium">Selisih Addendum (+/-)</div>
+                  <div className="text-xs text-[#69766F] font-medium">Selisih Addendum (+/-)</div>
                   <div
                     className={`text-sm font-bold font-mono mt-0.5 ${
                       versionB.totalPlannedAmount - versionA.totalPlannedAmount > 0
@@ -220,7 +220,7 @@ export const BudgetVersionsTab: React.FC<BudgetVersionsTabProps> = ({
                                 {diff > 0 ? 'Penambahan Pagu' : 'Pengurangan Pagu'}
                               </Badge>
                             ) : (
-                              <span className="text-[11px] text-[#4F5D56] font-mono">Tetap</span>
+                              <span className="text-xs text-[#4F5D56] font-mono">Tetap</span>
                             )}
                           </td>
                         </tr>

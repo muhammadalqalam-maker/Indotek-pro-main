@@ -105,61 +105,61 @@ export const QuickProjectModal: React.FC = () => {
       <form onSubmit={handleSubmit} className="space-y-4 text-xs">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <label className="block font-medium text-[#202B26] mb-1">
-              Kode Proyek <span className="text-[#A82A20]">*</span>
+            <label className="block font-medium text-text-primary mb-1">
+              Kode Proyek <span className="text-danger">*</span>
             </label>
             <input
               type="text"
               value={formData.code}
               onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-              className={`w-full p-2 bg-white border rounded-lg font-mono text-[#202B26] ${
-                errors.code ? 'border-[#A82A20]' : 'border-[#E2E8E4]'
+              className={`w-full p-2 bg-white border rounded-lg font-mono text-text-primary ${
+                errors.code ? 'border-danger' : 'border-border-subtle'
               }`}
               placeholder="PRJ-2026-JKT-008"
             />
-            {errors.code && <p className="text-[10px] text-[#A82A20] mt-1">{errors.code}</p>}
+            {errors.code && <p className="text-xs text-danger mt-1">{errors.code}</p>}
           </div>
 
           <div className="sm:col-span-2">
-            <label className="block font-medium text-[#202B26] mb-1">
-              Nama Proyek <span className="text-[#A82A20]">*</span>
+            <label className="block font-medium text-text-primary mb-1">
+              Nama Proyek <span className="text-danger">*</span>
             </label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className={`w-full p-2 bg-white border rounded-lg text-[#202B26] ${
-                errors.name ? 'border-[#A82A20]' : 'border-[#E2E8E4]'
+              className={`w-full p-2 bg-white border rounded-lg text-text-primary ${
+                errors.name ? 'border-danger' : 'border-border-subtle'
               }`}
               placeholder="Contoh: Gedung Laboratorium Terpadu ITB"
             />
-            {errors.name && <p className="text-[10px] text-[#A82A20] mt-1">{errors.name}</p>}
+            {errors.name && <p className="text-xs text-danger mt-1">{errors.name}</p>}
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block font-medium text-[#202B26] mb-1">
-              Pemilik / Klien (Owner) <span className="text-[#A82A20]">*</span>
+            <label className="block font-medium text-text-primary mb-1">
+              Pemilik / Klien (Owner) <span className="text-danger">*</span>
             </label>
             <input
               type="text"
               value={formData.client}
               onChange={(e) => setFormData({ ...formData, client: e.target.value })}
-              className={`w-full p-2 bg-white border rounded-lg text-[#202B26] ${
-                errors.client ? 'border-[#A82A20]' : 'border-[#E2E8E4]'
+              className={`w-full p-2 bg-white border rounded-lg text-text-primary ${
+                errors.client ? 'border-danger' : 'border-border-subtle'
               }`}
               placeholder="Contoh: PT Metropolitan Land Tbk"
             />
-            {errors.client && <p className="text-[10px] text-[#A82A20] mt-1">{errors.client}</p>}
+            {errors.client && <p className="text-xs text-danger mt-1">{errors.client}</p>}
           </div>
 
           <div>
-            <label className="block font-medium text-[#202B26] mb-1">Kategori Konstruksi</label>
+            <label className="block font-medium text-text-primary mb-1">Kategori Konstruksi</label>
             <select
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value as ProjectCategory })}
-              className="w-full p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26]"
+              className="w-full p-2 bg-white border border-border-subtle rounded-lg text-text-primary"
             >
               <option value="Komersial">Komersial (Gedung & Hotel)</option>
               <option value="Infrastruktur">Infrastruktur (Jalan & Jembatan)</option>
@@ -171,27 +171,27 @@ export const QuickProjectModal: React.FC = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block font-medium text-[#202B26] mb-1">
-              Lokasi Pekerjaan <span className="text-[#A82A20]">*</span>
+            <label className="block font-medium text-text-primary mb-1">
+              Lokasi Pekerjaan <span className="text-danger">*</span>
             </label>
             <input
               type="text"
               value={formData.location}
               onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              className={`w-full p-2 bg-white border rounded-lg text-[#202B26] ${
-                errors.location ? 'border-[#A82A20]' : 'border-[#E2E8E4]'
+              className={`w-full p-2 bg-white border rounded-lg text-text-primary ${
+                errors.location ? 'border-danger' : 'border-border-subtle'
               }`}
               placeholder="Contoh: Jl. Ganesha No. 10, Bandung"
             />
-            {errors.location && <p className="text-[10px] text-[#A82A20] mt-1">{errors.location}</p>}
+            {errors.location && <p className="text-xs text-danger mt-1">{errors.location}</p>}
           </div>
 
           <div>
-            <label className="block font-medium text-[#202B26] mb-1">Project Manager (PM)</label>
+            <label className="block font-medium text-text-primary mb-1">Project Manager (PM)</label>
             <select
               value={formData.projectManager}
               onChange={(e) => setFormData({ ...formData, projectManager: e.target.value })}
-              className="w-full p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26]"
+              className="w-full p-2 bg-white border border-border-subtle rounded-lg text-text-primary"
             >
               <option value="Ir. Hendra Kurniawan, IPM">Ir. Hendra Kurniawan, IPM</option>
               <option value="Drs. Ir. Agus Pramono, MT">Drs. Ir. Agus Pramono, MT</option>

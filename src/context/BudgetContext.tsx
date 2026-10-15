@@ -7,10 +7,11 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import { BudgetRevision, PettyCashEntry } from '../types';
-import { firestoreService } from '../services/firestoreService';
+import { dataService } from '../services/dataService';
 import { useAuth } from './AuthContext';
-import { useUI } from './UIContext';
+import { useUI, getScreenIdFromPathname } from './UIContext';
 import { useProjects } from './ProjectsContext';
 
 export interface BudgetContextType {
@@ -34,45 +35,70 @@ const BudgetContext = createContext<BudgetContextType | undefined>(undefined);
 
 export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { currentUser } = useAuth();
-  const { workspaceId, actorInfo, currentScreen, addToast, setPendingActions } = useUI();
+  const { workspaceId, actorInfo, addToast, setPendingActions, setLoadingBudget } = useUI();
   const { budgetLines, refreshProjects } = useProjects();
+  const location = useLocation();
+  const screenId = getScreenIdFromPathname(location.pathname);
 
   const [budgetRevisions, setBudgetRevisions] = useState<BudgetRevision[]>([]);
   const [pettyCash, setPettyCash] = useState<PettyCashEntry[]>([]);
 
   const loadBudgetData = async () => {
+    setLoadingBudget(true);
     try {
       const [revisions, cash] = await Promise.all([
-        firestoreService.getBudgetRevisions(false, workspaceId),
-        firestoreService.getPettyCashPaginated(50, undefined, workspaceId),
+        dataService.getBudgetRevisions(workspaceId),
+        dataService.getPettyCashPaged({ pageSize: 50, wsId: workspaceId }),
       ]);
       if (revisions) setBudgetRevisions(revisions);
       if (cash?.items) setPettyCash(cash.items);
-    } catch (err) {
-      console.warn('Budget data load notice:', err);
+    } catch (err: any) {
+      addToast({
+        type: 'danger',
+        title: 'Gagal Memuat Data Anggaran',
+        message: 'Kesalahan saat memuat data anggaran dan kas kecil. Coba muat ulang halaman atau hubungi dukungan.',
+      });
+    } finally {
+      setLoadingBudget(false);
     }
   };
 
   // On Screen change to 'budget', load on demand
   useEffect(() => {
-    if (!currentUser || currentScreen !== 'budget') return;
+    if (!currentUser || screenId !== 'budget') return;
     let isMounted = true;
-    firestoreService.getBudgetRevisions(false, workspaceId).then((r) => {
-      if (isMounted && r) setBudgetRevisions(r);
-    }).catch(console.warn);
-
-    firestoreService.getPettyCashPaginated(50, undefined, workspaceId).then((p) => {
-      if (isMounted && p?.items) setPettyCash(p.items);
-    }).catch(console.warn);
+    setLoadingBudget(true);
+    Promise.all([
+      dataService.getBudgetRevisions(workspaceId),
+      dataService.getPettyCashPaged({ pageSize: 50, wsId: workspaceId }),
+    ])
+      .then(([r, p]) => {
+        if (isMounted) {
+          if (r) setBudgetRevisions(r);
+          if (p?.items) setPettyCash(p.items);
+        }
+      })
+      .catch((err: any) => {
+        if (isMounted) {
+          addToast({
+            type: 'danger',
+            title: 'Gagal Memuat Data Anggaran',
+            message: 'Kesalahan saat memuat data anggaran dan kas kecil. Coba muat ulang halaman atau hubungi dukungan.',
+          });
+        }
+      })
+      .finally(() => {
+        if (isMounted) setLoadingBudget(false);
+      });
 
     return () => { isMounted = false; };
-  }, [currentUser, currentScreen, workspaceId]);
+  }, [currentUser, location.pathname, workspaceId, setLoadingBudget, addToast]);
 
   const submitBudgetRevision = async (
     revData: Omit<BudgetRevision, 'id' | 'revisionNumber' | 'status' | 'submittedAt'>
   ) => {
     try {
-      await firestoreService.submitBudgetRevision(revData, actorInfo, workspaceId);
+      await dataService.submitBudgetRevision(revData, actorInfo, workspaceId);
       await loadBudgetData();
       addToast({
         type: 'info',
@@ -92,12 +118,10 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const approveBudgetRevision = async (revId: string, approverName: string) => {
     setPendingActions((prev) => ({ ...prev, [revId]: true }));
     try {
-      await firestoreService.approveBudgetRevision(
+      await dataService.approveBudgetRevision(
         revId,
         approverName,
         actorInfo,
-        budgetRevisions,
-        budgetLines,
         workspaceId
       );
 
@@ -127,7 +151,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const rejectBudgetRevision = async (revId: string, rejectorName: string, reason: string) => {
     setPendingActions((prev) => ({ ...prev, [revId]: true }));
     try {
-      await firestoreService.rejectBudgetRevision(revId, rejectorName, reason, actorInfo, workspaceId);
+      await dataService.rejectBudgetRevision(revId, rejectorName, reason, actorInfo, workspaceId);
       await loadBudgetData();
       addToast({
         type: 'danger',
@@ -151,10 +175,10 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   const submitPettyCash = async (
-    cashData: Omit<PettyCashEntry, 'id' | 'pettyCashNo' | 'status' | 'submittedAt'>
+    cashData: Omit<PettyCashEntry, 'id' | 'pettyCashNo' | 'status' | 'submittedAt' | 'createdAt' | 'updatedAt'>
   ) => {
     try {
-      await firestoreService.addPettyCash(cashData, actorInfo, workspaceId);
+      await dataService.addPettyCash(cashData, actorInfo, workspaceId);
       await loadBudgetData();
       addToast({
         type: 'info',
@@ -174,7 +198,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const approvePettyCash = async (cashId: string, approverName: string) => {
     setPendingActions((prev) => ({ ...prev, [cashId]: true }));
     try {
-      await firestoreService.approvePettyCash(cashId, approverName, actorInfo, workspaceId);
+      await dataService.approvePettyCash(cashId, approverName, actorInfo, workspaceId);
       await loadBudgetData();
       addToast({
         type: 'success',
@@ -200,7 +224,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const rejectPettyCash = async (cashId: string, rejectorName: string, reason: string) => {
     setPendingActions((prev) => ({ ...prev, [cashId]: true }));
     try {
-      await firestoreService.rejectPettyCash(cashId, rejectorName, reason, actorInfo, workspaceId);
+      await dataService.rejectPettyCash(cashId, rejectorName, reason, actorInfo, workspaceId);
       await loadBudgetData();
       addToast({
         type: 'danger',
@@ -226,7 +250,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const disbursePettyCash = async (cashId: string, disburserName: string) => {
     setPendingActions((prev) => ({ ...prev, [cashId]: true }));
     try {
-      await firestoreService.disbursePettyCash(cashId, disburserName, actorInfo, workspaceId);
+      await dataService.disbursePettyCash(cashId, disburserName, actorInfo, workspaceId);
       await loadBudgetData();
       addToast({
         type: 'success',

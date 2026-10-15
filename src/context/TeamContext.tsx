@@ -7,10 +7,13 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { TeamMember, AppRole } from '../types';
-import { firestoreService } from '../services/firestoreService';
+import { TeamMember } from '../types';
+import { AppRole, APP_ROLE_TO_DB_ROLE } from '../types/rbac';
+import { dataService, ActorInfo } from '../services/dataService';
 import { useAuth } from './AuthContext';
-import { useUI } from './UIContext';
+import { useLocation } from 'react-router-dom';
+import { useUI, getScreenIdFromPathname } from './UIContext';
+import { supabase } from '../lib/supabase';
 
 export interface TeamContextType {
   teamMembers: TeamMember[];
@@ -25,16 +28,25 @@ const TeamContext = createContext<TeamContextType | undefined>(undefined);
 
 export const TeamProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { currentUser } = useAuth();
-  const { workspaceId, actorInfo, currentScreen, addToast } = useUI();
+  const { workspaceId, actorInfo, addToast, setLoadingTeam } = useUI();
+  const location = useLocation();
+  const screenId = getScreenIdFromPathname(location.pathname);
 
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
 
   const loadTeamData = async () => {
+    setLoadingTeam(true);
     try {
-      const members = await firestoreService.getTeamMembers(false, workspaceId);
+      const members = await dataService.getTeamMembers(workspaceId);
       if (members) setTeamMembers(members);
-    } catch (err) {
-      console.warn('Team data load notice:', err);
+    } catch (err: any) {
+      addToast({
+        type: 'danger',
+        title: 'Gagal Memuat Data Tim',
+        message: err?.message || 'Terjadi kesalahan saat memuat data tim.',
+      });
+    } finally {
+      setLoadingTeam(false);
     }
   };
 
@@ -42,25 +54,49 @@ export const TeamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     if (!currentUser) return;
     let isMounted = true;
-    firestoreService.getTeamMembers(false, workspaceId).then((members) => {
-      if (isMounted && members) setTeamMembers(members);
-    }).catch(console.warn);
+    setLoadingTeam(true);
+    dataService.getTeamMembers(workspaceId)
+      .then((members) => {
+        if (isMounted && members) setTeamMembers(members);
+      })
+      .catch((err: any) => {
+        addToast({
+          type: 'danger',
+          title: 'Gagal Memuat Tim',
+          message: err?.message || 'Tidak dapat mengambil data tim.',
+        });
+      })
+      .finally(() => {
+        if (isMounted) setLoadingTeam(false);
+      });
     return () => { isMounted = false; };
   }, [currentUser, workspaceId]);
 
   // Load on demand when team screen active
   useEffect(() => {
-    if (!currentUser || currentScreen !== 'team') return;
+    if (!currentUser || screenId !== 'team') return;
     let isMounted = true;
-    firestoreService.getTeamMembers(false, workspaceId).then((members) => {
-      if (isMounted && members) setTeamMembers(members);
-    }).catch(console.warn);
+    setLoadingTeam(true);
+    dataService.getTeamMembers(workspaceId)
+      .then((members) => {
+        if (isMounted && members) setTeamMembers(members);
+      })
+      .catch((err: any) => {
+        addToast({
+          type: 'danger',
+          title: 'Gagal Memuat Tim',
+          message: err?.message || 'Tidak dapat mengambil data tim.',
+        });
+      })
+      .finally(() => {
+        if (isMounted) setLoadingTeam(false);
+      });
     return () => { isMounted = false; };
-  }, [currentUser, currentScreen, workspaceId]);
+  }, [currentUser, location.pathname, workspaceId]);
 
   const updateTeamMemberRole = async (memberId: string, newRole: AppRole, assignedProjects: string[]) => {
     try {
-      await firestoreService.updateTeamMember(memberId, {
+      await dataService.updateTeamMember(memberId, {
         role: newRole,
         assignedProjectIds: assignedProjects,
         assignedProjects,
@@ -86,7 +122,7 @@ export const TeamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!member) return;
     const newStatus = member.status === 'Aktif' ? 'Nonaktif' : 'Aktif';
     try {
-      await firestoreService.updateTeamMember(memberId, { status: newStatus }, actorInfo, workspaceId);
+      await dataService.updateTeamMember(memberId, { status: newStatus }, actorInfo, workspaceId);
       await loadTeamData();
       addToast({
         type: 'info',
@@ -104,22 +140,32 @@ export const TeamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const inviteTeamMember = async (memberData: Omit<TeamMember, 'id' | 'lastActive' | 'permissions'>) => {
-    const id = `tm-${Date.now().toString(36)}`;
-    const fullMember: TeamMember = {
-      ...memberData,
-      id,
-      lastActive: new Date().toISOString(),
-      permissions: {
-        canViewBudget: true,
-        canEditBudget: memberData.role.includes('Director') || memberData.role.includes('Estimator'),
-        canApprovePO: memberData.role.includes('Director') || memberData.role.includes('Finance'),
-        canCreateFieldReport: memberData.role.includes('Supervisor') || memberData.role.includes('Manager'),
-      },
-      assignedProjectIds: memberData.assignedProjectIds || ['*'],
-      assignedProjects: memberData.assignedProjectIds || ['*'],
-    };
+    const { data: { session } } = await supabase.auth.getSession();
+    const accessToken = session?.access_token;
+    if (!accessToken) {
+      throw new Error('Authentication required. User not logged in.');
+    }
+    
     try {
-      await firestoreService.addTeamMember(fullMember, actorInfo, workspaceId);
+      const response = await fetch('/api/invite-member', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          workspaceId,
+          email: memberData.email,
+          role: APP_ROLE_TO_DB_ROLE[memberData.role as AppRole],
+          department: memberData.department,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Invitation failed: ${response.statusText}`);
+      }
+
       await loadTeamData();
       addToast({
         type: 'success',

@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Boxes,
   AlertTriangle,
@@ -37,10 +38,22 @@ export const MaterialsScreen: React.FC = () => {
     activeRole === 'Owner / Director' ||
     activeRole === 'Project Manager';
 
-  const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('Semua');
-  const [selectedStatus, setSelectedStatus] = useState<string>('Semua');
-  const [activeTab, setActiveTab] = useState<'inventory' | 'mutations' | 'adjustments'>('inventory');
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  const [search, setSearch] = useState(searchParams.get('search') || '');
+  const [selectedCategory, setSelectedCategory] = useState<string>(searchParams.get('category') || 'Semua');
+  const [selectedStatus, setSelectedStatus] = useState<string>(searchParams.get('status') || 'Semua');
+  const [activeTab, setActiveTab] = useState<'inventory' | 'mutations' | 'adjustments'>((searchParams.get('tab') as any) || 'inventory');
+
+  // Sync search to URL
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (selectedCategory !== 'Semua') params.set('category', selectedCategory);
+    if (selectedStatus !== 'Semua') params.set('status', selectedStatus);
+    if (activeTab !== 'inventory') params.set('tab', activeTab);
+    setSearchParams(params);
+  }, [search, selectedCategory, selectedStatus, activeTab, setSearchParams]);
 
   // Modal State for New Stock Mutation
   const [isMutationModalOpen, setIsMutationModalOpen] = useState(false);
@@ -290,7 +303,7 @@ export const MaterialsScreen: React.FC = () => {
             >
               <span>Penyesuaian Opname Fisik</span>
               {pendingAdjCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-[#A82A20] text-white">
+                <span className="px-1.5 py-0.2 rounded-full text-xs font-bold bg-[#A82A20] text-white">
                   {pendingAdjCount}
                 </span>
               )}

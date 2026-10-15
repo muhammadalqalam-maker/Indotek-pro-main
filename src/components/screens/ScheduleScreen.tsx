@@ -14,7 +14,8 @@ import {
   ShieldCheck,
   ShieldAlert,
   Award,
-  Check
+  Check,
+  Printer,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
@@ -26,6 +27,7 @@ import { SearchInput } from '../common/SearchInput';
 import { Modal } from '../common/Modal';
 import { SCurveChart } from '../charts/SCurveChart';
 import { generateProjectSCurve } from '../../utils/scurve';
+import { generateBastMilestonePDF } from '../../utils/pdfGenerator';
 
 import { Milestone } from '../../types';
 import { formatDateIndo, formatPercent } from '../../utils/formatters';
@@ -70,6 +72,7 @@ export const ScheduleScreen: React.FC = () => {
     projects.find((p) => p.id === selectedProjectId) || projects[0];
 
   const scurveData = useMemo(() => {
+    const projectWbs = wbsList.filter((w) => w.projectId === currentProject.id);
     return generateProjectSCurve({
       projectId: currentProject.id,
       projectName: currentProject.name,
@@ -77,8 +80,9 @@ export const ScheduleScreen: React.FC = () => {
       endDate: currentProject.targetEndDate,
       currentActualProgress: currentProject.progressActual,
       reportingDate: '2026-10-09',
+      wbsItems: projectWbs,
     });
-  }, [currentProject]);
+  }, [currentProject, wbsList]);
 
   const projectMilestones = milestones.filter(
     (m) => m.projectId === currentProject.id
@@ -223,7 +227,7 @@ export const ScheduleScreen: React.FC = () => {
             }`}
           >
             <span>Milestone Kunci & Sign-off BAST</span>
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-[#12352B] text-white">
+            <span className="px-1.5 py-0.2 rounded-full text-xs font-mono bg-[#12352B] text-white">
               {projectMilestones.length}
             </span>
           </button>
@@ -286,7 +290,7 @@ export const ScheduleScreen: React.FC = () => {
 
                       <td className="py-3.5 px-4">
                         <div className="font-semibold text-[#202B26] leading-snug">{item.name}</div>
-                        <div className="text-[11px] text-[#69766F] flex items-center gap-2 mt-0.5">
+                        <div className="text-xs text-[#69766F] flex items-center gap-2 mt-0.5">
                           <span>{item.category}</span>
                           <span>·</span>
                           <span>{item.assignedTeam}</span>
@@ -303,13 +307,13 @@ export const ScheduleScreen: React.FC = () => {
                         <div className="font-mono tabular-nums text-[#202B26]">
                           {formatDateIndo(item.startDate)} s/d {formatDateIndo(item.endDate)}
                         </div>
-                        <div className="text-[11px] text-[#69766F] font-mono tabular-nums">
+                        <div className="text-xs text-[#69766F] font-mono tabular-nums">
                           Durasi: {item.durationDays} hari kerja
                         </div>
                       </td>
 
                       <td className="py-3.5 px-4 min-w-[140px]">
-                        <div className="flex justify-between items-center text-[11px] mb-1 font-mono tabular-nums">
+                        <div className="flex justify-between items-center text-xs mb-1 font-mono tabular-nums">
                           <span className="font-bold text-[#202B26]">{item.actualProgress}%</span>
                           <span className="text-[#69766F]">Rencana: {item.plannedProgress}%</span>
                         </div>
@@ -346,7 +350,7 @@ export const ScheduleScreen: React.FC = () => {
                             +5% Update
                           </Button>
                         ) : (
-                          <span className="text-[11px] text-[#1C6843] font-semibold font-mono">Tuntas</span>
+                          <span className="text-xs text-[#1C6843] font-semibold font-mono">Tuntas</span>
                         )}
                       </td>
                     </tr>
@@ -405,7 +409,7 @@ export const ScheduleScreen: React.FC = () => {
                       <td className="py-3.5 px-4 min-w-[240px]">
                         <div className="font-semibold text-[#202B26]">{ms.title}</div>
                         {ms.bastRef && (
-                          <div className="text-[11px] text-[#285744] font-mono mt-0.5 flex items-center gap-1">
+                          <div className="text-xs text-[#285744] font-mono mt-0.5 flex items-center gap-1">
                             <FileCheck2 className="w-3.5 h-3.5" />
                             <span>Dokumen: {ms.bastRef}</span>
                           </div>
@@ -437,7 +441,7 @@ export const ScheduleScreen: React.FC = () => {
                             <Badge variant="success" size="sm" dot>
                               Disahkan BAST
                             </Badge>
-                            <div className="text-[10px] text-[#69766F] mt-1 max-w-[160px] truncate">
+                            <div className="text-xs text-[#69766F] mt-1 max-w-[160px] truncate">
                               Oleh: {ms.signedOffBy?.split('(')[0]}
                             </div>
                           </div>
@@ -450,10 +454,21 @@ export const ScheduleScreen: React.FC = () => {
 
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
                         {isSigned ? (
-                          <span className="text-[11px] text-[#1C6843] font-semibold flex items-center justify-end gap-1">
-                            <Check className="w-3.5 h-3.5" />
-                            <span>Tervalidasi</span>
-                          </span>
+                          <div className="flex items-center justify-end gap-2">
+                            <span className="text-xs text-[#1C6843] font-semibold flex items-center gap-1">
+                              <Check className="w-3.5 h-3.5" />
+                              <span>Tervalidasi</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => generateBastMilestonePDF(ms as any, currentProject)}
+                              className="min-h-[44px] px-2.5 py-1 text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg text-xs inline-flex items-center gap-1 cursor-pointer"
+                              title="Cetak Berita Acara Serah Terima (BAST PDF A4)"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                              <span>Cetak BAST</span>
+                            </button>
+                          </div>
                         ) : canSignOff ? (
                           <Button
                             variant="primary"
@@ -471,7 +486,7 @@ export const ScheduleScreen: React.FC = () => {
                             Sign-Off BAST
                           </Button>
                         ) : (
-                          <span className="text-[11px] text-[#69766F]">
+                          <span className="text-xs text-[#69766F]">
                             Perlu PM Sign-off
                           </span>
                         )}

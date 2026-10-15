@@ -13,7 +13,9 @@ import {
   Boxes,
   Plus
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { useUI } from '../../context/UIContext';
 import { MetricCard } from '../common/MetricCard';
 import { Badge } from '../common/Badge';
 import { ProgressBar } from '../common/ProgressBar';
@@ -26,15 +28,17 @@ import {
 } from '../../utils/formatters';
 
 export const DashboardScreen: React.FC = () => {
+  const navigate = useNavigate();
   const {
     projects,
     navigateToProjectDetail,
-    setCurrentScreen,
     setIsAddProjectModalOpen,
     activities,
   } = useApp();
+  const { settings } = useUI();
 
   const activeProjects = projects.filter((p) => p.status === 'Berjalan');
+  const completedProjects = projects.filter((p) => p.status === 'Selesai');
   const criticalProjects = projects.filter(
     (p) => p.scheduleStatus === 'Terlambat' || p.scheduleStatus === 'Kritis'
   );
@@ -45,6 +49,21 @@ export const DashboardScreen: React.FC = () => {
   const avgProgress =
     activeProjects.reduce((acc, p) => acc + p.progressActual, 0) / (activeProjects.length || 1);
   const budgetUtilization = (totalActual / (totalRAB || 1)) * 100;
+
+  // Calculate CPI (Cost Performance Index) = Earned Value / Actual Cost
+  // EV = sum of (approvedBudget * progressActual / 100) for each project
+  const totalEarnedValue = projects.reduce((acc, p) => acc + (p.approvedBudget * p.progressActual / 100), 0);
+  const cpi = totalActual > 0 ? totalEarnedValue / totalActual : 0;
+  const cpiLabel = cpi > 1.05 ? 'Efisien' : cpi < 0.95 ? 'Overspend' : 'Sesuai';
+  const cpiTrend = cpi > 1.0 ? { value: cpiLabel, isPositive: true, label: `CPI ${cpi.toFixed(2)}` } : cpi > 0 ? { value: cpiLabel, isPositive: false, label: `CPI ${cpi.toFixed(2)}` } : undefined;
+
+  // Count completed projects this year (2026)
+  const completedThisYear = completedProjects.length;
+  const completedTrend = completedThisYear > 0 ? { value: `${completedThisYear} Proyek Selesai`, isPositive: true, label: 'tahun ini' } : undefined;
+
+  // Count critical issues
+  const lateProjects = projects.filter((p) => p.scheduleStatus === 'Terlambat').length;
+  const criticalTrend = criticalProjects.length > 0 ? { value: lateProjects > 0 ? `${lateProjects} Terlambat` : 'Memerlukan perhatian', isPositive: false, label: '' } : undefined;
 
   const monthlyCashflow = React.useMemo(() => {
     const months = ['Jan 2026', 'Feb 2026', 'Mar 2026', 'Apr 2026', 'Mei 2026', 'Jun 2026'];
@@ -65,9 +84,9 @@ export const DashboardScreen: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-[#E2E8E4]">
         <div>
           <div className="flex items-center gap-2 text-xs text-[#69766F] mb-1">
-            <span>PT Indotek Bangun Nusantara</span>
+            <span>{settings.companyName || 'Perusahaan'}</span>
             <span aria-hidden="true">·</span>
-            <span>Kantor Pusat Jakarta</span>
+            <span>{settings.companyAddress ? settings.companyAddress.split(',').pop()?.trim() : 'Kantor Pusat'}</span>
             <span aria-hidden="true">·</span>
             <span className="tabular-nums font-mono">WIB (UTC+7)</span>
           </div>
@@ -84,7 +103,7 @@ export const DashboardScreen: React.FC = () => {
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => setCurrentScreen('reports')}
+            onClick={() => navigate('/reports')}
             leftIcon={<FileText className="w-4 h-4" />}
           >
             Ekspor Laporan
@@ -106,36 +125,36 @@ export const DashboardScreen: React.FC = () => {
           label="Total Proyek Aktif"
           value={`${activeProjects.length} Proyek`}
           subtitle={`Dari ${projects.length} total portofolio kontrak`}
-          trend={{ value: '1 Proyek Selesai', isPositive: true, label: 'tahun ini' }}
+          trend={completedTrend}
           icon={<FolderKanban className="w-4 h-4" />}
-          onClick={() => setCurrentScreen('projects')}
+          onClick={() => navigate('/projects')}
         />
 
         <MetricCard
           label="Rata-rata Progres Fisik"
           value={formatPercent(avgProgress)}
           subtitle="Agregat tertimbang lapangan"
-          trend={{ value: '+1,8%', isPositive: true, label: 'vs minggu lalu' }}
+          trend={undefined}
           icon={<TrendingUp className="w-4 h-4" />}
-          onClick={() => setCurrentScreen('schedule')}
+          onClick={() => navigate('/schedule')}
         />
 
         <MetricCard
           label="Realisasi Anggaran RAB"
           value={formatCompactIDR(totalActual)}
           subtitle={`Pagu RAB: ${formatCompactIDR(totalRAB)} (${formatPercent(budgetUtilization)} terpakai)`}
-          trend={{ value: 'Efisien', isPositive: true, label: 'CPI 1.02' }}
+          trend={cpiTrend}
           icon={<Coins className="w-4 h-4" />}
-          onClick={() => setCurrentScreen('budget')}
+          onClick={() => navigate('/budget')}
         />
 
         <MetricCard
           label="Perhatian Khusus / Kritis"
           value={`${criticalProjects.length} Proyek`}
           subtitle="Memerlukan tindakan percepatan"
-          trend={{ value: '1 Terlambat', isPositive: false, label: '1 Stok Menipis' }}
+          trend={criticalTrend}
           icon={<AlertTriangle className="w-4 h-4 text-[#9E6B05]" />}
-          onClick={() => setCurrentScreen('projects')}
+          onClick={() => navigate('/projects')}
         />
       </div>
 
@@ -157,7 +176,7 @@ export const DashboardScreen: React.FC = () => {
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => setCurrentScreen('projects')}
+            onClick={() => navigate('/projects')}
             className="shrink-0 text-xs self-start sm:self-center"
           >
             Tinjau Eskalasi
@@ -177,7 +196,7 @@ export const DashboardScreen: React.FC = () => {
               </p>
             </div>
             <button
-              onClick={() => setCurrentScreen('projects')}
+              onClick={() => navigate('/projects')}
               className="text-xs font-semibold text-[#285744] hover:text-[#12352B] flex items-center gap-1 hover:underline"
             >
               Lihat Semua Proyek <ArrowRight className="w-3.5 h-3.5" />
@@ -215,7 +234,7 @@ export const DashboardScreen: React.FC = () => {
                         <div className="font-semibold text-[#202B26] group-hover:text-[#12352B] transition-colors">
                           {project.name}
                         </div>
-                        <div className="text-[11px] text-[#69766F] font-mono tabular-nums">
+                        <div className="text-xs text-[#69766F] font-mono tabular-nums">
                           {project.code} · {project.category}
                         </div>
                       </td>
@@ -225,7 +244,7 @@ export const DashboardScreen: React.FC = () => {
                       </td>
 
                       <td className="py-3 px-4 min-w-[140px]">
-                        <div className="flex items-center justify-between text-[11px] mb-1 font-mono tabular-nums">
+                        <div className="flex items-center justify-between text-xs mb-1 font-mono tabular-nums">
                           <span className="font-semibold text-[#202B26]">
                             {formatPercent(project.progressActual)}
                           </span>
@@ -279,7 +298,7 @@ export const DashboardScreen: React.FC = () => {
           <div>
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-sm font-bold text-[#202B26]">Realisasi Arus Kas</h2>
-              <span className="text-[10px] font-mono text-[#69766F] bg-[#F1F4F2] px-2 py-0.5 rounded">
+              <span className="text-xs font-mono text-[#69766F] bg-[#F1F4F2] px-2 py-0.5 rounded">
                 Miliar IDR
               </span>
             </div>
@@ -297,7 +316,7 @@ export const DashboardScreen: React.FC = () => {
                   <div key={idx} className="space-y-1">
                     <div className="flex justify-between items-center text-xs font-mono tabular-nums">
                       <span className="text-[#202B26] font-medium">{item.month}</span>
-                      <div className="flex items-center gap-2 text-[11px]">
+                      <div className="flex items-center gap-2 text-xs">
                         <span className="text-[#12352B] font-semibold">
                           Rp {item.realisasi} M
                         </span>
@@ -322,7 +341,7 @@ export const DashboardScreen: React.FC = () => {
               <span className="text-[#69766F]">Realisasi Pembayaran</span>
             </div>
             <button
-              onClick={() => setCurrentScreen('budget')}
+              onClick={() => navigate('/budget')}
               className="text-[#285744] font-medium hover:underline flex items-center gap-1"
             >
               Rincian RAB <ArrowRight className="w-3.5 h-3.5" />
@@ -350,12 +369,12 @@ export const DashboardScreen: React.FC = () => {
                 <div className="flex-1 min-w-0 text-xs">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-semibold text-[#202B26] truncate">{act.user}</span>
-                    <span className="text-[10px] text-[#A2B8AE] whitespace-nowrap font-mono tabular-nums">
+                    <span className="text-xs text-[#A2B8AE] whitespace-nowrap font-mono tabular-nums">
                       {act.timestamp}
                     </span>
                   </div>
                   <p className="text-[#4F5D56] mt-0.5">{act.action}</p>
-                  <span className="text-[11px] text-[#69766F] font-mono mt-1 block">
+                  <span className="text-xs text-[#69766F] font-mono mt-1 block">
                     {act.projectName}
                   </span>
                 </div>
@@ -385,12 +404,12 @@ export const DashboardScreen: React.FC = () => {
                     25 Okt 2026
                   </Badge>
                 </div>
-                <div className="text-[11px] text-[#69766F]">
+                <div className="text-xs text-[#69766F]">
                   Menara Nusantara Office · WBS-1.5 (Bobot: 12,0%)
                 </div>
                 <div className="mt-2 flex items-center gap-2">
                   <ProgressBar value={78} size="sm" variant="warning" />
-                  <span className="text-[11px] font-mono font-medium tabular-nums text-[#202B26]">
+                  <span className="text-xs font-mono font-medium tabular-nums text-[#202B26]">
                     78%
                   </span>
                 </div>
@@ -405,12 +424,12 @@ export const DashboardScreen: React.FC = () => {
                     30 Okt 2026
                   </Badge>
                 </div>
-                <div className="text-[11px] text-[#69766F]">
+                <div className="text-xs text-[#69766F]">
                   Jembatan Layang Pasteur · WBS-2.3 (Bobot: 15,0%)
                 </div>
                 <div className="mt-2 flex items-center gap-2">
                   <ProgressBar value={62} size="sm" variant="danger" />
-                  <span className="text-[11px] font-mono font-medium tabular-nums text-[#202B26]">
+                  <span className="text-xs font-mono font-medium tabular-nums text-[#202B26]">
                     62%
                   </span>
                 </div>
@@ -425,7 +444,7 @@ export const DashboardScreen: React.FC = () => {
                     5 Nov 2026
                   </Badge>
                 </div>
-                <div className="text-[11px] text-[#69766F]">
+                <div className="text-xs text-[#69766F]">
                   Menara Nusantara Office · WBS-1.6 (Bobot: 2,5%)
                 </div>
               </div>
@@ -436,7 +455,7 @@ export const DashboardScreen: React.FC = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setCurrentScreen('schedule')}
+              onClick={() => navigate('/schedule')}
               rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
             >
               Buka Jadwal & Kurva-S Lengkap

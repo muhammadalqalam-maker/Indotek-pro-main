@@ -111,8 +111,8 @@ export interface MaterialItem extends BaseEntity {
   specification: string;
   category: 'Semen & Pasir' | 'Besi & Baja' | 'Beton Readymix' | 'Arsitektural' | 'MEP & Utilitas';
   unit: string;
-  currentStock: number; // Integer
-  minStock: number; // Integer
+  currentStock: number; // numeric(18,3) — mendukung satuan desimal (m³, kg, m')
+  minStock: number; // numeric(18,3)
   allocatedProject: string;
   allocatedProjectId?: string;
   warehouseLocation: string;
@@ -127,7 +127,7 @@ export interface StockMutation extends BaseEntity {
   materialName: string;
   date: string; // ISO 8601 UTC
   type: 'Masuk' | 'Keluar';
-  quantity: number; // Integer
+  quantity: number; // numeric(18,3) — mendukung satuan desimal
   unit: string;
   referenceNo: string;
   projectId?: string;
@@ -144,9 +144,9 @@ export interface StockAdjustment extends BaseEntity {
   materialCode: string;
   projectId: string;
   projectName: string;
-  previousStock: number; // Integer
-  physicalStock: number; // Integer
-  varianceQuantity: number; // Integer
+  previousStock: number; // numeric(18,3)
+  physicalStock: number; // numeric(18,3)
+  varianceQuantity: number; // numeric(18,3) — generated: physicalStock - previousStock
   unit: string;
   reason:
     | 'Kerusakan Fisik di Site'
@@ -282,7 +282,7 @@ export interface TeamMember extends BaseEntity {
   phone: string;
   assignedProjectIds?: string[]; // Standard array ID proyek (e.g. ['prj-001', 'prj-002'] or ['*'])
   assignedProjects?: string[]; // Backward compatibility accessor
-  status: 'Aktif' | 'Di Lapangan' | 'Cuti' | 'Nonaktif';
+  status: 'Aktif' | 'Nonaktif' | 'Menunggu Undangan';
   lastActive: string; // ISO 8601 UTC
   permissions: {
     canViewBudget: boolean;
@@ -324,10 +324,29 @@ export interface UserProfile {
   workspaceId: string;
   assignedProjectIds: string[]; // Standard array ID proyek
   assignedProjects?: string[]; // Backward compatibility accessor
-  status?: 'Aktif' | 'Nonaktif';
+  status?: 'Aktif' | 'Nonaktif' | 'Menunggu Undangan';
   createdAt?: string; // ISO 8601 UTC
   updatedAt?: string; // ISO 8601 UTC
 }
 
+export type AttachmentRecordType = 'field_report' | 'petty_cash' | 'purchase_order' | 'stock_adjustment' | 'project';
+
+export interface AttachmentItem {
+  id: string;
+  workspace_id: string;
+  record_type: AttachmentRecordType;
+  record_id: string;
+  storage_path: string;
+  caption: string;
+  mime_type: string | null;
+  size_bytes: number | null;
+  uploaded_by: string | null;
+  created_at: string;
+  signed_url?: string;
+}
+
 export * from './rbac';
 export * from '../schemas';
+export * from './rab';
+
+

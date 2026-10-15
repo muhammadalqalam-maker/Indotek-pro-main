@@ -50,7 +50,6 @@ export const TRANSLATIONS = {
     'state.error': 'Terjadi kesalahan sistem',
     'state.syncing': 'Menyinkronkan...',
     'state.success': 'Berhasil',
-    'state.quotaExhausted': 'Kuota operasional Firestore tercapai. Menggunakan data tersimpan di cache lokal.',
 
     // Settings
     'settings.title': 'Pengaturan & Tata Kelola Workspace',
@@ -176,7 +175,6 @@ export const TRANSLATIONS = {
     'state.error': 'A system error occurred',
     'state.syncing': 'Synchronizing...',
     'state.success': 'Success',
-    'state.quotaExhausted': 'Firestore operational quota limit reached. Using cached local data.',
 
     // Settings
     'settings.title': 'Workspace Settings & Governance',

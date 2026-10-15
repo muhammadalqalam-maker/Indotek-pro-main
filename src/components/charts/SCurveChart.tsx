@@ -127,63 +127,63 @@ export const SCurveChart: React.FC<SCurveChartProps> = ({
 
   if (!points || points.length === 0) {
     return (
-      <div className={`p-8 bg-white rounded-xl border border-[#E2E8E4] text-center text-xs text-[#69766F] ${className}`}>
-        <Layers className="w-8 h-8 mx-auto text-[#CBD5CF] mb-2" />
-        <p className="font-semibold text-[#202B26]">Data Kurva-S Belum Tersedia</p>
-        <p className="text-[11px] mt-1">Jadwal master atau bobot WBS belum dikonfigurasi untuk proyek ini.</p>
+      <div className={`p-8 bg-white rounded-xl border border-border-subtle text-center text-xs text-text-muted ${className}`}>
+                  <Layers className="w-8 h-8 mx-auto text-text-muted/50 mb-2" />
+                  <p className="font-semibold text-text-primary">Data Kurva-S Belum Tersedia</p>
+        <p className="text-xs mt-1">Jadwal master atau bobot WBS belum dikonfigurasi untuk proyek ini.</p>
       </div>
     );
   }
 
   return (
-    <div className={`bg-white rounded-xl border border-[#E2E8E4] shadow-2xs overflow-hidden ${className}`}>
+    <div className={`bg-white rounded-xl border border-border-subtle shadow-2xs overflow-hidden ${className}`}>
       {/* Header Controls & KPI Bar */}
-      <div className="p-4 sm:p-5 border-b border-[#E2E8E4]">
+      <div className="p-4 sm:p-5 border-b border-border-subtle">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded bg-[#EAEFEA] text-[#12352B]">
-                KURVA-S KUMULATIF
-              </span>
-              <span className="text-xs text-[#69766F]">·</span>
-              <span className="text-xs text-[#69766F] truncate max-w-[280px]">
+              <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-canvas text-primary">
+                              KURVA-S KUMULATIF
+                            </span>
+                            <span className="text-xs text-text-muted">·</span>
+                            <span className="text-xs text-text-muted truncate max-w-[280px]">
                 {projectName}
               </span>
             </div>
-            <h2 className="text-sm sm:text-base font-bold text-[#202B26]">
+            <h2 className="text-sm sm:text-base font-bold text-text-primary">
               Monitoring Progres Fisik Kumulatif Proyek
             </h2>
-            <p className="text-xs text-[#69766F] mt-0.5">
+            <p className="text-xs text-text-muted mt-0.5">
               Rencana bobot baseline vs realisasi lapangan terverifikasi & proyeksi target selesai
             </p>
           </div>
 
           {/* Quick Metrics Bar */}
           <div className="flex flex-wrap items-center gap-3 self-start lg:self-auto text-xs">
-            <div className="px-3 py-1.5 rounded-lg border border-[#E2E8E4] bg-[#FAFBFB]">
-              <span className="text-[#69766F] text-[10px] block">Rencana Baseline</span>
-              <span className="font-mono font-bold text-[#2563EB] text-sm tabular-nums">
+            <div className="px-3 py-1.5 rounded-lg border border-border-subtle bg-canvas/60">
+                          <span className="text-text-muted text-xs block">Rencana Baseline</span>
+                          <span className="font-mono font-bold text-info text-sm tabular-nums">
                 {currentPlanned}%
               </span>
             </div>
 
-            <div className="px-3 py-1.5 rounded-lg border border-[#E2E8E4] bg-[#FAFBFB]">
-              <span className="text-[#69766F] text-[10px] block">Realisasi Aktual</span>
-              <span className="font-mono font-bold text-[#12352B] text-sm tabular-nums">
+            <div className="px-3 py-1.5 rounded-lg border border-border-subtle bg-canvas/60">
+                          <span className="text-text-muted text-xs block">Realisasi Aktual</span>
+                          <span className="font-mono font-bold text-primary text-sm tabular-nums">
                 {currentActual}%
               </span>
             </div>
 
             <div
               className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex flex-col ${
-                deviation >= 0
-                  ? 'border-[#CDE9D7] bg-[#E5F4EB] text-[#1C6843]'
-                  : deviation >= -5
-                  ? 'border-[#FCE6B1] bg-[#FFF8EC] text-[#9E6B05]'
-                  : 'border-[#F8CBC7] bg-[#FCE9E7] text-[#A82A20]'
-              }`}
+                              deviation >= 0
+                                ? 'border-success/30 bg-success/10 text-success'
+                                : deviation >= -5
+                                ? 'border-warning/30 bg-warning/10 text-warning-dark'
+                                : 'border-danger/30 bg-danger/10 text-danger'
+                            }`}
             >
-              <span className="text-[10px] font-normal opacity-90">Deviasi Jadwal</span>
+              <span className="text-xs font-normal opacity-90">Deviasi Jadwal</span>
               <span className="font-mono font-bold text-sm tabular-nums">
                 {deviation >= 0 ? `+${deviation}%` : `${deviation}%`}
               </span>
@@ -192,7 +192,7 @@ export const SCurveChart: React.FC<SCurveChartProps> = ({
         </div>
 
         {/* Series Visibility Legend & Filter Bar */}
-        <div className="mt-4 pt-3 border-t border-[#E2E8E4]/60 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="mt-4 pt-3 border-t border-border-subtle/60 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex flex-wrap items-center gap-4">
             {/* Planned Toggle */}
             <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -200,11 +200,11 @@ export const SCurveChart: React.FC<SCurveChartProps> = ({
                 type="checkbox"
                 checked={showPlanned}
                 onChange={(e) => setShowPlanned(e.target.checked)}
-                className="rounded border-[#CBD5CF] text-[#2563EB] focus:ring-[#2563EB]"
+                className="rounded border-border-subtle text-info focus:ring-info"
               />
               <div className="flex items-center gap-1.5">
-                <span className="w-3.5 h-0.5 bg-[#2563EB] rounded-full inline-block" />
-                <span className="font-medium text-[#202B26]">Rencana (Baseline)</span>
+                <span className="w-3.5 h-0.5 bg-info rounded-full inline-block" />
+                                <span className="font-medium text-text-primary">Rencana (Baseline)</span>
               </div>
             </label>
 
@@ -214,11 +214,11 @@ export const SCurveChart: React.FC<SCurveChartProps> = ({
                 type="checkbox"
                 checked={showActual}
                 onChange={(e) => setShowActual(e.target.checked)}
-                className="rounded border-[#CBD5CF] text-[#12352B] focus:ring-[#12352B]"
+                className="rounded border-border-subtle text-primary focus:ring-primary"
               />
               <div className="flex items-center gap-1.5">
-                <span className="w-3.5 h-1 bg-[#12352B] rounded-full inline-block" />
-                <span className="font-medium text-[#12352B] font-semibold">Realisasi Fisik</span>
+                <span className="w-3.5 h-1 bg-primary rounded-full inline-block" />
+                                <span className="font-medium text-primary font-semibold">Realisasi Fisik</span>
               </div>
             </label>
 
@@ -229,17 +229,17 @@ export const SCurveChart: React.FC<SCurveChartProps> = ({
                   type="checkbox"
                   checked={showForecast}
                   onChange={(e) => setShowForecast(e.target.checked)}
-                  className="rounded border-[#CBD5CF] text-[#D6A85C] focus:ring-[#D6A85C]"
+                  className="rounded border-border-subtle text-warning focus:ring-warning"
                 />
                 <div className="flex items-center gap-1.5">
-                  <span className="w-3.5 h-0.5 bg-[#D6A85C] border-t-2 border-dashed border-[#D6A85C] inline-block" />
-                  <span className="font-medium text-[#9E6B05]">Prakiraan (Forecast)</span>
+                  <span className="w-3.5 h-0.5 bg-warning border-t-2 border-dashed border-warning inline-block" />
+                                  <span className="font-medium text-warning-dark">Prakiraan (Forecast)</span>
                 </div>
               </label>
             )}
           </div>
 
-          <div className="text-[11px] text-[#69766F] flex items-center gap-1.5">
+          <div className="text-xs text-text-muted flex items-center gap-1.5">
             <Calendar className="w-3.5 h-3.5" />
             <span>Cut-off Opname: {cutoffDate}</span>
           </div>
@@ -256,8 +256,8 @@ export const SCurveChart: React.FC<SCurveChartProps> = ({
           >
             <defs>
               <linearGradient id="actualGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#12352B" stopOpacity="0.16" />
-                <stop offset="100%" stopColor="#12352B" stopOpacity="0.01" />
+                <stop offset="0%" stopColor="rgb(18, 53, 43)" stopOpacity="0.16" />
+                                <stop offset="100%" stopColor="rgb(18, 53, 43)" stopOpacity="0.01" />
               </linearGradient>
             </defs>
 
@@ -271,7 +271,7 @@ export const SCurveChart: React.FC<SCurveChartProps> = ({
                     y1={yPos}
                     x2={svgWidth - paddingRight}
                     y2={yPos}
-                    stroke="#E2E8E4"
+                    stroke="rgb(226, 232, 228)"
                     strokeWidth="1"
                     strokeDasharray={tick === 0 || tick === 100 ? undefined : '3,3'}
                   />
@@ -279,7 +279,7 @@ export const SCurveChart: React.FC<SCurveChartProps> = ({
                     x={paddingLeft - 8}
                     y={yPos + 4}
                     textAnchor="end"
-                    className="text-[11px] font-mono fill-[#69766F] select-none"
+                    className="text-xs font-mono fill-text-muted select-none"
                   >
                     {tick}%
                   </text>
@@ -299,7 +299,7 @@ export const SCurveChart: React.FC<SCurveChartProps> = ({
                     y1={paddingTop}
                     x2={xPos}
                     y2={svgHeight - paddingBottom}
-                    stroke="#F1F4F2"
+                    stroke="rgb(245, 247, 246)"
                     strokeWidth="1"
                   />
                   {showLabel && (
@@ -307,7 +307,7 @@ export const SCurveChart: React.FC<SCurveChartProps> = ({
                       x={xPos}
                       y={svgHeight - paddingBottom + 16}
                       textAnchor="middle"
-                      className="text-[10px] font-mono fill-[#69766F] select-none"
+                      className="text-xs font-mono fill-text-muted select-none"
                     >
                       {pt.label}
                     </text>
@@ -326,7 +326,7 @@ export const SCurveChart: React.FC<SCurveChartProps> = ({
               <path
                 d={plannedPath}
                 fill="none"
-                stroke="#2563EB"
+                stroke="rgb(37, 99, 235)"
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -338,7 +338,7 @@ export const SCurveChart: React.FC<SCurveChartProps> = ({
               <path
                 d={forecastPath}
                 fill="none"
-                stroke="#D6A85C"
+                stroke="rgb(214, 168, 92)"
                 strokeWidth="2"
                 strokeDasharray="5,5"
                 strokeLinecap="round"
@@ -351,7 +351,7 @@ export const SCurveChart: React.FC<SCurveChartProps> = ({
               <path
                 d={actualPath}
                 fill="none"
-                stroke="#12352B"
+                stroke="rgb(18, 53, 43)"
                 strokeWidth="3.2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -372,8 +372,8 @@ export const SCurveChart: React.FC<SCurveChartProps> = ({
                     cx={x}
                     cy={y}
                     r={isHovered ? 6 : 4}
-                    fill="#FFFFFF"
-                    stroke="#12352B"
+                    fill="white"
+                                        stroke="rgb(18, 53, 43)"
                     strokeWidth={isHovered ? 3 : 2}
                     className="transition-all duration-150 cursor-pointer"
                   />
@@ -387,7 +387,7 @@ export const SCurveChart: React.FC<SCurveChartProps> = ({
                 y1={paddingTop}
                 x2={getX(hoveredIdx)}
                 y2={svgHeight - paddingBottom}
-                stroke="#12352B"
+                stroke="rgb(18, 53, 43)"
                 strokeWidth="1.2"
                 strokeDasharray="2,2"
               />
@@ -416,42 +416,42 @@ export const SCurveChart: React.FC<SCurveChartProps> = ({
           {/* Floating High-Fidelity Tooltip */}
           {activePoint && hoveredIdx !== null && (
             <div
-              className="absolute z-20 pointer-events-none transition-all duration-100 -translate-x-1/2 bg-[#202B26] text-white p-3 rounded-xl shadow-xl text-xs w-52 border border-[#4F5D56]"
+              className="absolute z-20 pointer-events-none transition-all duration-100 -translate-x-1/2 bg-text-primary text-white p-3 rounded-xl shadow-xl text-xs w-52 border border-border-subtle/40"
               style={{
                 left: `${(getX(hoveredIdx) / svgWidth) * 100}%`,
                 top: `${Math.max(10, (getY(activePoint.actualCumulative ?? activePoint.plannedCumulative) / svgHeight) * 100 - 35)}%`,
               }}
             >
-              <div className="font-semibold text-white border-b border-[#3b4741] pb-1.5 mb-2 flex items-center justify-between">
+              <div className="font-semibold text-white border-b border-border-subtle/30 pb-1.5 mb-2 flex items-center justify-between">
                 <span>{activePoint.label}</span>
-                <span className="text-[10px] text-[#A2B8AE] font-mono">{activePoint.date}</span>
+                <span className="text-xs text-text-muted/60 font-mono">{activePoint.date}</span>
               </div>
 
-              <div className="space-y-1.5 text-[11px]">
+              <div className="space-y-1.5 text-xs">
                 <div className="flex justify-between items-center">
-                  <span className="text-[#CBD5CF] flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-[#2563EB]" />
+                  <span className="text-text-muted/80 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-info" />
                     Rencana:
                   </span>
                   <span className="font-mono font-bold">{activePoint.plannedCumulative}%</span>
                 </div>
 
                 <div className="flex justify-between items-center">
-                  <span className="text-[#CBD5CF] flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-[#1C6843]" />
+                  <span className="text-text-muted/80 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-success" />
                     Realisasi:
                   </span>
-                  <span className="font-mono font-bold text-[#E5F4EB]">
+                  <span className="font-mono font-bold text-success/90">
                     {activePoint.actualCumulative !== null ? `${activePoint.actualCumulative}%` : '—'}
                   </span>
                 </div>
 
                 {activePoint.actualCumulative !== null && (
-                  <div className="flex justify-between items-center pt-1 border-t border-[#3b4741]">
-                    <span className="text-[#CBD5CF]">Deviasi:</span>
+                  <div className="flex justify-between items-center pt-1 border-t border-border-subtle/30">
+                    <span className="text-text-muted/80">Deviasi:</span>
                     <span
                       className={`font-mono font-bold ${
-                        (activePoint.variance ?? 0) >= 0 ? 'text-[#87E0A5]' : 'text-[#F8A59D]'
+                        (activePoint.variance ?? 0) >= 0 ? 'text-success/90' : 'text-danger/90'
                       }`}
                     >
                       {(activePoint.variance ?? 0) >= 0
@@ -462,7 +462,7 @@ export const SCurveChart: React.FC<SCurveChartProps> = ({
                 )}
 
                 {activePoint.forecastCumulative !== undefined && (
-                  <div className="flex justify-between items-center text-[#D6A85C]">
+                  <div className="flex justify-between items-center text-warning">
                     <span>Prakiraan:</span>
                     <span className="font-mono font-bold">{activePoint.forecastCumulative}%</span>
                   </div>
@@ -473,8 +473,8 @@ export const SCurveChart: React.FC<SCurveChartProps> = ({
         </div>
 
         {/* Construction Methodological Note */}
-        <div className="mt-4 pt-3 border-t border-[#E2E8E4]/60 flex items-center gap-2 text-[11px] text-[#69766F]">
-          <Info className="w-3.5 h-3.5 text-[#12352B] shrink-0" />
+        <div className="mt-4 pt-3 border-t border-border-subtle/60 flex items-center gap-2 text-xs text-text-muted">
+          <Info className="w-3.5 h-3.5 text-primary shrink-0" />
           <span>
             Perhitungan S-Curve menggunakan metode Earned Value Management (EVM) berstandar SNI & PMI.
             Bobot progres dihitung kumulatif berdasarkan pengesahan fisik BAST dan opname pekerjaan.

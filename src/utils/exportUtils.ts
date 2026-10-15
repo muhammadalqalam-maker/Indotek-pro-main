@@ -7,6 +7,13 @@
 
 import { BudgetLine, Project, PurchaseOrder, MaterialItem, WBSItem, Milestone } from '../types';
 
+/** Info perusahaan dinamis dari workspace settings. */
+export interface CompanyInfo {
+  companyName: string;
+  companyAddress: string;
+  taxNumberNPWP: string;
+}
+
 /**
  * Downloads arbitrary formatted CSV data as a physical file in the browser.
  */
@@ -212,9 +219,16 @@ export function exportExecutiveReportToCSV(
 /**
  * Downloads a sample specification document or engineering form
  */
-export function downloadDocumentTemplate(docName: string, projectName: string): void {
+export function downloadDocumentTemplate(
+  docName: string,
+  projectName: string,
+  company?: CompanyInfo
+): void {
+  const name    = company?.companyName    || 'PERUSAHAAN';
+  const address = company?.companyAddress || '';
+
   const content = `================================================================================
-PT INDOTEK BANGUN NUSANTARA — CONSTRUCTION MANAGEMENT SYSTEM
+${name.toUpperCase()} — CONSTRUCTION MANAGEMENT SYSTEM
 DOKUMEN TEKNIS & SPESIFIKASI PROYEK
 ================================================================================
 Proyek: ${projectName}
@@ -236,7 +250,7 @@ untuk pelaksanaan pekerjaan pada site ${projectName}.
 Disusun oleh: Tim Enjiniring Site
 Disetujui oleh: Project Director / Konsultan Manajemen Konstruksi
 ================================================================================
-PT Indotek Bangun Nusantara · Graha Surveyor Indonesia Lt. 14, Jakarta Selatan
+${name}${address ? ' · ' + address : ''}
 `;
 
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });

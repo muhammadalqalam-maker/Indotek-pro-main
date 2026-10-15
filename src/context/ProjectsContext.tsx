@@ -7,10 +7,12 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Project, BudgetLine, Milestone, WBSItem, BudgetVersion, ProjectActivity } from '../types';
-import { firestoreService } from '../services/firestoreService';
+import * as projectData from '../data/projects';
+import { dataService } from '../services/dataService';
 import { useAuth } from './AuthContext';
-import { useUI } from './UIContext';
+import { useUI, getScreenIdFromPathname } from './UIContext';
 import {
   calculateProjectFinancials,
   calculateProjectSchedule,
@@ -43,16 +45,18 @@ const ProjectsContext = createContext<ProjectsContextType | undefined>(undefined
 
 export const ProjectsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { currentUser } = useAuth();
+  const location = useLocation();
+  const screenId = getScreenIdFromPathname(location.pathname);
   const {
     workspaceId,
     actorInfo,
     selectedProjectId,
     setSelectedProjectId,
-    currentScreen,
     addToast,
     setPendingActions,
     setIsLoadingData,
     setLoadError,
+    setLoadingProjects,
   } = useUI();
 
   const [projects, setProjects] = useState<Project[]>([]);
@@ -75,13 +79,23 @@ export const ProjectsProvider: React.FC<{ children: ReactNode }> = ({ children }
   useEffect(() => {
     if (!currentUser) return;
     let isMounted = true;
-    firestoreService.getProjects(false, workspaceId).then((projs) => {
+    setLoadingProjects(true);
+    dataService.getProjects(workspaceId).then((projs) => {
       if (isMounted && projs) setProjects(projs);
-    }).catch((err) => {
-      console.warn('Projects initial load notice:', err);
+    }).catch((err: any) => {
+      if (isMounted) {
+        setLoadError(`Gagal memuat daftar proyek: ${err?.message || 'Kesalahan tidak diketahui'}`);
+        addToast({
+          type: 'danger',
+          title: 'Gagal Memuat Proyek',
+          message: 'Kesalahan saat memuat daftar proyek. Coba muat ulang halaman atau hubungi dukungan.',
+        });
+      }
+    }).finally(() => {
+      if (isMounted) setLoadingProjects(false);
     });
     return () => { isMounted = false; };
-  }, [currentUser, workspaceId]);
+  }, [currentUser, workspaceId, setLoadingProjects, addToast, setLoadError]);
 
   // Load Active Project Subcollections on project selection
   useEffect(() => {
@@ -94,8 +108,8 @@ export const ProjectsProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
 
     let isMounted = true;
-    firestoreService
-      .getProjectSubcollections(selectedProjectId, false, workspaceId)
+    dataService
+      .getProjectSubcollections(selectedProjectId, workspaceId)
       .then((subs) => {
         if (isMounted && subs) {
           setBudgetLines(subs.budgetLines);
@@ -104,8 +118,14 @@ export const ProjectsProvider: React.FC<{ children: ReactNode }> = ({ children }
           setBudgetVersions(subs.budgetVersions);
         }
       })
-      .catch((err) => {
-        console.warn('Project subcollections load notice:', err);
+      .catch((err: any) => {
+        if (isMounted) {
+          addToast({
+            type: 'warning',
+            title: 'Data Proyek Tidak Lengkap',
+            message: 'Beberapa data proyek tidak dapat dimuat. Coba pilih proyek lain atau muat ulang.',
+          });
+        }
       });
 
     return () => { isMounted = false; };
@@ -113,20 +133,22 @@ export const ProjectsProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   // Load Dashboard Activities on demand
   useEffect(() => {
-    if (!currentUser || currentScreen !== 'dashboard') return;
+    if (!currentUser || screenId !== 'dashboard') return;
     let isMounted = true;
-    firestoreService.getActivities(20, workspaceId).then((act) => {
+    dataService.getActivities(20, workspaceId).then((act) => {
       if (isMounted && act) setActivities(act);
-    }).catch(console.warn);
+    }).catch(() => {
+      // Activities load failed silently - non-critical optional data
+    });
     return () => { isMounted = false; };
-  }, [currentUser, currentScreen, workspaceId]);
+  }, [currentUser, location.pathname, workspaceId]);
 
   const refreshProjects = async (force = true) => {
     try {
-      const projs = await firestoreService.getProjects(force, workspaceId);
+      const projs = await dataService.getProjects(workspaceId);
       if (projs) setProjects(projs);
       if (selectedProjectId) {
-        const subs = await firestoreService.getProjectSubcollections(selectedProjectId, force, workspaceId);
+        const subs = await dataService.getProjectSubcollections(selectedProjectId, workspaceId);
         if (subs) {
           setBudgetLines(subs.budgetLines);
           setMilestones(subs.milestones);
@@ -143,7 +165,7 @@ export const ProjectsProvider: React.FC<{ children: ReactNode }> = ({ children }
     newProj: Omit<Project, 'id' | 'totalMilestones' | 'completedMilestones'>
   ): Promise<string> => {
     try {
-      const generatedId = await firestoreService.addProject(newProj, actorInfo, workspaceId);
+      const generatedId = await dataService.addProject(newProj, actorInfo, workspaceId);
       setSelectedProjectId(generatedId);
       await refreshProjects(true);
       addToast({
@@ -164,15 +186,15 @@ export const ProjectsProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   const addBudgetLine = async (lineData: Omit<BudgetLine, 'id'>) => {
     try {
-      await firestoreService.addProjectBudgetLine(selectedProjectId, lineData, actorInfo, workspaceId);
+      await dataService.addProjectBudgetLine(selectedProjectId, lineData, actorInfo, workspaceId);
       const updatedLines = [...budgetLines, { ...lineData, id: `line-${Date.now()}` } as BudgetLine];
       setBudgetLines(updatedLines);
 
       const financials = calculateProjectFinancials(updatedLines);
-      await firestoreService.updateProject(selectedProjectId, {
+      await projectData.updateProject(selectedProjectId, {
         approvedBudget: financials.approvedBudget,
         actualCost: financials.actualCost,
-      }, workspaceId);
+      });
 
       setProjects((prev) =>
         prev.map((p) =>
@@ -200,12 +222,11 @@ export const ProjectsProvider: React.FC<{ children: ReactNode }> = ({ children }
   const updateBudgetLine = async (lineId: string, updates: Partial<BudgetLine>) => {
     const oldLine = budgetLines.find((l) => l.id === lineId);
     try {
-      await firestoreService.updateProjectBudgetLine(
+      await dataService.updateProjectBudgetLine(
         selectedProjectId,
         lineId,
         updates,
         actorInfo,
-        oldLine,
         workspaceId
       );
 
@@ -213,10 +234,10 @@ export const ProjectsProvider: React.FC<{ children: ReactNode }> = ({ children }
       setBudgetLines(updatedLines);
 
       const financials = calculateProjectFinancials(updatedLines);
-      await firestoreService.updateProject(selectedProjectId, {
+      await projectData.updateProject(selectedProjectId, {
         actualCost: financials.actualCost,
         approvedBudget: financials.approvedBudget,
-      }, workspaceId);
+      });
 
       setProjects((prev) =>
         prev.map((p) =>
@@ -250,15 +271,11 @@ export const ProjectsProvider: React.FC<{ children: ReactNode }> = ({ children }
   ) => {
     setPendingActions((prev) => ({ ...prev, [milestoneId]: true }));
     try {
-      await firestoreService.signOffProjectMilestone(
+      await dataService.signOffProjectMilestone(
         selectedProjectId,
         milestoneId,
-        actorInfo.name,
-        bastRef,
-        notes,
+        { notes, attachments: bastRef ? [bastRef] : [] },
         actorInfo,
-        milestoneTitle,
-        projectName,
         workspaceId
       );
 
@@ -268,10 +285,10 @@ export const ProjectsProvider: React.FC<{ children: ReactNode }> = ({ children }
       setMilestones(updatedMilestones);
 
       const metrics = calculateProjectMilestones(updatedMilestones);
-      await firestoreService.updateProject(selectedProjectId, {
+      await projectData.updateProject(selectedProjectId, {
         completedMilestones: metrics.completedMilestones,
         totalMilestones: metrics.totalMilestones,
-      }, workspaceId);
+      });
 
       setProjects((prev) =>
         prev.map((p) =>
@@ -309,13 +326,11 @@ export const ProjectsProvider: React.FC<{ children: ReactNode }> = ({ children }
   ) => {
     const targetWBS = wbsList.find((w) => w.id === wbsId);
     try {
-      await firestoreService.updateProjectWBSProgress(
+      await dataService.updateProjectWBSProgress(
         selectedProjectId,
         wbsId,
         actualProgress,
-        status,
         actorInfo,
-        targetWBS?.name,
         workspaceId
       );
 
@@ -325,11 +340,11 @@ export const ProjectsProvider: React.FC<{ children: ReactNode }> = ({ children }
       setWbsList(updatedWBS);
 
       const schedule = calculateProjectSchedule(updatedWBS);
-      await firestoreService.updateProject(selectedProjectId, {
+      await dataService.updateProject(selectedProjectId, {
         progressActual: schedule.progressActual,
         progressPlanned: schedule.progressPlanned,
         scheduleStatus: schedule.scheduleStatus,
-      }, workspaceId);
+      }, actorInfo, workspaceId);
 
       setProjects((prev) =>
         prev.map((p) =>

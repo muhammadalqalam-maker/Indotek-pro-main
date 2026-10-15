@@ -82,7 +82,7 @@ export const BudgetRevisionsTab: React.FC<BudgetRevisionsTabProps> = ({
 
                       <td className="py-3.5 px-4">
                         <div className="font-semibold text-[#202B26]">{rev.title}</div>
-                        <div className="text-[11px] text-[#69766F] mt-0.5">
+                        <div className="text-xs text-[#69766F] mt-0.5">
                           {rev.divisionName} · {rev.justification}
                         </div>
                       </td>
@@ -121,7 +121,7 @@ export const BudgetRevisionsTab: React.FC<BudgetRevisionsTabProps> = ({
 
                       <td className="py-3.5 px-4 text-[#69766F]">
                         <div>{rev.submittedBy}</div>
-                        <div className="text-[10px] font-mono text-[#4F5D56]">
+                        <div className="text-xs font-mono text-[#4F5D56]">
                           {formatDateIndo(rev.submittedAt)}
                         </div>
                       </td>
@@ -131,19 +131,19 @@ export const BudgetRevisionsTab: React.FC<BudgetRevisionsTabProps> = ({
                           <div className="flex items-center justify-center gap-1.5">
                             <button
                               onClick={() => onApproveRevision(rev.id)}
-                              className="px-2.5 py-1 text-[11px] font-semibold text-white bg-[#12352B] hover:bg-[#1C4D3F] rounded transition-colors cursor-pointer"
+                              className="px-2.5 py-1 text-xs font-semibold text-white bg-[#12352B] hover:bg-[#1C4D3F] rounded transition-colors cursor-pointer"
                             >
                               Setujui
                             </button>
                             <button
                               onClick={() => onRequestRejectRevision(rev)}
-                              className="px-2.5 py-1 text-[11px] font-semibold text-[#A82A20] bg-white border border-[#A82A20]/30 hover:bg-[#FDEDEC] rounded transition-colors cursor-pointer"
+                              className="px-2.5 py-1 text-xs font-semibold text-[#A82A20] bg-white border border-[#A82A20]/30 hover:bg-[#FDEDEC] rounded transition-colors cursor-pointer"
                             >
                               Tolak
                             </button>
                           </div>
                         ) : (
-                          <span className="text-[11px] text-[#4F5D56] font-mono">
+                          <span className="text-xs text-[#4F5D56] font-mono">
                             {rev.reviewedBy ? `Oleh ${rev.reviewedBy}` : '—'}
                           </span>
                         )}

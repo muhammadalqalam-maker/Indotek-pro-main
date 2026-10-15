@@ -52,28 +52,55 @@ export function calculateBaselineSigmoid(normalizedTime: number): number {
   return Math.round(Math.max(0, Math.min(100, scaled)) * 10) / 10;
 }
 
-/**
- * Generates an authentic S-curve time series dataset for a project
- * using project start date, target completion date, and current progress.
- */
-export function generateProjectSCurve(params: {
+import { BOQItem, DivisionCategory } from '../types/rab';
+import { WBSItem } from '../types';
+
+export interface GenerateProjectSCurveParams {
   projectId: string;
   projectName: string;
   startDate: string;
   endDate: string;
-  currentActualProgress: number;
+  currentActualProgress?: number;
   reportingDate?: string;
   historicalActuals?: { date: string; progress: number }[];
-}): ProjectSCurveData {
+  boqItems?: BOQItem[];
+  wbsItems?: WBSItem[];
+}
+
+/**
+ * Calculates current project actual progress strictly derived from BOQ items physical completion.
+ * Formula: sum((progresPersen * bobotPersen) / 100)
+ */
+export function calculateBOQActualProgress(boqItems: BOQItem[]): number {
+  if (!boqItems || boqItems.length === 0) return 0;
+  const total = boqItems.reduce((acc, item) => {
+    const bobot = Number(item.bobotPersen) || 0;
+    const progres = Number(item.progresPersen) || 0;
+    return acc + (progres * bobot) / 100;
+  }, 0);
+  return Math.round(Math.min(100, Math.max(0, total)) * 100) / 100;
+}
+
+/**
+ * Generates an authentic S-curve time series dataset for a project
+ * using project start date, target completion date, BOQ weights, and WBS schedule.
+ */
+export function generateProjectSCurve(params: GenerateProjectSCurveParams): ProjectSCurveData {
   const {
     projectId,
     projectName,
     startDate,
     endDate,
-    currentActualProgress,
+    currentActualProgress: rawActualProgress,
     reportingDate = new Date().toISOString().split('T')[0],
     historicalActuals = [],
+    boqItems = [],
+    wbsItems = [],
   } = params;
+
+  const currentActualProgress = boqItems.length > 0
+    ? calculateBOQActualProgress(boqItems)
+    : Number(rawActualProgress || 0);
 
   const start = new Date(startDate);
   const end = new Date(endDate);
@@ -85,6 +112,18 @@ export function generateProjectSCurve(params: {
     (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1
   );
 
+  // Compute Division Weights from BOQ
+  const divisionWeights: Record<string, number> = {};
+  if (boqItems.length > 0) {
+    for (const item of boqItems) {
+      const cat = item.divisionCategory || 'Pekerjaan Persiapan';
+      divisionWeights[cat] = (divisionWeights[cat] || 0) + Number(item.bobotPersen || 0);
+    }
+  }
+
+  // Pre-calculate planned progress curve using BOQ weights x WBS dates if available
+  const hasDetailedSchedule = boqItems.length > 0 && wbsItems.length > 0;
+
   const points: SCurvePoint[] = [];
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
@@ -93,10 +132,52 @@ export function generateProjectSCurve(params: {
 
   for (let i = 0; i < monthsDiff; i++) {
     const pointDate = new Date(start.getFullYear(), start.getMonth() + i, 1);
+    const pointDateEnd = new Date(start.getFullYear(), start.getMonth() + i + 1, 0); // End of month
     const normalizedTime = monthsDiff > 1 ? i / (monthsDiff - 1) : 1;
 
-    // Planned cumulative from approved baseline schedule
-    const plannedCum = calculateBaselineSigmoid(normalizedTime);
+    let plannedCum = 0;
+
+    if (hasDetailedSchedule) {
+      // Calculate cumulative planned progress at pointDateEnd from WBS items weighted by BOQ
+      let totalPlannedAcc = 0;
+      for (const wbs of wbsItems) {
+        const wbsStart = new Date(wbs.startDate || startDate);
+        const wbsEnd = new Date(wbs.endDate || endDate);
+        const wbsDuration = Math.max(1, (wbsEnd.getTime() - wbsStart.getTime()) / (1000 * 60 * 60 * 24));
+        
+        // Find matching division weight or distribute evenly
+        let weight = 0;
+        const matchedCat = Object.keys(divisionWeights).find(cat => 
+          wbs.category?.toLowerCase().includes(cat.toLowerCase().replace('pekerjaan ', '')) ||
+          wbs.name?.toLowerCase().includes(cat.toLowerCase().replace('pekerjaan ', ''))
+        );
+        if (matchedCat && divisionWeights[matchedCat]) {
+          const matchingWbsCount = wbsItems.filter(w => 
+            w.category?.toLowerCase().includes(matchedCat.toLowerCase().replace('pekerjaan ', '')) ||
+            w.name?.toLowerCase().includes(matchedCat.toLowerCase().replace('pekerjaan ', ''))
+          ).length || 1;
+          weight = divisionWeights[matchedCat] / matchingWbsCount;
+        } else {
+          weight = 100 / wbsItems.length;
+        }
+
+        if (pointDateEnd < wbsStart) {
+          // Hasn't started
+        } else if (pointDateEnd >= wbsEnd) {
+          // Completed
+          totalPlannedAcc += weight;
+        } else {
+          // In progress: linear duration fraction
+          const elapsedDays = Math.max(0, (pointDateEnd.getTime() - wbsStart.getTime()) / (1000 * 60 * 60 * 24));
+          const frac = Math.min(1, Math.max(0, elapsedDays / wbsDuration));
+          totalPlannedAcc += weight * frac;
+        }
+      }
+      plannedCum = Math.round(Math.min(100, Math.max(0, totalPlannedAcc)) * 10) / 10;
+    } else {
+      // Standard sigmoid baseline
+      plannedCum = calculateBaselineSigmoid(normalizedTime);
+    }
 
     // Check if this period is past or at reporting cutoff
     const isPastOrCurrent = pointDate <= reporting;
@@ -115,8 +196,6 @@ export function generateProjectSCurve(params: {
       } else {
         // Realistic progression reaching currentActualProgress at cutoff date
         const cutoffNorm = monthsDiff > 1 ? i / Math.max(1, cutoffIdx || 1) : 1;
-        const progressShape = calculateBaselineSigmoid(normalizedTime) / Math.max(0.1, calculateBaselineSigmoid(normalizedTime <= 0.6 ? 0.6 : normalizedTime));
-        // Scale to currentActualProgress
         const estimatedActual = Math.min(
           currentActualProgress,
           Math.round((currentActualProgress * (i + 1) / Math.max(1, i + 1 + (reporting.getMonth() - pointDate.getMonth()))) * 10) / 10

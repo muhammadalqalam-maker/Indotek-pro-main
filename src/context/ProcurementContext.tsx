@@ -8,15 +8,17 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { PurchaseOrder } from '../types';
-import { firestoreService } from '../services/firestoreService';
+import { dataService } from '../services/dataService';
 import { useAuth } from './AuthContext';
 import { useUI } from './UIContext';
+import { useLocation } from 'react-router-dom';
+import { getScreenIdFromPathname } from './UIContext';
 
 export interface ProcurementContextType {
   purchaseOrders: PurchaseOrder[];
   setPurchaseOrders: React.Dispatch<React.SetStateAction<PurchaseOrder[]>>;
   addPurchaseOrder: (po: Omit<PurchaseOrder, 'id' | 'poNumber' | 'status'>) => Promise<void>;
-  approvePurchaseOrder: (poId: string, approverName: string) => Promise<void>;
+  approvePurchaseOrder: (poId: string, approverName: string, overrideReason?: string) => Promise<void>;
   rejectPurchaseOrder: (poId: string, rejectorName: string, reason: string) => Promise<void>;
 }
 
@@ -24,7 +26,9 @@ const ProcurementContext = createContext<ProcurementContextType | undefined>(und
 
 export const ProcurementProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { currentUser } = useAuth();
-  const { workspaceId, actorInfo, currentScreen, projectDetailTab, isTabVisible, addToast, setPendingActions } = useUI();
+  const { workspaceId, actorInfo, projectDetailTab, isTabVisible, addToast, setPendingActions, setLoadingProcurement } = useUI();
+  const location = useLocation();
+  const screenId = getScreenIdFromPathname(location.pathname);
 
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
 
@@ -33,26 +37,29 @@ export const ProcurementProvider: React.FC<{ children: ReactNode }> = ({ childre
     if (!currentUser || !isTabVisible) return;
 
     const needsPORealtime =
-      currentScreen === 'procurement' ||
-      currentScreen === 'dashboard' ||
-      (currentScreen === 'project-detail' && projectDetailTab === 'procurement');
+      screenId === 'procurement' ||
+      screenId === 'dashboard' ||
+      (screenId === 'project-detail' && projectDetailTab === 'procurement');
 
     if (!needsPORealtime) return;
 
-    const unsub = firestoreService.subscribePurchaseOrders(
-      (items) => setPurchaseOrders(items),
-      (err) => console.warn('PO sync notice:', err),
+    setLoadingProcurement(true);
+    const unsub = dataService.subscribePurchaseOrders(
+      (items) => {
+        setPurchaseOrders(items);
+        setLoadingProcurement(false);
+      },
       workspaceId
     );
 
     return () => { unsub?.(); };
-  }, [currentUser, isTabVisible, currentScreen, projectDetailTab, workspaceId]);
+  }, [currentUser, isTabVisible, location.pathname, projectDetailTab, workspaceId]);
 
   const addPurchaseOrder = async (
-    poData: Omit<PurchaseOrder, 'id' | 'poNumber' | 'status'>
+    poData: Omit<PurchaseOrder, 'id' | 'poNumber' | 'status' | 'createdAt' | 'updatedAt'>
   ) => {
     try {
-      await firestoreService.addPurchaseOrder(poData, actorInfo, workspaceId);
+      await dataService.addPurchaseOrder(poData, actorInfo, workspaceId);
       addToast({
         type: 'success',
         title: 'PO Berhasil Diajukan',
@@ -68,14 +75,14 @@ export const ProcurementProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
-  const approvePurchaseOrder = async (poId: string, approverName: string) => {
+  const approvePurchaseOrder = async (poId: string, approverName: string, overrideReason?: string) => {
     setPendingActions((prev) => ({ ...prev, [poId]: true }));
     try {
-      await firestoreService.approvePurchaseOrder(poId, approverName, actorInfo, workspaceId);
+      await dataService.approvePurchaseOrder(poId, approverName, overrideReason, actorInfo, workspaceId);
       addToast({
         type: 'success',
         title: 'Purchase Order Disetujui',
-        message: `PO ${poId} telah disetujui untuk diteruskan ke logistik supplier.`,
+        message: `PO ${poId} telah disetujui${overrideReason ? ' (SoD Override dicatat di audit)' : ''}.`,
       });
     } catch (err: any) {
       addToast({
@@ -96,7 +103,7 @@ export const ProcurementProvider: React.FC<{ children: ReactNode }> = ({ childre
   const rejectPurchaseOrder = async (poId: string, rejectorName: string, reason: string) => {
     setPendingActions((prev) => ({ ...prev, [poId]: true }));
     try {
-      await firestoreService.rejectPurchaseOrder(poId, rejectorName, reason, actorInfo, workspaceId);
+      await dataService.rejectPurchaseOrder(poId, rejectorName, reason, actorInfo, workspaceId);
       addToast({
         type: 'danger',
         title: 'Purchase Order Ditolak',

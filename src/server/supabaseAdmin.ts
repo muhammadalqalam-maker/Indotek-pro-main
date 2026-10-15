@@ -7,16 +7,19 @@ export interface SupabaseServerConfig {
 }
 
 export function loadSupabaseServerConfig(): SupabaseServerConfig {
-  const supabaseUrl =
-    process.env.SUPABASE_URL ||
-    process.env.VITE_SUPABASE_URL ||
-    'https://indotek-placeholder.supabase.co';
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  if (!supabaseUrl) {
+    throw new Error(
+      'Konfigurasi Supabase Server gagal: SUPABASE_URL atau VITE_SUPABASE_URL wajib disetel pada environment.'
+    );
+  }
 
-  const serviceRoleKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.SUPABASE_ANON_KEY ||
-    process.env.VITE_SUPABASE_ANON_KEY ||
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.placeholder';
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) {
+    throw new Error(
+      'Konfigurasi Supabase Server gagal: SUPABASE_SERVICE_ROLE_KEY wajib disetel pada environment (fallback ke anon key / placeholder ditiadakan).'
+    );
+  }
 
   return { supabaseUrl, serviceRoleKey };
 }

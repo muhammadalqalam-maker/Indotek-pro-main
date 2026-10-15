@@ -19,13 +19,27 @@ export const DB_ROLE_TO_APP_ROLE: Record<string, AppRole> = {
   auditor: 'Read-only Auditor',
 };
 
+export const APP_ROLE_TO_DB_ROLE: Record<AppRole, string> = {
+  'Owner / Director': 'owner',
+  'Project Manager': 'project_manager',
+  'Site Manager / Supervisor': 'site_manager',
+  'Quantity Surveyor / Estimator': 'quantity_surveyor',
+  'Finance / Accounting': 'finance',
+  'Procurement': 'procurement',
+  'Warehouse / Inventory': 'warehouse',
+  'Read-only Auditor': 'auditor',
+};
+
 export type AppModule =
+  | 'dashboard'
   | 'projects'
   | 'budget'
   | 'schedule'
   | 'materials'
   | 'procurement'
   | 'field_reports'
+  | 'resource_prices'
+  | 'ahsp_templates'
   | 'team'
   | 'audit'
   | 'reports'

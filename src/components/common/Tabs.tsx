@@ -58,7 +58,7 @@ export const Tabs: React.FC<TabsProps> = ({
         ref={tabListRef}
         role="tablist"
         aria-label={ariaLabel}
-        className={`inline-flex items-center p-1 bg-[#EAEFEA] rounded-lg gap-1 ${className}`}
+        className={`inline-flex items-center p-1 bg-neutral-bg rounded-lg gap-1 ${className}`}
       >
         {tabs.map((tab, idx) => {
           const isActive = tab.id === activeTab;
@@ -70,18 +70,18 @@ export const Tabs: React.FC<TabsProps> = ({
               tabIndex={isActive ? 0 : -1}
               onClick={() => onChange(tab.id)}
               onKeyDown={(e) => handleKeyDown(e, idx)}
-              className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md transition-all whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-[#12352B] ${
+              className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md transition-all whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary ${
                 isActive
-                  ? 'bg-white text-[#12352B] shadow-2xs font-semibold'
-                  : 'text-[#4F5D56] hover:text-[#202B26]'
+                  ? 'bg-white text-primary shadow-2xs font-semibold'
+                  : 'text-text-secondary hover:text-text-primary'
               }`}
             >
               {tab.icon && <span className="shrink-0">{tab.icon}</span>}
               <span>{tab.label}</span>
               {tab.count !== undefined && (
                 <span
-                  className={`text-[11px] px-1.5 py-0.2 rounded font-mono tabular-nums ${
-                    isActive ? 'bg-[#E5F4EB] text-[#1C6843]' : 'bg-[#E2E8E4] text-[#4F5D56]'
+                  className={`text-xs px-1.5 py-0.2 rounded font-mono tabular-nums ${
+                    isActive ? 'bg-success-light text-success' : 'bg-border-subtle text-text-secondary'
                   }`}
                 >
                   {tab.count}
@@ -99,7 +99,7 @@ export const Tabs: React.FC<TabsProps> = ({
       ref={tabListRef}
       role="tablist"
       aria-label={ariaLabel}
-      className={`border-b border-[#E2E8E4] flex items-center gap-6 overflow-x-auto ${className}`}
+      className={`border-b border-border-subtle flex items-center gap-6 overflow-x-auto ${className}`}
     >
       {tabs.map((tab, idx) => {
         const isActive = tab.id === activeTab;
@@ -111,10 +111,10 @@ export const Tabs: React.FC<TabsProps> = ({
             tabIndex={isActive ? 0 : -1}
             onClick={() => onChange(tab.id)}
             onKeyDown={(e) => handleKeyDown(e, idx)}
-            className={`flex items-center gap-2 pb-3 pt-1 text-sm font-medium transition-colors border-b-2 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-[#12352B] rounded-t ${
+            className={`flex items-center gap-2 pb-3 pt-1 text-sm font-medium transition-colors border-b-2 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary rounded-t ${
               isActive
-                ? 'border-[#12352B] text-[#12352B] font-semibold'
-                : 'border-transparent text-[#4F5D56] hover:text-[#202B26] hover:border-[#CBD5CF]'
+                ? 'border-primary text-primary font-semibold'
+                : 'border-transparent text-text-secondary hover:text-text-primary hover:border-border-light'
             }`}
           >
             {tab.icon && <span className="shrink-0">{tab.icon}</span>}
@@ -122,7 +122,7 @@ export const Tabs: React.FC<TabsProps> = ({
             {tab.count !== undefined && (
               <span
                 className={`text-xs px-1.5 py-0.5 rounded font-mono tabular-nums ${
-                  isActive ? 'bg-[#E5F4EB] text-[#1C6843]' : 'bg-[#F1F4F2] text-[#4F5D56]'
+                  isActive ? 'bg-success-light text-success' : 'bg-neutral-light text-text-secondary'
                 }`}
               >
                 {tab.count}

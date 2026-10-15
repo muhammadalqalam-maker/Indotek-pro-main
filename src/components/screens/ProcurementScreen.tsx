@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Truck,
   Plus,
@@ -12,7 +13,9 @@ import {
   AlertCircle,
   XCircle,
   ShieldAlert,
-  ShieldCheck
+  ShieldCheck,
+  Printer,
+  Paperclip,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
@@ -23,6 +26,10 @@ import { SearchInput } from '../common/SearchInput';
 import { Modal } from '../common/Modal';
 import { PurchaseOrder } from '../../types';
 import { formatCurrencyIDR, formatDateIndo } from '../../utils/formatters';
+import { AttachmentUploader } from '../common/AttachmentUploader';
+import { generatePurchaseOrderPDF } from '../../utils/pdfGenerator';
+import { DataCard } from '../common/DataCard';
+import { ResponsiveTable } from '../common/ResponsiveTable';
 
 export const ProcurementScreen: React.FC = () => {
   const {
@@ -36,8 +43,18 @@ export const ProcurementScreen: React.FC = () => {
 
   const { activeRole, hasAuthority, userProfile, currentUser } = useAuth();
 
-  const [search, setSearch] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<string>('Semua');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [search, setSearch] = useState(searchParams.get('search') || '');
+  const [selectedStatus, setSelectedStatus] = useState<string>(searchParams.get('status') || 'Semua');
+
+  // Sync search to URL
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (selectedStatus !== 'Semua') params.set('status', selectedStatus);
+    setSearchParams(params);
+  }, [search, selectedStatus, setSearchParams]);
 
   // Modal for New SPP / PO
   const [isNewPOModalOpen, setIsNewPOModalOpen] = useState(false);
@@ -54,6 +71,13 @@ export const ProcurementScreen: React.FC = () => {
   // Modal for Rejecting PO
   const [rejectingPO, setRejectingPO] = useState<PurchaseOrder | null>(null);
   const [rejectionReasonText, setRejectionReasonText] = useState('Spesifikasi teknis belum diverifikasi tim struktur lapangan.');
+
+  // SoD Override modal
+  const [sodOverridePO, setSodOverridePO] = useState<PurchaseOrder | null>(null);
+  const [overrideReason, setOverrideReason] = useState('');
+
+  // Attachment Modal
+  const [attachmentModalPO, setAttachmentModalPO] = useState<PurchaseOrder | null>(null);
 
   const filteredOrders = useMemo(() => {
     return purchaseOrders.filter((po) => {
@@ -80,7 +104,7 @@ export const ProcurementScreen: React.FC = () => {
     if (!proj) return;
 
     addPurchaseOrder({
-      sppNumber: `SPP-2026-IND-0${(Math.floor(Math.random() * 80) + 10).toString()}`,
+      sppNumber: `SPP-${new Date().getFullYear()}-IND-${crypto.randomUUID().split('-')[0].toUpperCase()}`,
       projectId: proj.id,
       projectName: proj.name,
       supplierName: newPOForm.supplierName,
@@ -190,137 +214,300 @@ export const ProcurementScreen: React.FC = () => {
 
       {/* PO Table */}
       <div className="bg-white rounded-xl border border-[#E2E8E4] shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-[#FAFBFB] text-[#69766F] border-b border-[#E2E8E4]">
-                <th className="py-3 px-4 font-semibold text-left">Nomor PO & SPP</th>
-                <th className="py-3 px-4 font-semibold text-left">Proyek Pemohon</th>
-                <th className="py-3 px-4 font-semibold text-left">Vendor / Supplier</th>
-                <th className="py-3 px-4 font-semibold text-left">Item & Rincian Pengadaan</th>
-                <th className="py-3 px-4 font-semibold text-right">Total Biaya (IDR)</th>
-                <th className="py-3 px-4 font-semibold text-left hidden md:table-cell">Target Kirim</th>
-                <th className="py-3 px-4 font-semibold text-left">Status</th>
-                <th className="py-3 px-4 font-semibold text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#E2E8E4]/70">
-              {filteredOrders.map((order) => {
-                const statusVariant =
-                  order.status === 'Selesai'
-                    ? 'success'
-                    : order.status === 'Disetujui' || order.status === 'Dikirim'
-                    ? 'info'
-                    : order.status === 'Menunggu'
-                    ? 'warning'
-                    : 'neutral';
-
-                return (
-                  <tr key={order.id} className="hover:bg-[#F5F7F6]/80 transition-colors">
-                    <td className="py-3.5 px-4 font-mono whitespace-nowrap">
-                      <div className="font-bold text-[#12352B]">{order.poNumber}</div>
-                      <div className="text-[11px] text-[#69766F]">{order.sppNumber}</div>
-                    </td>
-
-                    <td className="py-3.5 px-4">
-                      <div className="font-semibold text-[#202B26] max-w-[170px] truncate">
-                        {order.projectName}
-                      </div>
-                      <div className="text-[11px] text-[#69766F] truncate max-w-[170px]">
-                        Pemohon: {order.requester}
-                      </div>
-                    </td>
-
-                    <td className="py-3.5 px-4 font-medium text-[#202B26] max-w-[150px] truncate">
-                      {order.supplierName}
-                    </td>
-
-                    <td className="py-3.5 px-4 min-w-[200px]">
-                      <div className="font-medium text-[#202B26] leading-snug">
-                        {order.itemDescription}
-                      </div>
-                      <div className="text-[11px] text-[#69766F] mt-0.5">
-                        {order.quantitySummary}
-                      </div>
-                    </td>
-
-                    <td className="py-3.5 px-4 font-mono font-bold text-[#202B26] tabular-nums whitespace-nowrap text-right">
-                      {formatCurrencyIDR(order.totalCost)}
-                    </td>
-
-                    <td className="py-3.5 px-4 hidden md:table-cell font-mono tabular-nums text-[#69766F] whitespace-nowrap">
-                      {formatDateIndo(order.targetDeliveryDate)}
-                    </td>
-
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <Badge variant={statusVariant} size="sm" dot>
-                        {order.status}
-                      </Badge>
-                    </td>
-
-                    <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                      {order.status === 'Menunggu' ? (
-                        <div className="flex items-center justify-end gap-1.5">
-                          <Button
-                            variant="primary"
-                            size="xs"
-                            onClick={() => {
-                              if (!hasAuthority('purchaseOrder')) {
-                                addToast({
-                                  type: 'danger',
-                                  title: 'Otoritas Tidak Memadai',
-                                  message: `Peran "${activeRole}" tidak memiliki hak persetujuan PO. Otoritas ini memerlukan peran Owner / Director, Finance / Accounting, atau Project Manager.`,
-                                });
-                                return;
-                              }
-                              const approver = userProfile?.name || currentUser?.displayName || 'Ir. Bambang Sujarwo, IPU (Director)';
-                              approvePurchaseOrder(order.id, approver);
-                            }}
-                            leftIcon={<Check className="w-3.5 h-3.5" />}
-                          >
-                            Setujui
-                          </Button>
-                          <Button
-                            variant="danger"
-                            size="xs"
-                            onClick={() => {
-                              if (!hasAuthority('purchaseOrder')) {
-                                addToast({
-                                  type: 'danger',
-                                  title: 'Otoritas Tidak Memadai',
-                                  message: `Peran "${activeRole}" tidak berwenang menolak PO resmi.`,
-                                });
-                                return;
-                              }
-                              setRejectingPO(order);
-                            }}
-                            leftIcon={<XCircle className="w-3.5 h-3.5" />}
-                          >
-                            Tolak
-                          </Button>
-                        </div>
-                      ) : order.status === 'Ditolak' ? (
-                        <div className="text-right">
-                          <span className="text-[11px] font-bold text-[#A82A20]">Ditolak</span>
-                          {order.rejectionReason && (
-                            <div className="text-[10px] text-[#69766F] max-w-[130px] truncate" title={`Alasan: ${order.rejectionReason}`}>
-                              {order.rejectionReason}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-[11px] text-[#69766F] font-mono">
-                          {order.approvedBy ? `Disetujui (${order.approvedBy.split(' ')[0]})` : order.status}
-                        </span>
-                      )}
-                    </td>
+        <ResponsiveTable
+          data={filteredOrders}
+          renderTable={() => (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-[#FAFBFB] text-[#69766F] border-b border-[#E2E8E4]">
+                    <th className="py-3 px-4 font-semibold text-left">Nomor PO & SPP</th>
+                    <th className="py-3 px-4 font-semibold text-left">Proyek Pemohon</th>
+                    <th className="py-3 px-4 font-semibold text-left">Vendor / Supplier</th>
+                    <th className="py-3 px-4 font-semibold text-left">Item & Rincian Pengadaan</th>
+                    <th className="py-3 px-4 font-semibold text-right">Total Biaya (IDR)</th>
+                    <th className="py-3 px-4 font-semibold text-left hidden md:table-cell">Target Kirim</th>
+                    <th className="py-3 px-4 font-semibold text-left">Status</th>
+                    <th className="py-3 px-4 font-semibold text-right">Aksi</th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody className="divide-y divide-[#E2E8E4]/70">
+                  {filteredOrders.map((order) => {
+                    const statusVariant =
+                      order.status === 'Selesai'
+                        ? 'success'
+                        : order.status === 'Disetujui' || order.status === 'Dikirim'
+                        ? 'info'
+                        : order.status === 'Menunggu'
+                        ? 'warning'
+                        : 'neutral';
+
+                    return (
+                      <tr key={order.id} className="hover:bg-[#F5F7F6]/80 transition-colors">
+                        <td className="py-3.5 px-4 font-mono whitespace-nowrap">
+                          <div className="font-bold text-[#12352B]">{order.poNumber}</div>
+                          <div className="text-xs text-[#69766F]">{order.sppNumber}</div>
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          <div className="font-semibold text-[#202B26] max-w-[170px] truncate">
+                            {order.projectName}
+                          </div>
+                          <div className="text-xs text-[#69766F] truncate max-w-[170px]">
+                            Pemohon: {order.requester}
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4 font-medium text-[#202B26] max-w-[150px] truncate">
+                          {order.supplierName}
+                        </td>
+
+                        <td className="py-3.5 px-4 min-w-[200px]">
+                          <div className="font-medium text-[#202B26] leading-snug">
+                            {order.itemDescription}
+                          </div>
+                          <div className="text-xs text-[#69766F] mt-0.5">
+                            {order.quantitySummary}
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4 font-mono font-bold text-[#202B26] tabular-nums whitespace-nowrap text-right">
+                          {formatCurrencyIDR(order.totalCost)}
+                        </td>
+
+                        <td className="py-3.5 px-4 hidden md:table-cell font-mono tabular-nums text-[#69766F] whitespace-nowrap">
+                          {formatDateIndo(order.targetDeliveryDate)}
+                        </td>
+
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <Badge variant={statusVariant} size="sm" dot>
+                            {order.status}
+                          </Badge>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                          {order.status === 'Menunggu' ? (
+                            <div className="flex items-center justify-end gap-1.5">
+                              <Button
+                                variant="primary"
+                                size="xs"
+                                onClick={() => {
+                                  if (!hasAuthority('purchaseOrder')) {
+                                    addToast({
+                                      type: 'danger',
+                                      title: 'Otoritas Tidak Memadai',
+                                      message: `Peran "${activeRole}" tidak memiliki hak persetujuan PO. Otoritas ini memerlukan peran Owner / Director, Finance / Accounting, atau Project Manager.`,
+                                    });
+                                    return;
+                                  }
+                                  // Cek SoD: requester sama dengan approver?
+                                  const approverName = userProfile?.name || currentUser?.displayName || '';
+                                  const isSodConflict = order.requester === approverName ||
+                                    order.requester?.toLowerCase().includes(approverName?.split(' ')[0]?.toLowerCase() || '___');
+                                  if (isSodConflict) {
+                                    setSodOverridePO(order);
+                                    setOverrideReason('');
+                                    return;
+                                  }
+                                  approvePurchaseOrder(order.id, approverName);
+                                }}
+                                leftIcon={<Check className="w-3.5 h-3.5" />}
+                              >
+                                Setujui
+                              </Button>
+                              <Button
+                                variant="danger"
+                                size="xs"
+                                onClick={() => {
+                                  if (!hasAuthority('purchaseOrder')) {
+                                    addToast({
+                                      type: 'danger',
+                                      title: 'Otoritas Tidak Memadai',
+                                      message: `Peran "${activeRole}" tidak berwenang menolak PO resmi.`,
+                                    });
+                                    return;
+                                  }
+                                  setRejectingPO(order);
+                                }}
+                                leftIcon={<XCircle className="w-3.5 h-3.5" />}
+                              >
+                                Tolak
+                              </Button>
+                            </div>
+                          ) : order.status === 'Ditolak' ? (
+                            <div className="text-right">
+                              <span className="text-xs font-bold text-[#A82A20]">Ditolak</span>
+                              {order.rejectionReason && (
+                                <div className="text-xs text-[#69766F] max-w-[130px] truncate" title={`Alasan: ${order.rejectionReason}`}>
+                                  {order.rejectionReason}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-[#69766F] font-mono">
+                              {order.approvedBy ? `Disetujui (${order.approvedBy.split(' ')[0]})` : order.status}
+                            </span>
+                          )}
+
+                          <div className="flex items-center justify-end gap-1.5 mt-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const p = projects.find(pr => pr.id === order.projectId);
+                                generatePurchaseOrderPDF(order, p);
+                              }}
+                              className="min-h-[44px] px-2 py-1 rounded-lg text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-300 transition text-xs inline-flex items-center gap-1"
+                              title="Cetak Purchase Order (PDF A4)"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                              <span>PDF</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setAttachmentModalPO(order)}
+                              className="min-h-[44px] px-2 py-1 rounded-lg text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition text-xs inline-flex items-center gap-1"
+                              title="Lihat / Unggah Bukti Nota & Surat Jalan"
+                            >
+                              <Paperclip className="w-3.5 h-3.5" />
+                              <span>Lampiran</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          renderCard={(order) => {
+            const statusVariant =
+              order.status === 'Selesai'
+                ? 'success'
+                : order.status === 'Disetujui' || order.status === 'Dikirim'
+                ? 'info'
+                : order.status === 'Menunggu'
+                ? 'warning'
+                : 'neutral';
+
+            return (
+              <DataCard
+                title={order.poNumber}
+                subtitle={order.projectName}
+                metadata={[
+                  { label: 'No. SPP', value: order.sppNumber },
+                  { label: 'Vendor', value: order.supplierName },
+                  { label: 'Item', value: order.itemDescription },
+                  { label: 'Qty', value: order.quantitySummary },
+                  { label: 'Total Biaya', value: formatCurrencyIDR(order.totalCost), highlight: true },
+                  { label: 'Target Kirim', value: formatDateIndo(order.targetDeliveryDate) },
+                  { label: 'Status', value: <Badge variant={statusVariant} size="sm" dot>{order.status}</Badge> },
+                ]}
+                actions={
+                  <div className="space-y-2">
+                    {order.status === 'Menunggu' && (
+                      <div className="flex gap-2">
+                        <Button
+                          variant="primary"
+                          size="xs"
+                          onClick={() => {
+                            if (!hasAuthority('purchaseOrder')) {
+                              addToast({
+                                type: 'danger',
+                                title: 'Otoritas Tidak Memadai',
+                                message: `Peran "${activeRole}" tidak memiliki hak persetujuan PO. Otoritas ini memerlukan peran Owner / Director, Finance / Accounting, atau Project Manager.`,
+                              });
+                              return;
+                            }
+                            const approverName = userProfile?.name || currentUser?.displayName || '';
+                            const isSodConflict = order.requester === approverName ||
+                              order.requester?.toLowerCase().includes(approverName?.split(' ')[0]?.toLowerCase() || '___');
+                            if (isSodConflict) {
+                              setSodOverridePO(order);
+                              setOverrideReason('');
+                              return;
+                            }
+                            approvePurchaseOrder(order.id, approverName);
+                          }}
+                          leftIcon={<Check className="w-3.5 h-3.5" />}
+                          className="flex-1"
+                        >
+                          Setujui
+                        </Button>
+                        <Button
+                          variant="danger"
+                          size="xs"
+                          onClick={() => {
+                            if (!hasAuthority('purchaseOrder')) {
+                              addToast({
+                                type: 'danger',
+                                title: 'Otoritas Tidak Memadai',
+                                message: `Peran "${activeRole}" tidak berwenang menolak PO resmi.`,
+                              });
+                              return;
+                            }
+                            setRejectingPO(order);
+                          }}
+                          leftIcon={<XCircle className="w-3.5 h-3.5" />}
+                          className="flex-1"
+                        >
+                          Tolak
+                        </Button>
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const p = projects.find(pr => pr.id === order.projectId);
+                          generatePurchaseOrderPDF(order, p);
+                        }}
+                        className="flex-1 px-3 py-2 rounded-lg text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 transition text-xs inline-flex items-center justify-center gap-1"
+                        title="Cetak Purchase Order (PDF A4)"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        <span>PDF</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAttachmentModalPO(order)}
+                        className="flex-1 px-3 py-2 rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition text-xs inline-flex items-center justify-center gap-1"
+                        title="Lihat / Unggah Bukti Nota & Surat Jalan"
+                      >
+                        <Paperclip className="w-3.5 h-3.5" />
+                        <span>Lampiran</span>
+                      </button>
+                    </div>
+                  </div>
+                }
+              />
+            );
+          }}
+        />
       </div>
+
+      {/* Modal: Lampiran PO */}
+      {attachmentModalPO && (
+        <Modal
+          isOpen={true}
+          onClose={() => setAttachmentModalPO(null)}
+          title={`Lampiran Dokumen — ${attachmentModalPO.poNumber}`}
+          description={`Unggah surat penawaran, invoice vendor, atau surat jalan untuk PO ${attachmentModalPO.itemDescription}.`}
+          maxWidth="lg"
+          footer={
+            <Button variant="secondary" size="sm" onClick={() => setAttachmentModalPO(null)} className="min-h-[44px]">
+              Tutup
+            </Button>
+          }
+        >
+          <AttachmentUploader
+            workspaceId={attachmentModalPO.workspaceId || userProfile?.workspaceId || ''}
+            recordType="purchase_order"
+            recordId={attachmentModalPO.id}
+            title={`Dokumen Lampiran ${attachmentModalPO.poNumber}`}
+          />
+        </Modal>
+      )}
 
       {/* Modal: Create SPP */}
       <Modal
@@ -481,8 +668,90 @@ export const ProcurementScreen: React.FC = () => {
                 placeholder="Contoh: Melebihi plafon subkontraktor, harga satuan di atas HPS..."
                 className="w-full p-2.5 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26] focus:outline-none focus:border-[#12352B]"
               />
-              <p className="text-[11px] text-[#69766F] mt-1">
+              <p className="text-xs text-[#69766F] mt-1">
                 Catatan ini akan tersimpan permanen di riwayat audit dan diteruskan ke pemohon pengadaan.
+              </p>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* SoD Override Modal */}
+      {sodOverridePO && (
+        <Modal
+          isOpen={true}
+          onClose={() => setSodOverridePO(null)}
+          title="Override Segregation of Duties"
+          size="sm"
+          footer={
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setSodOverridePO(null)}>
+                Batal
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={overrideReason.trim().length < 15}
+                onClick={() => {
+                  const approverName = userProfile?.name || currentUser?.displayName || '';
+                  approvePurchaseOrder(sodOverridePO.id, approverName, overrideReason.trim());
+                  setSodOverridePO(null);
+                  setOverrideReason('');
+                }}
+                leftIcon={<ShieldCheck className="w-3.5 h-3.5" />}
+              >
+                Setujui dengan Override
+              </Button>
+            </div>
+          }
+        >
+          <div className="space-y-4 text-xs">
+            <div className="flex items-start gap-2.5 p-3 rounded-lg bg-amber-50 border border-amber-200">
+              <ShieldAlert className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-semibold text-amber-800 text-xs">Konflik Segregation of Duties Terdeteksi</p>
+                <p className="text-amber-700 mt-0.5">
+                  Anda adalah pemohon PO <span className="font-mono font-bold">{sodOverridePO.poNumber}</span> sekaligus approver. 
+                  Workspace ini dalam mode <strong>owner_override</strong> — Anda boleh menyetujui dengan menyertakan alasan.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-[#FAFBFB] rounded-lg border border-[#E2E8E4] space-y-1.5">
+              <div className="flex justify-between">
+                <span className="text-[#69766F]">PO / SPP:</span>
+                <span className="font-mono font-bold text-[#202B26]">{sodOverridePO.poNumber}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#69766F]">Supplier:</span>
+                <span className="font-semibold">{sodOverridePO.supplierName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#69766F]">Nilai:</span>
+                <span className="font-mono font-bold text-[#A82A20]">
+                  Rp {sodOverridePO.totalCost.toLocaleString('id-ID')}
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-[#202B26] mb-1.5">
+                Alasan Override <span className="text-red-500">*</span>
+                <span className="font-normal text-[#69766F] ml-1">(minimal 15 karakter)</span>
+              </label>
+              <textarea
+                id="sod-override-reason"
+                rows={3}
+                value={overrideReason}
+                onChange={(e) => setOverrideReason(e.target.value)}
+                placeholder="Contoh: Situasi darurat lapangan, tidak ada personil Finance yang tersedia, keputusan strategis Owner..."
+                className="w-full p-2.5 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26] focus:outline-none focus:border-[#12352B] text-xs"
+              />
+              <p className="text-xs text-[#69766F] mt-1">
+                Alasan ini dicatat di <strong>audit log</strong> dan dikirim notifikasi ke Auditor.
+                {overrideReason.trim().length > 0 && overrideReason.trim().length < 15 && (
+                  <span className="text-red-500 ml-1">({15 - overrideReason.trim().length} karakter lagi)</span>
+                )}
               </p>
             </div>
           </div>

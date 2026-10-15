@@ -39,16 +39,16 @@ export const RbacMatrixView: React.FC = () => {
                   <tr key={roleKey} className="hover:bg-[#F5F7F6]/80 transition-colors">
                     <td className="py-3 px-4">
                       <div className="font-bold text-[#202B26]">{roleKey}</div>
-                      <div className="text-[11px] text-[#69766F]">{rDef.department}</div>
+                      <div className="text-xs text-[#69766F]">{rDef.department}</div>
                     </td>
 
                     <td className="py-3 px-3 text-center">
                       {isGlobal ? (
-                        <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-[#E5F4EB] text-[#1C6843]">
+                        <span className="inline-block px-2 py-0.5 rounded text-xs font-bold bg-[#E5F4EB] text-[#1C6843]">
                           Global
                         </span>
                       ) : (
-                        <span className="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-[#EAEFEA] text-[#202B26]">
+                        <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-[#EAEFEA] text-[#202B26]">
                           Proyek Site
                         </span>
                       )}

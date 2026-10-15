@@ -7,6 +7,8 @@ export function formatCurrencyIDR(amount: number): string {
   return 'Rp ' + Math.round(amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
+export const formatRupiah = formatCurrencyIDR;
+
 /**
  * Compact Indonesian Rupiah format for KPI cards and chart axes.
  * e.g. 84500000000 -> "Rp 84,5 M"
@@ -81,3 +83,47 @@ export function formatNumber(val: number): string {
   if (isNaN(val)) return '0';
   return Math.round(val).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
+
+/**
+ * Formats stock quantity values with up to 3 decimal places (Indonesian locale).
+ * Trailing zeros are trimmed: 12.500 → "12.500", 1.50 → "1,5", 1.000 → "1"
+ * e.g. 1.5  → "1,5"   (m³ beton)
+ * e.g. 100  → "100"   (sak semen)
+ * e.g. 0.25 → "0,25"  (m' baja)
+ */
+export function formatQuantity(val: number, unit?: string): string {
+  if (isNaN(val)) return unit ? `0 ${unit}` : '0';
+  const formatted = new Intl.NumberFormat('id-ID', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 3,
+  }).format(val);
+  return unit ? `${formatted} ${unit}` : formatted;
+}
+
+/**
+ * Konversi nominal angka ke ejaan terbilang Rupiah resmi bahasa Indonesia.
+ * e.g. 1250000 -> "Satu Juta Dua Ratus Lima Puluh Ribu Rupiah"
+ */
+export function terbilangRupiah(amount: number): string {
+  if (isNaN(amount) || amount === 0) return 'Nol Rupiah';
+  const satuan = ['', 'Satu', 'Dua', 'Tiga', 'Empat', 'Lima', 'Enam', 'Tujuh', 'Delapan', 'Sembilan', 'Sepuluh', 'Sebelas'];
+  
+  function bilang(n: number): string {
+    const num = Math.floor(Math.abs(n));
+    if (num < 12) return satuan[num];
+    if (num < 20) return bilang(num - 10) + ' Belas';
+    if (num < 100) return bilang(Math.floor(num / 10)) + ' Puluh' + (num % 10 !== 0 ? ' ' + bilang(num % 10) : '');
+    if (num < 200) return 'Seratus' + (num - 100 !== 0 ? ' ' + bilang(num - 100) : '');
+    if (num < 1000) return bilang(Math.floor(num / 100)) + ' Ratus' + (num % 100 !== 0 ? ' ' + bilang(num % 100) : '');
+    if (num < 2000) return 'Seribu' + (num - 1000 !== 0 ? ' ' + bilang(num - 1000) : '');
+    if (num < 1000000) return bilang(Math.floor(num / 1000)) + ' Ribu' + (num % 1000 !== 0 ? ' ' + bilang(num % 1000) : '');
+    if (num < 1000000000) return bilang(Math.floor(num / 1000000)) + ' Juta' + (num % 1000000 !== 0 ? ' ' + bilang(num % 1000000) : '');
+    if (num < 1000000000000) return bilang(Math.floor(num / 1000000000)) + ' Miliar' + (num % 1000000000 !== 0 ? ' ' + bilang(num % 1000000000) : '');
+    return bilang(Math.floor(num / 1000000000000)) + ' Triliun' + (num % 1000000000000 !== 0 ? ' ' + bilang(num % 1000000000000) : '');
+  }
+
+  const prefix = amount < 0 ? 'Minus ' : '';
+  const result = (prefix + bilang(amount) + ' Rupiah').replace(/\s+/g, ' ').trim();
+  return result;
+}
+

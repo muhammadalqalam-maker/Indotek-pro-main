@@ -224,7 +224,7 @@ export const supabaseWorkflowService = {
       p_workspace_id: actor.workspaceId,
       p_material_id: payload.materialId,
       p_type: payload.type,
-      p_quantity: Math.round(payload.quantity),
+      p_quantity: payload.quantity,
       p_reference_no: payload.referenceNo,
       p_project_id: payload.projectId || null,
       p_handler: payload.handler || actor.name,

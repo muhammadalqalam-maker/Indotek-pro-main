@@ -1,5 +1,7 @@
+// @ts-nocheck
 /**
- * Indotek Pro — Dedicated Emulator / Staging Database Seeding Script
+ * LEGACY: Dedicated Emulator / Staging Database Seeding Script
+ * Project migrated to Supabase. Script retained for reference only.
  * 
  * Pre-populates Cloud Firestore collections with validated baseline data
  * without running any seed routines inside client production code.

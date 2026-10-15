@@ -1,8 +1,10 @@
-import React from 'react';
-import { Plus } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, Paperclip } from 'lucide-react';
 import { Button } from '../../common/Button';
 import { Badge } from '../../common/Badge';
 import { EmptyState } from '../../common/EmptyState';
+import { Modal } from '../../common/Modal';
+import { AttachmentUploader } from '../../common/AttachmentUploader';
 import { PettyCashEntry } from '../../../types';
 import { formatCurrencyIDR, formatDateIndo } from '../../../utils/formatters';
 
@@ -29,6 +31,8 @@ export const PettyCashTab: React.FC<PettyCashTabProps> = ({
   onRequestRejectPetty,
   onDisbursePettyCash,
 }) => {
+  const [selectedPettyForAttachment, setSelectedPettyForAttachment] = useState<PettyCashEntry | null>(null);
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-white rounded-xl border border-[#E2E8E4] shadow-2xs">
@@ -86,7 +90,7 @@ export const PettyCashTab: React.FC<PettyCashTabProps> = ({
 
                       <td className="py-3.5 px-4">
                         <div className="font-semibold text-[#202B26]">{item.purpose}</div>
-                        <div className="text-[11px] text-[#69766F] font-mono mt-0.5">
+                        <div className="text-xs text-[#69766F] font-mono mt-0.5">
                           Lampiran: {item.receiptProof}
                         </div>
                       </td>
@@ -118,7 +122,7 @@ export const PettyCashTab: React.FC<PettyCashTabProps> = ({
 
                       <td className="py-3.5 px-4 text-[#69766F]">
                         <div>{item.requester}</div>
-                        <div className="text-[10px] font-mono text-[#4F5D56]">
+                        <div className="text-xs font-mono text-[#4F5D56]">
                           {formatDateIndo(item.submittedAt)}
                         </div>
                       </td>
@@ -128,13 +132,13 @@ export const PettyCashTab: React.FC<PettyCashTabProps> = ({
                           <div className="flex items-center justify-center gap-1.5">
                             <button
                               onClick={() => onApprovePettyCash(item.id)}
-                              className="px-2.5 py-1 text-[11px] font-semibold text-white bg-[#12352B] hover:bg-[#1C4D3F] rounded transition-colors cursor-pointer"
+                              className="px-2.5 py-1 text-xs font-semibold text-white bg-[#12352B] hover:bg-[#1C4D3F] rounded transition-colors cursor-pointer"
                             >
                               Setujui
                             </button>
                             <button
                               onClick={() => onRequestRejectPetty(item)}
-                              className="px-2.5 py-1 text-[11px] font-semibold text-[#A82A20] bg-white border border-[#A82A20]/30 hover:bg-[#FDEDEC] rounded transition-colors cursor-pointer"
+                              className="px-2.5 py-1 text-xs font-semibold text-[#A82A20] bg-white border border-[#A82A20]/30 hover:bg-[#FDEDEC] rounded transition-colors cursor-pointer"
                             >
                               Tolak
                             </button>
@@ -142,12 +146,12 @@ export const PettyCashTab: React.FC<PettyCashTabProps> = ({
                         ) : isApproved && canReview ? (
                           <button
                             onClick={() => onDisbursePettyCash(item.id)}
-                            className="px-2.5 py-1 text-[11px] font-semibold text-white bg-[#1C6843] hover:bg-[#144D32] rounded transition-colors cursor-pointer"
+                            className="px-2.5 py-1 text-xs font-semibold text-white bg-[#1C6843] hover:bg-[#144D32] rounded transition-colors cursor-pointer"
                           >
                             Cairkan Dana
                           </button>
                         ) : (
-                          <span className="text-[11px] text-[#4F5D56] font-mono">
+                          <span className="text-xs text-[#4F5D56] font-mono">
                             {item.disbursedBy
                               ? `Dicairkan: ${item.disbursedBy}`
                               : item.reviewedBy
@@ -155,6 +159,18 @@ export const PettyCashTab: React.FC<PettyCashTabProps> = ({
                               : '—'}
                           </span>
                         )}
+
+                        <div className="flex items-center justify-center gap-1.5 mt-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedPettyForAttachment(item)}
+                            className="min-h-[44px] px-2.5 py-1 rounded-lg text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition text-xs inline-flex items-center gap-1 cursor-pointer"
+                            title="Lihat / Unggah Bukti Nota & Kuitansi Kas Kecil"
+                          >
+                            <Paperclip className="w-3.5 h-3.5" />
+                            <span>Nota & Bukti</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -164,6 +180,29 @@ export const PettyCashTab: React.FC<PettyCashTabProps> = ({
           </div>
         )}
       </div>
+
+      {/* Modal Lampiran Nota Kas Kecil */}
+      {selectedPettyForAttachment && (
+        <Modal
+          isOpen={true}
+          onClose={() => setSelectedPettyForAttachment(null)}
+          title={`Bukti Nota & Kuitansi — ${selectedPettyForAttachment.pettyCashNo}`}
+          description={`Unggah foto nota fisik, kuitansi toko material, atau bon pembayaran untuk keperluan: ${selectedPettyForAttachment.purpose}.`}
+          maxWidth="lg"
+          footer={
+            <Button variant="secondary" size="sm" onClick={() => setSelectedPettyForAttachment(null)} className="min-h-[44px]">
+              Tutup
+            </Button>
+          }
+        >
+          <AttachmentUploader
+            workspaceId={selectedPettyForAttachment.workspaceId || ''}
+            recordType="petty_cash"
+            recordId={selectedPettyForAttachment.id}
+            title={`Nota Kas Kecil ${selectedPettyForAttachment.pettyCashNo}`}
+          />
+        </Modal>
+      )}
     </div>
   );
 };

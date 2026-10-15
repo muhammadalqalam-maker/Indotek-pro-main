@@ -56,10 +56,10 @@ Buka Dashboard Vercel: **Project Settings** > **Environment Variables**, lalu ta
 | Variable Name | Keterangan | Contoh Nilai |
 | :--- | :--- | :--- |
 | `VITE_SUPABASE_URL` | URL Supabase project (Client) | `https://xxxx.supabase.co` |
-| `VITE_SUPABASE_ANON_KEY` | Public Anon Key Supabase (Client) | `eyJhbGci...` |
+| `VITE_SUPABASE_ANON_KEY` | Public Anon Key Supabase (Client) | `<your_anon_key>` |
 | `SUPABASE_URL` | URL Supabase project (Serverless API) | `https://xxxx.supabase.co` |
-| `SUPABASE_ANON_KEY` | Public Anon Key Supabase (Serverless API) | `eyJhbGci...` |
-| `SUPABASE_SERVICE_ROLE_KEY` | Service Role Key (Serverless API - Rahasia) | `eyJhbGci...` |
+| `SUPABASE_ANON_KEY` | Public Anon Key Supabase (Serverless API) | `<your_anon_key>` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service Role Key (Serverless API - Rahasia) | `<your_service_role_key>` |
 | `NODE_ENV` | Environment mode | `production` |
 
 > **PENTING**: Jangan pernah mengekspos `SUPABASE_SERVICE_ROLE_KEY` ke variabel berawalan `VITE_` karena key ini memiliki hak akses admin penuh di database.

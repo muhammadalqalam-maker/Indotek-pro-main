@@ -22,3 +22,12 @@ These defaults are optimized for AI coding agents (and humans) working on apps t
   needed. Always curl https://ai-gateway.vercel.sh/v1/models first; never trust model IDs from memory
 - For durable agent loops or untrusted code: use Workflow (pause/resume/state) + Sandbox; use Vercel MCP for secure infra access
 <!-- VERCEL BEST PRACTICES END -->
+
+Aturan proyek Indotek Pro:
+- Backend tunggal: Supabase (Postgres + RLS + RPC). Jangan menambah kode/dependensi Firebase.
+- Klien tidak boleh menulis langsung kolom uang, status workflow, atau nilai turunan. Semua lewat RPC security definer.
+- Setiap error supabase-js wajib dilempar dan ditampilkan (toast). Dilarang console.warn lalu lanjut. Dilarang optimistic update tanpa rollback.
+- Jangan pernah membaca, mencetak, atau menulis isi .env / kunci API. Pakai placeholder.
+- Perubahan skema = file migrasi baru bertanggal di supabase/migrations (jangan edit migrasi lama) + test dengan assertion.
+- Uang = bigint Rupiah. Kuantitas = numeric. Waktu disimpan UTC, ditampilkan WITA. UI berbahasa Indonesia.
+- Sebelum menyatakan selesai: npm run lint, npm run build, dan test DB harus lulus. Lampirkan output.

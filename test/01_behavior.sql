@@ -153,3 +153,395 @@ select public.sign_off_milestone(:'ws', :'msid', 'BAST/2026/001', 'Pekerjaan pon
 reset role; select title, status, progress, bast_ref from public.milestones where id = :'msid';
 select completed_milestones from public.projects where id = :'pid';
 
+\echo '--- T20 Payment Terms: Finance Manager buat Uang Muka (40%), Termin 1 (35%), Retensi (25%) semua Draft'
+reset role;
+insert into public.payment_terms (workspace_id, project_id, jenis, urutan, label, persen, nominal, status)
+ values 
+  (:'ws', :'pid', 'Uang Muka', 1, 'Uang Muka 40%', 40, 400000000, 'Draft'),
+  (:'ws', :'pid', 'Termin', 2, 'Termin 1 35%', 35, 350000000, 'Draft'),
+  (:'ws', :'pid', 'Retensi', 3, 'Retensi 25%', 25, 250000000, 'Draft')
+ returning id as ptid;
+
+\echo '--- T20b Verify nominal calculated from persen (40% of 1000jt = 400jt)'
+reset role; 
+select jenis, urutan, label, persen, nominal, status 
+from public.payment_terms 
+where workspace_id = :'ws' and project_id = :'pid'
+order by urutan;
+
+\echo '--- T20c Finance Manager updates Uang Muka Draft -> Tagih, tanggal_tagih recorded'
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000a3');
+select public.update_payment_term_status(
+  :'ws', :'pid', 
+  (select id from public.payment_terms where jenis='Uang Muka' limit 1),
+  'Tagih', current_date, 'Pengajuan tagihan UM'
+) ->> 'message' as t20c_tagih_um;
+
+\echo '--- T20d Verify Uang Muka status=Tagih with tanggal_tagih set'
+reset role;
+select jenis, status, tanggal_tagih, tanggal_lunas 
+from public.payment_terms 
+where jenis='Uang Muka' and workspace_id=:'ws' and project_id=:'pid';
+
+\echo '--- T20e Procurement (non-Finance) attempts Tagih -> rejected (SoD: only Finance)'
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000a2');
+select public.update_payment_term_status(
+  :'ws', :'pid',
+  (select id from public.payment_terms where jenis='Termin' limit 1),
+  'Tagih', current_date, 'Procurement tries'
+);
+
+\echo '--- T20f Finance updates Termin 1 Draft->Tagih->Lunas (2 sequential transitions)'
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a3');
+select public.update_payment_term_status(
+  :'ws', :'pid',
+  (select id from public.payment_terms where jenis='Termin' limit 1),
+  'Tagih', '2026-10-15'::date, 'Termin 1 tagih'
+) ->> 'message' as t20f_termin_tagih;
+
+select public.update_payment_term_status(
+  :'ws', :'pid',
+  (select id from public.payment_terms where jenis='Termin' limit 1),
+  'Lunas', '2026-10-20'::date, 'Termin 1 lunas'
+) ->> 'message' as t20f_termin_lunas;
+
+\echo '--- T20g Verify Termin 1 status=Lunas with both dates recorded'
+reset role;
+select jenis, status, tanggal_tagih, tanggal_lunas 
+from public.payment_terms 
+where jenis='Termin' and workspace_id=:'ws' and project_id=:'pid';
+
+\echo '--- T20h Termin already Lunas cannot transition again'
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000a3');
+select public.update_payment_term_status(
+  :'ws', :'pid',
+  (select id from public.payment_terms where jenis='Termin' limit 1),
+  'Tagih', current_date
+);
+
+\echo '--- T21 Audit logs record payment_term CREATE and UPDATE_STATUS actions'
+reset role;
+select action, resource_type, diff_json ->> 'jenis' as jenis_audit
+from public.audit_logs
+where resource_type='payment_terms' and action='CREATE'
+order by created_at;
+
+\echo '--- T21b Audit logs for status transitions'
+select action, resource_type, diff_json ->> 'from_status' as from_status, diff_json ->> 'to_status' as to_status
+from public.audit_logs
+where resource_type='payment_terms' and action='UPDATE_STATUS'
+order by created_at;
+
+\echo '--- T22 get_payment_schedule RPC returns summary (total persen, total nominal, count by status)'
+reset role;
+select public.get_payment_schedule(:'ws', :'pid') ->> 'total_persen' as summary_persen,
+       public.get_payment_schedule(:'ws', :'pid') ->> 'total_nominal' as summary_nominal;
+
+\echo '--- T22b get_payment_schedule returns terms list with urutan and status'
+reset role;
+select jsonb_array_length(public.get_payment_schedule(:'ws', :'pid') -> 'terms') as jumlah_terms;
+
+\echo '--- T23 Tenant isolation: user from different workspace cannot update payment terms'
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000b1');
+select public.update_payment_term_status(
+  :'ws2', :'pid',
+  (select id from public.payment_terms where jenis='Retensi' limit 1),
+  'Tagih'
+);
+
+\echo '--- T24 Delete payment_term: only Draft allowed, Tagih/Lunas rejected'
+reset role;
+insert into public.payment_terms (workspace_id, project_id, jenis, urutan, label, persen, nominal, status)
+ values (:'ws', :'pid', 'Bonus', 4, 'Bonus', 0, 0, 'Draft')
+ returning id as bonus_id \gset
+
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000a3');
+delete from public.payment_terms where id = :'bonus_id' and status='Draft';
+
+\echo '--- T24b Try delete Tagih/Lunas (should fail if policy enforced)'
+select count(*) as draft_terms_remaining
+from public.payment_terms
+where workspace_id=:'ws' and project_id=:'pid' and status='Draft';
+select count(*) as total_terms_final
+from public.payment_terms
+where workspace_id=:'ws' and project_id=:'pid';
+
+\echo '--- T25 Resource Prices: Finance creates Bahan with wilayah filtering'
+reset role;
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000a3');
+select public.upsert_resource_price(
+  :'ws', 'Bahan', 'SM-001', 'Semen Portland PCC 50kg', 'sak', 75000, 'Jakarta', current_date, null, 'Tiga Roda'
+) ->> 'message' as t25_create_bahan;
+
+\echo '--- T25b Same kode different wilayah -> different record'
+select public.upsert_resource_price(
+  :'ws', 'Bahan', 'SM-001', 'Semen Portland PCC 50kg', 'sak', 72000, 'Bandung', current_date, null, 'Tiga Roda'
+) ->> 'message' as t25_create_bandung;
+
+reset role;
+select count(*) as total_resource_prices_2 from public.resource_prices where workspace_id=:'ws' and kode='SM-001';
+select wilayah, harga from public.resource_prices where workspace_id=:'ws' and kode='SM-001' order by wilayah;
+
+\echo '--- T26 Resource Prices: Update existing by ID -> harga changes, audit logged'
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000a3');
+select public.upsert_resource_price(
+  :'ws', 'Bahan', 'SM-001', 'Semen Portland PCC 50kg', 'sak', 76000, 'Jakarta', current_date, null, 'Tiga Roda',
+  (select id from public.resource_prices where workspace_id=:'ws' and kode='SM-001' and wilayah='Jakarta' limit 1)
+) ->> 'message' as t26_update_harga;
+
+reset role;
+select harga from public.resource_prices where workspace_id=:'ws' and kode='SM-001' and wilayah='Jakarta';
+select count(*) as audit_update_resource from public.audit_logs where action='UPDATE_RESOURCE_PRICE' and resource_type='resource_price';
+
+\echo '--- T27 Resource Prices: Role permission (warehouse cannot create) -> rejected'
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000a4');
+select public.upsert_resource_price(
+  :'ws', 'Upah', 'UP-001', 'Tukang Batu Ahli', 'OH', 150000, '', current_date
+);
+
+\echo '--- T28 Resource Prices: Batch import with validation (skip invalid rows)'
+reset role;
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000a3');
+select public.import_resource_prices_batch(
+  :'ws',
+  '[
+    {"jenis":"Bahan","kode":"PS-001","uraian":"Pasir Beton","satuan":"m3","harga":350000,"wilayah":"Jakarta"},
+    {"jenis":"Alat","kode":"CT-001","uraian":"Concrete Mixer","satuan":"hari","harga":250000,"wilayah":""},
+    {"jenis":"Invalid","kode":"","uraian":"Missing Kode","satuan":"unit","harga":1000},
+    {"jenis":"Upah","kode":"UP-002","uraian":"Mandor","satuan":"OH","harga":-500}
+  ]'::jsonb
+) -> 'inserted' as t28_inserted,
+  public.import_resource_prices_batch(
+  :'ws',
+  '[
+    {"jenis":"Bahan","kode":"PS-001","uraian":"Pasir Beton","satuan":"m3","harga":350000,"wilayah":"Jakarta"},
+    {"jenis":"Alat","kode":"CT-001","uraian":"Concrete Mixer","satuan":"hari","harga":250000,"wilayah":""},
+    {"jenis":"Invalid","kode":"","uraian":"Missing Kode","satuan":"unit","harga":1000},
+    {"jenis":"Upah","kode":"UP-002","uraian":"Mandor","satuan":"OH","harga":-500}
+  ]'::jsonb
+) -> 'skipped' as t28_skipped;
+
+reset role;
+select count(*) as valid_imported from public.resource_prices where workspace_id=:'ws' and kode in ('PS-001','CT-001');
+
+\echo '--- T29 Resource Prices: Delete requires PM/Finance/Owner role'
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000a3');
+select public.delete_resource_price(
+  :'ws',
+  (select id from public.resource_prices where workspace_id=:'ws' and kode='CT-001' limit 1)
+) ->> 'message' as t29_delete;
+
+reset role;
+select count(*) as ct001_after_delete from public.resource_prices where workspace_id=:'ws' and kode='CT-001';
+
+\echo '--- T30 Resource Prices: Tenant isolation (outsider cannot see or modify)'
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000b1');
+select count(*) as outsider_see_resources from public.resource_prices where workspace_id=:'ws';
+select public.upsert_resource_price(:'ws', 'Bahan', 'HACK', 'Intruder', 'kg', 1);
+
+\echo '--- T31 Resource Prices: Direct write blocked (INSERT/UPDATE/DELETE via table)'
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+insert into public.resource_prices (workspace_id, jenis, kode, uraian, satuan, harga) values (:'ws', 'Bahan', 'DIRECT', 'Bypass', 'unit', 999);
+update public.resource_prices set harga = 1 where kode='SM-001';
+delete from public.resource_prices where kode='PS-001';
+
+\echo '--- T32 AHSP Templates: Project Manager creates template with overhead'
+reset role;
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-0000000000a7', 'pm@indotek.test') on conflict do nothing;
+insert into public.workspace_members (workspace_id, user_id, role) values (:'ws', '00000000-0000-0000-0000-0000000000a7', 'project_manager') on conflict do nothing;
+
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000a7');
+select public.upsert_ahsp_template(
+  :'ws', 'AHSP-001', 'Pekerjaan 1m3 Beton K-300', 'm3', 'Struktur', 15.0
+) ->> 'message' as t32_create_template;
+
+reset role;
+select kode, nama, satuan, overhead_profit_pct from public.ahsp_templates where workspace_id=:'ws' and kode='AHSP-001';
+
+\echo '--- T33 AHSP Components: Add components to template (Bahan + Upah + Alat)'
+reset role;
+insert into public.resource_prices (workspace_id, jenis, kode, uraian, satuan, harga, wilayah)
+values
+  (:'ws', 'Bahan', 'SM-002', 'Semen PCC', 'sak', 75000, 'Jakarta'),
+  (:'ws', 'Upah', 'TK-001', 'Tukang Batu', 'OH', 150000, ''),
+  (:'ws', 'Alat', 'MX-001', 'Molen', 'hari', 200000, '')
+returning id;
+
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000a7');
+select public.upsert_ahsp_component(
+  :'ws',
+  (select id from public.ahsp_templates where workspace_id=:'ws' and kode='AHSP-001' limit 1),
+  (select id from public.resource_prices where workspace_id=:'ws' and kode='SM-002' limit 1),
+  7.5, 'Kebutuhan semen'
+) ->> 'message' as t33_add_bahan;
+
+select public.upsert_ahsp_component(
+  :'ws',
+  (select id from public.ahsp_templates where workspace_id=:'ws' and kode='AHSP-001' limit 1),
+  (select id from public.resource_prices where workspace_id=:'ws' and kode='TK-001' limit 1),
+  1.2, 'Tenaga tukang'
+) ->> 'message' as t33_add_upah;
+
+reset role;
+select count(*) as total_components from public.ahsp_components
+where ahsp_template_id=(select id from public.ahsp_templates where workspace_id=:'ws' and kode='AHSP-001' limit 1);
+
+\echo '--- T34 AHSP: Calculate unit price with wilayah matching (Jakarta gets 75k, default gets 72k)'
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000a7');
+select public.calculate_ahsp_unit_price(
+  (select id from public.ahsp_templates where workspace_id=:'ws' and kode='AHSP-001' limit 1),
+  'Jakarta', :'ws'
+) -> 'unit_price_without_overhead' as t34_price_jakarta;
+
+select public.calculate_ahsp_unit_price(
+  (select id from public.ahsp_templates where workspace_id=:'ws' and kode='AHSP-001' limit 1),
+  'Bandung', :'ws'
+) -> 'unit_price_without_overhead' as t34_price_bandung;
+
+\echo '--- T35 AHSP: Delete template cascades to components'
+reset role;
+select count(*) as components_before from public.ahsp_components
+where ahsp_template_id=(select id from public.ahsp_templates where workspace_id=:'ws' and kode='AHSP-001' limit 1);
+
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000a7');
+select public.delete_ahsp_template(
+  :'ws',
+  (select id from public.ahsp_templates where workspace_id=:'ws' and kode='AHSP-001' limit 1)
+) ->> 'message' as t35_delete_template;
+
+reset role;
+select count(*) as templates_after from public.ahsp_templates where workspace_id=:'ws' and kode='AHSP-001';
+select count(*) as components_after from public.ahsp_components
+where ahsp_template_id=(select id from public.ahsp_templates where workspace_id=:'ws' and kode='AHSP-001' limit 1);
+
+\echo '--- T36 AHSP: Seed PUPR templates idempotent (20 items, replay same count)'
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select public.seed_pupr_ahsp_templates(:'ws') -> 'total' as t36_seed_first;
+select public.seed_pupr_ahsp_templates(:'ws') -> 'total' as t36_seed_replay;
+
+reset role;
+select count(*) as pupr_templates_count from public.ahsp_templates where workspace_id=:'ws' and kode like 'PUPR-%';
+
+\echo '--- T37 AHSP: Tenant isolation (outsider cannot create template)'
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000b1');
+select public.upsert_ahsp_template(:'ws', 'HACK-AHSP', 'Intruder Template', 'm2', 'Evil', 10);
+
+\echo '--- T38 AHSP: Direct write blocked'
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+insert into public.ahsp_templates (workspace_id, kode, nama, satuan) values (:'ws', 'DIRECT-AHSP', 'Bypass', 'm2');
+update public.ahsp_templates set overhead_profit_pct = 999 where kode like 'PUPR-%' limit 1;
+
+\echo '--- T39 BOQ Items: Owner creates root item + child hierarchy'
+reset role;
+update public.projects set ppn_percent = 11 where id = :'pid';
+
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select public.upsert_boq_item(
+  :'ws', :'pid', null, 'BOQ-DIV-1', 'Pekerjaan Persiapan', 'Pekerjaan Struktur', '', 0, 0, null, null
+) ->> 'id' as parent_boq_id \gset
+
+select public.upsert_boq_item(
+  :'ws', :'pid', :'parent_boq_id', 'BOQ-001', 'Galian Tanah 100m3', 'Pekerjaan Struktur', 'm3', 100, 50000, null, 'boq-gal'
+) ->> 'message' as t39_create_child;
+
+reset role;
+select kode_item, uraian, volume, harga_satuan, jumlah_harga from public.boq_items
+where workspace_id=:'ws' and project_id=:'pid' and kode_item='BOQ-001';
+
+\echo '--- T40 BOQ: Auto-calculate bobot_persen from jumlah_harga'
+reset role;
+select public.upsert_boq_item(
+  :'ws', :'pid', :'parent_boq_id', 'BOQ-002', 'Pasang Bekisting', 'm2', 50, 150000, null, 'boq-bek'
+) ->> 'message';
+
+select kode_item, jumlah_harga, bobot_persen from public.boq_items
+where workspace_id=:'ws' and project_id=:'pid' and kode_item in ('BOQ-001', 'BOQ-002')
+order by kode_item;
+
+\echo '--- T40b Verify bobot sum matches budget_line proportion'
+reset role;
+select sum(bobot_persen) as total_bobot from public.boq_items
+where workspace_id=:'ws' and project_id=:'pid' and parent_id=:'parent_boq_id';
+
+\echo '--- T41 BOQ: Update progress triggers rollup to budget_lines'
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select public.update_boq_item_progress(
+  :'ws', :'pid',
+  (select id from public.boq_items where workspace_id=:'ws' and kode_item='BOQ-001' limit 1),
+  60.0
+) ->> 'message' as t41_update_progress;
+
+reset role;
+select progres_persen from public.boq_items where workspace_id=:'ws' and kode_item='BOQ-001';
+select progres_fisik from public.budget_lines where workspace_id=:'ws' and project_id=:'pid' and code='BL-01';
+
+\echo '--- T42 BOQ: get_project_boq_summary returns totals with PPN 11%'
+reset role;
+select public.get_project_boq_summary(:'ws', :'pid') -> 'total_before_ppn' as t42_total_before_ppn;
+select public.get_project_boq_summary(:'ws', :'pid') -> 'ppn_amount' as t42_ppn_amount;
+select public.get_project_boq_summary(:'ws', :'pid') -> 'grand_total' as t42_grand_total;
+
+\echo '--- T43 BOQ: terbilang_rupiah function converts numbers to Indonesian words'
+reset role;
+select public.terbilang_rupiah(5000000) as t43_lima_juta;
+select public.terbilang_rupiah(123456789) as t43_long_number;
+
+\echo '--- T44 BOQ: Delete item cascades children, recalculates bobot'
+reset role;
+select count(*) as items_before from public.boq_items where workspace_id=:'ws' and project_id=:'pid';
+
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select public.delete_boq_item(
+  :'ws', :'pid',
+  (select id from public.boq_items where workspace_id=:'ws' and kode_item='BOQ-002' limit 1)
+) ->> 'message' as t44_delete_item;
+
+reset role;
+select count(*) as items_after from public.boq_items where workspace_id=:'ws' and project_id=:'pid';
+select bobot_persen from public.boq_items where workspace_id=:'ws' and kode_item='BOQ-001';
+
+\echo '--- T45 Storage: Attachment access by record_type (field_report assigned user can access)'
+reset role;
+insert into public.attachments (workspace_id, record_type, record_id, file_name, storage_path, file_size, uploader_id)
+values (
+  :'ws', 'field_report',
+  (select id from public.field_reports where workspace_id=:'ws' limit 1),
+  'daily_report.pdf', 'attachments/test.pdf', 102400,
+  '00000000-0000-0000-0000-0000000000a5'
+) returning id as att_id \gset
+
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000a5');
+select count(*) as site_manager_see_own_attachment from public.attachments where id=:'att_id';
+
+\echo '--- T45b Non-assigned user cannot see field_report attachment'
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a2');
+select count(*) as procurement_see_field_report_att from public.attachments where id=:'att_id';
+
+\echo '--- T46 Storage: DELETE restricted to uploader or Owner'
+reset role;
+insert into public.attachments (workspace_id, record_type, record_id, file_name, storage_path, file_size, uploader_id)
+values (
+  :'ws', 'purchase_order',
+  (select id from public.purchase_orders where workspace_id=:'ws' limit 1),
+  'invoice.pdf', 'attachments/inv.pdf', 204800,
+  '00000000-0000-0000-0000-0000000000a2'
+) returning id as po_att_id \gset
+
+\echo '--- T46b Non-uploader (warehouse) cannot delete procurement attachment'
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000a4');
+delete from public.attachments where id=:'po_att_id';
+
+\echo '--- T46c Owner can delete any attachment'
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+delete from public.attachments where id=:'po_att_id';
+
+reset role;
+select count(*) as po_attachment_after_owner_delete from public.attachments where id=:'po_att_id';
+
+\echo '--- T47 Storage: Tenant isolation (outsider cannot see or upload attachments)'
+set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000b1');
+select count(*) as outsider_see_attachments from public.attachments where workspace_id=:'ws';
+insert into public.attachments (workspace_id, record_type, record_id, file_name, storage_path, file_size, uploader_id)
+values (:'ws', 'project', :'pid', 'hack.pdf', 'evil.pdf', 1024, '00000000-0000-0000-0000-0000000000b1');
+
+\echo '=== All tests T1-T47 completed ==='

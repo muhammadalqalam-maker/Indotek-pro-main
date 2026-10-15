@@ -189,8 +189,8 @@ export const MaterialItemSchema = BaseEntitySchema.extend({
   specification: z.string().default(''),
   category: MaterialCategorySchema,
   unit: z.string().min(1),
-  currentStock: z.number().int().nonnegative(),
-  minStock: z.number().int().nonnegative(),
+  currentStock: z.number().nonnegative(),
+  minStock: z.number().nonnegative(),
   allocatedProject: z.string().default(''),
   allocatedProjectId: z.string().optional(),
   warehouseLocation: z.string().default(''),
@@ -207,7 +207,7 @@ export const StockMutationSchema = BaseEntitySchema.extend({
   materialName: z.string().min(1),
   date: IsoUtcStringSchema,
   type: z.enum(['Masuk', 'Keluar']),
-  quantity: z.number().int().positive(),
+  quantity: z.number().positive(), // numeric(18,3) — desimal diizinkan
   unit: z.string().min(1),
   referenceNo: z.string().min(1),
   projectId: z.string().optional(),
@@ -226,9 +226,9 @@ export const StockAdjustmentSchema = BaseEntitySchema.extend({
   materialCode: z.string().default(''),
   projectId: z.string().min(1),
   projectName: z.string().default(''),
-  previousStock: z.number().int().nonnegative(),
-  physicalStock: z.number().int().nonnegative(),
-  varianceQuantity: z.number().int(), // Can be negative or positive
+  previousStock: z.number().nonnegative(), // numeric(18,3)
+  physicalStock: z.number().nonnegative(), // numeric(18,3)
+  varianceQuantity: z.number(), // numeric(18,3) — bisa negatif atau positif
   unit: z.string().min(1),
   reason: z.enum([
     'Kerusakan Fisik di Site',
@@ -431,7 +431,7 @@ export const WorkspaceMemberSchema = BaseEntitySchema.extend({
   department: z.string().default(''),
   phone: z.string().default(''),
   assignedProjectIds: z.array(z.string()).default([]),
-  status: z.enum(['Aktif', 'Di Lapangan', 'Cuti', 'Nonaktif']),
+  status: z.enum(['Aktif', 'Nonaktif', 'Menunggu Undangan']),
   lastActive: IsoUtcStringSchema,
 });
 

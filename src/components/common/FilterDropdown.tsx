@@ -23,12 +23,12 @@ export const FilterDropdown: React.FC<FilterDropdownProps> = ({
 }) => {
   return (
     <div className={`relative inline-flex items-center ${className}`}>
-      {label && <span className="text-xs text-[#69766F] mr-2 shrink-0 select-none">{label}:</span>}
+      {label && <span className="text-xs text-text-muted mr-2 shrink-0 select-none">{label}:</span>}
       <div className="relative w-full">
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="appearance-none w-full h-9 bg-white border border-[#E2E8E4] rounded-lg pl-3 pr-8 text-xs font-medium text-[#202B26] hover:border-[#CBD5CF] focus:outline-none focus:border-[#12352B] focus:ring-1 focus:ring-[#12352B] cursor-pointer transition-colors"
+          className="appearance-none w-full h-9 bg-white border border-border-subtle rounded-lg pl-3 pr-8 text-xs font-medium text-text-primary hover:border-border-light focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer transition-colors"
         >
           {options.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -36,7 +36,7 @@ export const FilterDropdown: React.FC<FilterDropdownProps> = ({
             </option>
           ))}
         </select>
-        <ChevronDown className="w-3.5 h-3.5 text-[#69766F] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <ChevronDown className="w-3.5 h-3.5 text-text-muted absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
       </div>
     </div>
   );

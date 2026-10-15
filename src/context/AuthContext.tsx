@@ -1,18 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import {
-  User as FirebaseUser,
-  onAuthStateChanged,
-  signInWithPopup,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  sendEmailVerification,
-  sendPasswordResetEmail,
-  signOut,
-  GoogleAuthProvider
-} from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { UserProfile } from '../types';
 import { AppRole, AppModule, AppAction, RolePermissions, DB_ROLE_TO_APP_ROLE } from '../types/rbac';
 import {
@@ -32,17 +19,19 @@ export interface AppAuthUser {
 }
 
 interface AuthContextType {
-  currentUser: AppAuthUser | FirebaseUser | null;
+  currentUser: AppAuthUser | null;
   userProfile: UserProfile | null;
   isLoading: boolean;
   signInWithGoogle: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUpWithEmail: (email: string, password: string, name: string) => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<void>;
   signOutUser: () => Promise<void>;
   reloadUserVerification: () => Promise<boolean>;
   isLoginModalOpen: boolean;
   setIsLoginModalOpen: (open: boolean) => void;
+  isPasswordRecovery: boolean;
+  setIsPasswordRecovery: (state: boolean) => void;
   isAdmin: boolean;
   isEmailVerified: boolean;
   // RBAC & Governance
@@ -58,413 +47,187 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<AppAuthUser | FirebaseUser | null>(null);
+  const [currentUser, setCurrentUser] = useState<AppAuthUser | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState<boolean>(false);
   const [activeRole, setActiveRole] = useState<AppRole>('Read-only Auditor');
-  const [isPendingApproval, setIsPendingApproval] = useState(false);
-  const [isAdminUser, setIsAdminUser] = useState(false);
+  const [isPendingApproval, setIsPendingApproval] = useState<boolean>(false);
+  const [isAdminUser, setIsAdminUser] = useState<boolean>(false);
 
+  const [supabaseSyncDone, setSupabaseSyncDone] = useState(false);
+
+  // Prevent duplicate sync
   useEffect(() => {
-    const handleAuthRequired = () => {
-      setIsLoginModalOpen(true);
-    };
-    window.addEventListener('auth:required', handleAuthRequired);
-    return () => window.removeEventListener('auth:required', handleAuthRequired);
+    let ignore = false;
+    setSupabaseSyncDone(true);
+    return () => { ignore = true; };
   }, []);
 
-  // 1. Supabase Auth Listener (Primary if Supabase is configured)
+  // Supabase auth listener
   useEffect(() => {
-    if (!isSupabaseConfigured()) return;
-
-    let isMounted = true;
+    if (!supabaseSyncDone) return;
 
     async function syncSupabaseUser(sessionUser: any) {
       if (!sessionUser) {
-        if (isMounted) {
-          setCurrentUser(null);
-          setUserProfile(null);
-          setActiveRole('Read-only Auditor');
-          setIsAdminUser(false);
-          setIsPendingApproval(false);
-          setIsLoading(false);
-        }
-        return;
-      }
-
-      const email = sessionUser.email || '';
-      const baseName =
-        sessionUser.user_metadata?.full_name ||
-        (email ? email.split('@')[0].toUpperCase() : 'Pengguna');
-
-      const appUser: AppAuthUser = {
-        uid: sessionUser.id,
-        email,
-        displayName: baseName,
-        emailVerified: Boolean(sessionUser.email_confirmed_at),
-        providerData: [{ providerId: sessionUser.app_metadata?.provider || 'supabase' }],
-        getIdToken: async () => {
-          const s = await supabase.auth.getSession();
-          return s.data.session?.access_token || '';
-        },
-      };
-
-      if (isMounted) {
-        setCurrentUser(appUser);
-      }
-
-      // Query membership from Supabase Postgres
-      try {
-        const { data: members } = await supabase
-          .from('workspace_members')
-          .select('*, workspaces(*)')
-          .eq('user_id', sessionUser.id);
-
-        const member = members && members.length > 0 ? members[0] : null;
-
-        if (member) {
-          const dbRole = member.role as string;
-          const mappedRole = DB_ROLE_TO_APP_ROLE[dbRole] || (dbRole as AppRole);
-          const isAct = member.status === 'Aktif';
-
-          // Query assigned project IDs if not all projects
-          let assignedIds: string[] = ['*'];
-          if (!member.all_projects && !['owner', 'finance', 'auditor'].includes(dbRole)) {
-            const { data: pMembers } = await supabase
-              .from('project_members')
-              .select('project_id')
-              .eq('workspace_id', member.workspace_id)
-              .eq('user_id', sessionUser.id);
-            assignedIds = pMembers?.map((p: any) => p.project_id) || [];
-          }
-
-          if (isMounted) {
-            setUserProfile({
-              uid: sessionUser.id,
-              name: baseName,
-              email,
-              role: mappedRole,
-              department: member.department || ROLE_DEFINITIONS[mappedRole]?.department || 'Operasional',
-              nip: '-',
-              workspaceId: member.workspace_id,
-              assignedProjectIds: assignedIds,
-              assignedProjects: assignedIds,
-              status: isAct ? 'Aktif' : 'Nonaktif',
-            });
-            setActiveRole(mappedRole in ROLE_DEFINITIONS ? mappedRole : 'Read-only Auditor');
-            setIsAdminUser(dbRole === 'owner');
-            setIsPendingApproval(!isAct);
-          }
-        } else {
-          // User exists in auth but no workspace membership yet
-          if (isMounted) {
-            setUserProfile({
-              uid: sessionUser.id,
-              name: baseName,
-              email,
-              role: 'Menunggu Undangan',
-              department: 'Menunggu Undangan',
-              nip: '-',
-              workspaceId: 'indotek-jkt',
-              assignedProjectIds: [],
-              assignedProjects: [],
-              status: 'Nonaktif',
-            });
-            setActiveRole('Read-only Auditor');
-            setIsAdminUser(false);
-            setIsPendingApproval(true);
-          }
-        }
-      } catch (err) {
-        console.warn('[Supabase Auth Sync Notice]:', err);
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    }
-
-    // Initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      syncSupabaseUser(session?.user);
-    }).catch((err) => {
-      console.warn('[Supabase Auth GetSession Notice]:', err);
-      if (isMounted) setIsLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      syncSupabaseUser(session?.user);
-    });
-
-    return () => {
-      isMounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  // 2. Firebase Auth Listener (Fallback if Supabase is not configured)
-  useEffect(() => {
-    if (isSupabaseConfigured()) return;
-
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
-      if (user) {
-        try {
-          const userDocRef = doc(db, 'users', user.uid);
-          const userDocSnap = await getDoc(userDocRef);
-
-          let baseName = user.displayName || (user.email ? user.email.split('@')[0].toUpperCase() : 'Pengguna Baru');
-
-          if (!userDocSnap.exists()) {
-            const newUserData = {
-              uid: user.uid,
-              name: baseName,
-              email: user.email || '',
-              status: 'Menunggu Undangan',
-              role: 'Menunggu Undangan',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            };
-            try {
-              await setDoc(userDocRef, newUserData);
-            } catch (err) {
-              console.warn('Initial user profile notice (expected if email unverified):', err);
-            }
-          } else {
-            const data = userDocSnap.data();
-            baseName = data.name || baseName;
-          }
-
-          const tokenResult = await user.getIdTokenResult(true);
-          const memberDocRef = doc(db, 'workspaces', 'indotek-jkt', 'members', user.uid);
-          const memberSnap = await getDoc(memberDocRef);
-
-          let verifiedRole: AppRole = 'Read-only Auditor';
-          let verifiedAdmin = false;
-
-          if (memberSnap.exists()) {
-            const mData = memberSnap.data();
-            verifiedRole = (mData.role as AppRole) in ROLE_DEFINITIONS ? (mData.role as AppRole) : 'Read-only Auditor';
-            const verifiedStatus = mData.status || 'Aktif';
-
-            if (verifiedStatus !== 'Aktif') {
-              setIsPendingApproval(true);
-              setActiveRole('Read-only Auditor');
-            } else {
-              setIsPendingApproval(false);
-              setActiveRole(verifiedRole);
-            }
-
-            if (tokenResult.claims?.admin === true || verifiedRole === 'Owner / Director') {
-              verifiedAdmin = true;
-            }
-
-            setUserProfile({
-              uid: user.uid,
-              name: mData.name || baseName,
-              email: user.email || '',
-              role: verifiedRole,
-              department: mData.department || 'Operasional',
-              nip: mData.nip || '-',
-              workspaceId: 'indotek-jkt',
-              assignedProjectIds: mData.assignedProjectIds || ['*'],
-              assignedProjects: mData.assignedProjectIds || ['*'],
-              status: verifiedStatus === 'Aktif' ? 'Aktif' : 'Nonaktif',
-            });
-          } else {
-            if (tokenResult.claims?.admin === true) {
-              verifiedRole = 'Owner / Director';
-              verifiedAdmin = true;
-              setIsPendingApproval(false);
-              setActiveRole(verifiedRole);
-              setUserProfile({
-                uid: user.uid,
-                name: baseName,
-                email: user.email || '',
-                role: verifiedRole,
-                department: 'Direksi & Eksekutif',
-                nip: '-',
-                workspaceId: 'indotek-jkt',
-                assignedProjectIds: ['*'],
-                assignedProjects: ['*'],
-                status: 'Aktif',
-              });
-            } else {
-              setIsPendingApproval(true);
-              setActiveRole('Read-only Auditor');
-              setUserProfile({
-                uid: user.uid,
-                name: baseName,
-                email: user.email || '',
-                role: 'Menunggu Undangan',
-                department: 'Menunggu Verifikasi Admin',
-                nip: '-',
-                workspaceId: 'indotek-jkt',
-                assignedProjectIds: [],
-                assignedProjects: [],
-                status: 'Nonaktif',
-              });
-            }
-          }
-
-          setIsAdminUser(verifiedAdmin);
-        } catch (error) {
-          console.error('Error fetching user profile:', error);
-          setUserProfile(null);
-          setActiveRole('Read-only Auditor');
-          setIsPendingApproval(false);
-        }
-      } else {
+        setCurrentUser(null);
         setUserProfile(null);
         setActiveRole('Read-only Auditor');
         setIsPendingApproval(false);
         setIsAdminUser(false);
+        setIsLoading(false);
+        return;
       }
+
+      const appUser: AppAuthUser = {
+        uid: sessionUser.id,
+        email: sessionUser.email || null,
+        displayName: sessionUser.user_metadata?.full_name || sessionUser.email?.split('@')[0] || 'User',
+        emailVerified: !!sessionUser.email_confirmed_at,
+        providerData: sessionUser.app_metadata?.providers?.map((p: string) => ({ providerId: p })) || [{ providerId: 'supabase' }],
+        getIdToken: async () => {
+          const { data } = await supabase.auth.getSession();
+          return data.session?.access_token || '';
+        },
+      };
+
+      setCurrentUser(appUser);
+
+      const { data: profileData, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', sessionUser.id)
+        .maybeSingle();
+
+      if (profileError) {
+        console.error('Error fetching user profile (Supabase):', profileError);
+        setUserProfile(null);
+        setActiveRole('Read-only Auditor');
+        setIsPendingApproval(true);
+        setIsAdminUser(false);
+        setIsLoading(false);
+        return;
+      }
+
+      if (!profileData) {
+        setUserProfile(null);
+        setActiveRole('Read-only Auditor');
+        setIsPendingApproval(true);
+        setIsAdminUser(false);
+        setIsLoading(false);
+        return;
+      }
+
+      const profile: UserProfile = {
+        uid: profileData.id,
+        email: profileData.email || appUser.email || '',
+        name: profileData.display_name || appUser.displayName || 'User',
+        role: profileData.role || 'auditor',
+        department: profileData.department || '',
+        nip: profileData.nip || '',
+        workspaceId: profileData.workspace_id || '',
+        assignedProjectIds: profileData.assigned_projects || [],
+        status: profileData.status || 'Aktif',
+      };
+
+      setUserProfile(profile);
+
+      const appRole = DB_ROLE_TO_APP_ROLE[profileData.role as keyof typeof DB_ROLE_TO_APP_ROLE] || 'Read-only Auditor';
+      const approvalStatus = profileData.approval_status || 'pending';
+
+      if (approvalStatus === 'pending') {
+        setIsPendingApproval(true);
+        setActiveRole('Read-only Auditor');
+        setIsAdminUser(false);
+      } else {
+        setIsPendingApproval(false);
+        setActiveRole(appRole);
+        setIsAdminUser(appRole === 'Owner / Director');
+      }
+
+      setIsLoading(false);
+    }
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      syncSupabaseUser(session?.user || null);
+    }).catch((err: any) => {
+      console.error('Error getting session (Supabase):', err);
       setIsLoading(false);
     });
 
-    return () => unsubscribe();
-  }, []);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsPasswordRecovery(true);
+      }
+      syncSupabaseUser(session?.user || null);
+    });
+
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, [supabaseSyncDone]);
 
   const signInWithGoogle = async () => {
-    if (isSupabaseConfigured()) {
+    try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: typeof window !== 'undefined' ? `${window.location.origin}` : undefined,
+          redirectTo: window.location.origin,
         },
       });
       if (error) throw error;
-      return;
-    }
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-      setIsLoginModalOpen(false);
     } catch (error: any) {
-      if (error?.code !== 'auth/popup-closed-by-user') {
-        console.error('Error signing in with Google:', error);
-      }
+      console.error('Error signing in with Google (Supabase):', error);
       throw error;
     }
   };
 
   const signInWithEmail = async (email: string, password: string) => {
     try {
-      if (isSupabaseConfigured()) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
-        if (error) throw error;
-        setIsLoginModalOpen(false);
-        return;
-      }
-      await signInWithEmailAndPassword(auth, email.trim(), password);
-      setIsLoginModalOpen(false);
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      if (error) throw error;
     } catch (error: any) {
-      console.error('Error signing in with email:', error);
-      throw error;
-    }
-  };
-
-  const signUpWithEmail = async (
-    email: string,
-    password: string,
-    name: string
-  ) => {
-    if (password.length < 12) {
-      throw new Error('Kata sandi minimal 12 karakter untuk memenuhi standar keamanan enterprise.');
-    }
-
-    try {
-      if (isSupabaseConfigured()) {
-        const { error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: {
-            data: { full_name: name },
-          },
-        });
-        if (error) throw error;
-        setIsLoginModalOpen(false);
-        return;
-      }
-
-      const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
-      const user = cred.user;
-
-      try {
-        await sendEmailVerification(user);
-      } catch (e) {
-        console.warn('Notice: Email verification trigger:', e);
-      }
-
-      const userProfileData = {
-        uid: user.uid,
-        name,
-        email: user.email || email,
-        status: 'Menunggu Undangan',
-        role: 'Menunggu Undangan',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      try {
-        await setDoc(doc(db, 'users', user.uid), userProfileData);
-      } catch (e) {
-        console.warn('User profile create notice:', e);
-      }
-
-      setUserProfile({
-        ...userProfileData,
-        role: 'Menunggu Undangan',
-        department: 'Menunggu Verifikasi Admin',
-        nip: '-',
-        workspaceId: 'indotek-jkt',
-        assignedProjectIds: [],
-        assignedProjects: [],
-        status: 'Nonaktif',
-      });
-      setActiveRole('Read-only Auditor');
-      setIsPendingApproval(true);
-      setIsLoginModalOpen(false);
-    } catch (error: any) {
-      console.error('Error registering with email:', error);
+      console.error('Error signing in with email (Supabase):', error);
       throw error;
     }
   };
 
   const reloadUserVerification = async (): Promise<boolean> => {
-    if (isSupabaseConfigured()) {
+    try {
       const { data } = await supabase.auth.getUser();
-      return Boolean(data.user?.email_confirmed_at);
+      const verified = !!data.user?.email_confirmed_at;
+      return verified;
+    } catch (error: any) {
+      console.error('Error reloading user verification (Supabase):', error);
+      return false;
     }
-    if (!auth.currentUser) return false;
-    await auth.currentUser.reload();
-    return Boolean(auth.currentUser.emailVerified);
   };
 
   const sendPasswordReset = async (email: string) => {
     try {
-      if (isSupabaseConfigured()) {
-        const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
-        if (error) throw error;
-        return;
-      }
-      await sendPasswordResetEmail(auth, email.trim());
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+      if (error) throw error;
     } catch (error: any) {
       console.error('Error sending password reset email:', error);
       throw error;
     }
   };
 
+  const updatePassword = async (newPassword: string) => {
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      setIsPasswordRecovery(false);
+    } catch (error: any) {
+      console.error('Error updating password:', error);
+      throw error;
+    }
+  };
+
   const signOutUser = async () => {
     try {
-      if (isSupabaseConfigured()) {
-        await supabase.auth.signOut();
-      } else {
-        await signOut(auth);
-      }
+      await supabase.auth.signOut();
       setUserProfile(null);
       setCurrentUser(null);
       setActiveRole('Read-only Auditor');
@@ -480,9 +243,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const handleSetActiveRole = (newRole: AppRole) => {
     if (isAdminUser || import.meta.env.DEV) {
       setActiveRole(newRole);
-    } else {
-      console.warn('Role switcher is disabled in production for non-administrative accounts.');
     }
+    // Role switcher silently disabled for non-admin in production
   };
 
   const hasRolePermission = (module: AppModule, action: AppAction): boolean => {
@@ -503,7 +265,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const isEmailVerified = Boolean(
     currentUser && (
       currentUser.emailVerified ||
-      currentUser.providerData?.some((p: any) => p.providerId === 'google.com' || p.providerId === 'supabase')
+      currentUser.providerData?.some((p: any) => p.providerId === 'google' || p.providerId === 'supabase')
     )
   );
 
@@ -515,12 +277,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isLoading,
         signInWithGoogle,
         signInWithEmail,
-        signUpWithEmail,
         sendPasswordReset,
+        updatePassword,
         signOutUser,
         reloadUserVerification,
         isLoginModalOpen,
         setIsLoginModalOpen,
+        isPasswordRecovery,
+        setIsPasswordRecovery,
         isAdmin: isAdminUser,
         isEmailVerified,
         activeRole,

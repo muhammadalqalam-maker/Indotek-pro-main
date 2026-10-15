@@ -1,7 +1,9 @@
-import React from 'react';
-import { Plus, Check, XCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, Check, XCircle, Paperclip } from 'lucide-react';
 import { Button } from '../../common/Button';
 import { Badge } from '../../common/Badge';
+import { Modal } from '../../common/Modal';
+import { AttachmentUploader } from '../../common/AttachmentUploader';
 import { StockAdjustment } from '../../../types';
 import { formatDateIndo } from '../../../utils/formatters';
 
@@ -20,6 +22,8 @@ export const StockAdjustmentsTab: React.FC<StockAdjustmentsTabProps> = ({
   onApproveAdjustment,
   onRequestRejectAdjustment,
 }) => {
+  const [selectedAdjForAttachment, setSelectedAdjForAttachment] = useState<StockAdjustment | null>(null);
+
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-xl border border-[#E2E8E4] shadow-2xs overflow-hidden">
@@ -71,7 +75,7 @@ export const StockAdjustmentsTab: React.FC<StockAdjustmentsTabProps> = ({
 
                     <td className="py-3.5 px-4 min-w-[200px]">
                       <div className="font-semibold text-[#202B26]">{adj.materialName}</div>
-                      <div className="text-[11px] text-[#69766F]">{adj.projectName}</div>
+                      <div className="text-xs text-[#69766F]">{adj.projectName}</div>
                     </td>
 
                     <td className="py-3.5 px-4 font-mono text-right tabular-nums text-[#69766F]">
@@ -99,11 +103,11 @@ export const StockAdjustmentsTab: React.FC<StockAdjustmentsTabProps> = ({
 
                     <td className="py-3.5 px-4 min-w-[180px]">
                       <div className="font-medium text-[#202B26]">{adj.reason}</div>
-                      <div className="text-[11px] text-[#285744] font-mono mt-0.5">
+                      <div className="text-xs text-[#285744] font-mono mt-0.5">
                         BA: {adj.evidenceRef}
                       </div>
                       {adj.rejectionReason && (
-                        <div className="text-[11px] text-[#A82A20] mt-1 bg-[#FCE8E6] p-1.5 rounded">
+                        <div className="text-xs text-[#A82A20] mt-1 bg-[#FCE8E6] p-1.5 rounded">
                           Alasan tolak: {adj.rejectionReason}
                         </div>
                       )}
@@ -111,7 +115,7 @@ export const StockAdjustmentsTab: React.FC<StockAdjustmentsTabProps> = ({
 
                     <td className="py-3.5 px-4 text-[#69766F] whitespace-nowrap">
                       <div>{adj.submittedBy}</div>
-                      <div className="text-[11px] font-mono">
+                      <div className="text-xs font-mono">
                         {formatDateIndo(adj.submittedAt.split('T')[0])}
                       </div>
                     </td>
@@ -148,18 +152,30 @@ export const StockAdjustmentsTab: React.FC<StockAdjustmentsTabProps> = ({
                             </Button>
                           </div>
                         ) : (
-                          <span className="text-[11px] text-[#9E6B05] font-medium bg-[#FFF8EC] px-2 py-1 rounded border border-[#FCE6B1]">
+                          <span className="text-xs text-[#9E6B05] font-medium bg-[#FFF8EC] px-2 py-1 rounded border border-[#FCE6B1]">
                             Perlu Paraf PM
                           </span>
                         )
                       ) : (
-                        <div className="text-[11px] text-[#69766F]">
+                        <div className="text-xs text-[#69766F]">
                           <span className="font-medium text-[#202B26]">{adj.reviewedBy}</span>
-                          <div className="font-mono text-[10px]">
+                          <div className="font-mono text-xs">
                             {adj.reviewedAt ? formatDateIndo(adj.reviewedAt.split('T')[0]) : '-'}
                           </div>
                         </div>
                       )}
+
+                      <div className="flex items-center justify-end gap-1.5 mt-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedAdjForAttachment(adj)}
+                          className="min-h-[44px] px-2.5 py-1 rounded-lg text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition text-xs inline-flex items-center gap-1 cursor-pointer"
+                          title="Lihat / Unggah Bukti Berita Acara & Foto Opname"
+                        >
+                          <Paperclip className="w-3.5 h-3.5" />
+                          <span>BA & Foto</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -168,6 +184,29 @@ export const StockAdjustmentsTab: React.FC<StockAdjustmentsTabProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Modal Lampiran Opname Fisik */}
+      {selectedAdjForAttachment && (
+        <Modal
+          isOpen={true}
+          onClose={() => setSelectedAdjForAttachment(null)}
+          title={`Bukti Berita Acara — ${selectedAdjForAttachment.adjustmentNo}`}
+          description={`Unggah foto fisik barang di gudang site atau scan Berita Acara (BA) untuk opname ${selectedAdjForAttachment.reason}.`}
+          maxWidth="lg"
+          footer={
+            <Button variant="secondary" size="sm" onClick={() => setSelectedAdjForAttachment(null)} className="min-h-[44px]">
+              Tutup
+            </Button>
+          }
+        >
+          <AttachmentUploader
+            workspaceId={selectedAdjForAttachment.workspaceId || ''}
+            recordType="stock_adjustment"
+            recordId={selectedAdjForAttachment.id}
+            title={`Lampiran Berita Acara ${selectedAdjForAttachment.adjustmentNo}`}
+          />
+        </Modal>
+      )}
     </div>
   );
 };

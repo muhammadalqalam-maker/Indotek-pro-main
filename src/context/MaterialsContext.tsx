@@ -7,10 +7,11 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import { MaterialItem, StockMutation, StockAdjustment } from '../types';
-import { firestoreService } from '../services/firestoreService';
+import { getMaterials, getStockMutations, createStockMutation, createStockAdjustment, decideStockAdjustment } from '../data/materials';
 import { useAuth } from './AuthContext';
-import { useUI } from './UIContext';
+import { useUI, getScreenIdFromPathname } from './UIContext';
 
 export interface MaterialsContextType {
   materials: MaterialItem[];
@@ -31,22 +32,31 @@ const MaterialsContext = createContext<MaterialsContextType | undefined>(undefin
 
 export const MaterialsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { currentUser } = useAuth();
-  const { workspaceId, actorInfo, currentScreen, addToast, setPendingActions } = useUI();
+  const location = useLocation();
+  const screenId = getScreenIdFromPathname(location.pathname);
+  const { workspaceId, actorInfo, addToast, setPendingActions, setLoadingMaterials } = useUI();
 
   const [materials, setMaterials] = useState<MaterialItem[]>([]);
   const [stockMutations, setStockMutations] = useState<StockMutation[]>([]);
   const [stockAdjustments, setStockAdjustments] = useState<StockAdjustment[]>([]);
 
   const loadMaterialsData = async () => {
+    setLoadingMaterials(true);
     try {
       const [mats, muts] = await Promise.all([
-        firestoreService.getMaterials(false, workspaceId),
-        firestoreService.getStockMutationsPaginated(50, undefined, workspaceId),
+        getMaterials(),
+        getStockMutations(),
       ]);
       if (mats) setMaterials(mats);
-      if (muts?.items) setStockMutations(muts.items);
-    } catch (err) {
-      console.warn('Materials data load notice:', err);
+      if (muts) setStockMutations(muts);
+    } catch (err: any) {
+      addToast({
+        type: 'danger',
+        title: 'Gagal Memuat Data Material',
+        message: err?.message || 'Terjadi kesalahan saat memuat material.',
+      });
+    } finally {
+      setLoadingMaterials(false);
     }
   };
 
@@ -54,30 +64,50 @@ export const MaterialsProvider: React.FC<{ children: ReactNode }> = ({ children 
   useEffect(() => {
     if (!currentUser) return;
     let isMounted = true;
-    firestoreService.getMaterials(false, workspaceId).then((m) => {
+    getMaterials().then((m) => {
       if (isMounted && m) setMaterials(m);
-    }).catch(console.warn);
+    })
+    .catch((err) => {
+      addToast({
+        type: 'danger',
+        title: 'Gagal Memuat Material',
+        message: err?.message || 'Tidak dapat mengambil material.',
+      });
+    });
     return () => { isMounted = false; };
   }, [currentUser, workspaceId]);
 
   // Load mutations on demand when materials screen active
   useEffect(() => {
-    if (!currentUser || currentScreen !== 'materials') return;
+    if (!currentUser || screenId !== 'materials') return;
     let isMounted = true;
-    firestoreService.getMaterials(false, workspaceId).then((m) => {
+    getMaterials().then((m) => {
       if (isMounted && m) setMaterials(m);
-    }).catch(console.warn);
+    }).catch((err) => {
+      addToast({
+        type: 'danger',
+        title: 'Gagal Memuat Material',
+        message: err?.message || 'Tidak dapat mengambil material.',
+      });
+    });
 
-    firestoreService.getStockMutationsPaginated(50, undefined, workspaceId).then((muts) => {
-      if (isMounted && muts?.items) setStockMutations(muts.items);
-    }).catch(console.warn);
+    getStockMutations().then((muts) => {
+      if (isMounted && muts) setStockMutations(muts);
+    }).catch((err) => {
+      addToast({
+        type: 'danger',
+        title: 'Gagal Memuat Mutasi Stock',
+        message: err?.message || 'Tidak dapat mengambil mutasi stock.',
+      });
+    });
 
     return () => { isMounted = false; };
-  }, [currentUser, currentScreen, workspaceId]);
+  }, [currentUser, location.pathname, workspaceId]);
 
   const addStockMutation = async (mutationData: Omit<StockMutation, 'id'>) => {
     try {
-      await firestoreService.addStockMutation(mutationData, undefined, actorInfo, workspaceId);
+      const rpcType = mutationData.type === 'Masuk' ? 'IN' : 'OUT';
+      await createStockMutation(mutationData.materialId, rpcType as 'IN' | 'OUT', mutationData.quantity, mutationData.referenceNo);
       await loadMaterialsData();
       addToast({
         type: 'success',
@@ -98,7 +128,7 @@ export const MaterialsProvider: React.FC<{ children: ReactNode }> = ({ children 
     adjData: Omit<StockAdjustment, 'id' | 'adjustmentNo' | 'status' | 'submittedAt'>
   ) => {
     try {
-      await firestoreService.addStockAdjustment(adjData, actorInfo, workspaceId);
+      await createStockAdjustment(adjData.materialId, adjData.physicalStock, adjData.reason);
       await loadMaterialsData();
       addToast({
         type: 'info',
@@ -118,7 +148,7 @@ export const MaterialsProvider: React.FC<{ children: ReactNode }> = ({ children 
   const approveStockAdjustment = async (adjId: string, approverName: string) => {
     setPendingActions((prev) => ({ ...prev, [adjId]: true }));
     try {
-      await firestoreService.approveStockAdjustment(adjId, approverName, actorInfo, workspaceId);
+      await decideStockAdjustment(adjId, 'approve');
       await loadMaterialsData();
       addToast({
         type: 'success',
@@ -144,7 +174,7 @@ export const MaterialsProvider: React.FC<{ children: ReactNode }> = ({ children 
   const rejectStockAdjustment = async (adjId: string, rejectorName: string, reason: string) => {
     setPendingActions((prev) => ({ ...prev, [adjId]: true }));
     try {
-      await firestoreService.rejectStockAdjustment(adjId, rejectorName, reason, actorInfo, workspaceId);
+      await decideStockAdjustment(adjId, 'reject', reason);
       await loadMaterialsData();
       addToast({
         type: 'danger',

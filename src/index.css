@@ -4,26 +4,79 @@
   --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-  --color-primary-forest: #12352B;
-  --color-primary-secondary: #285744;
+  /* Primary colors */
+  --color-primary: #12352B;
+  --color-primary-hover: #0c241d;
+  --color-primary-light: #285744;
+  --color-primary-lighter: #3b755e;
+  
+  /* Accent colors */
   --color-accent-gold: #D6A85C;
+  --color-accent-gold-dark: #c4984d;
+  --color-accent-gold-darker: #b2873f;
+  --color-accent-gold-muted: #9E6B05;
+  
+  /* Status colors */
+  --color-success: #1C6843;
+  --color-success-bg: #E5F4EB;
+  --color-success-border: #CDE9D7;
+  
+  --color-warning: #9E6B05;
+  --color-warning-bg: #FFF3D8;
+  --color-warning-border: #FCE6B1;
+  
+  --color-danger: #A82A20;
+  --color-danger-hover: #8e231a;
+  --color-danger-dark: #721c15;
+  --color-danger-bg: #FCE9E7;
+  --color-danger-light: #FEE9E9;
+  --color-danger-border: #F8CBC7;
+  --color-danger-text: #C7362E;
+  
+  --color-info: #235D9F;
+  --color-info-bg: #E8F0FA;
+  --color-info-border: #CEE0F5;
+  
+  /* Neutral/Surface colors */
   --color-canvas: #F5F7F6;
   --color-surface: #FFFFFF;
-  --color-text-main: #202B26;
+  --color-neutral-bg: #F1F4F2;
+  --color-neutral-light: #EAEFEA;
+  
+  /* Text colors */
+  --color-text-primary: #202B26;
+  --color-text-secondary: #4F5D56;
   --color-text-muted: #69766F;
+  --color-text-subtle: #5F6D66;
+  
+  /* Border colors */
   --color-border-subtle: #E2E8E4;
+  --color-border-light: #CBD5CF;
+  --color-border-medium: #A2B8AE;
+  --color-border-dark: #D3E2DB;
+  
+  /* Scrollbar colors */
+  --color-scrollbar-track: #F1F4F2;
+  --color-scrollbar-thumb: #CBD5CF;
+  --color-scrollbar-thumb-hover: #A9B9B0;
 }
 
 @layer base {
   :root {
     --primary-forest: #12352B;
     --primary-secondary: #285744;
-    --accent-gold: #D6A85C;
+    --accent-gold: #9E6B05;
     --bg-canvas: #F5F7F6;
     --bg-surface: #FFFFFF;
     --text-primary: #202B26;
-    --text-secondary: #69766F;
+    --text-secondary: #5F6D66;
     --border-subtle: #E2E8E4;
+
+    /* Safe area insets for notched devices */
+    --safe-area-inset-top: env(safe-area-inset-top, 0px);
+    --safe-area-inset-right: env(safe-area-inset-right, 0px);
+    --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-inset-left: env(safe-area-inset-left, 0px);
   }
 
   body {
@@ -32,11 +85,67 @@
     color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    padding-top: var(--safe-area-inset-top);
+    padding-right: var(--safe-area-inset-right);
+    padding-bottom: var(--safe-area-inset-bottom);
+    padding-left: var(--safe-area-inset-left);
   }
 
   /* Strict tabular numbers for financial and numerical tables */
   .tabular-nums {
     font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /* Focus indicators for keyboard navigation (WCAG AA 2.4.7) */
+  *:focus-visible {
+    outline: 2px solid var(--primary-forest);
+    outline-offset: 2px;
+  }
+|
+  /* Button: Minimum 44px tap target (WCAG 2.5.5) */
+  button, [role="button"], input[type="button"], input[type="submit"] {
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+|
+  /* Links with sufficient touch area */
+  a[href] {
+    position: relative;
+    /* Pseudo-element creates invisible 44px tap zone */
+  }
+  a[href]::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    min-width: 44px;
+    min-height: 44px;
+  }
+|
+  /* Form controls: 44px minimum */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="date"],
+  input[type="search"],
+  textarea,
+  select {
+    min-height: 44px;
+  }
+|
+  /* Checkboxes and radio buttons with larger click zone */
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-width: 44px;
+    min-height: 44px;
+    cursor: pointer;
   }
 }
 
@@ -57,4 +166,14 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: #A9B9B0;
+}
+
+/* Reduced motion support (WCAG 2.3.3, 2.2.2) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -1,0 +1,55 @@
+#!/bin/sh
+# Pre-commit hook: Protect against committing secrets using Gitleaks
+
+echo "[pre-commit] Memindai staged changes untuk mendeteksi rahasia / kredensial..."
+
+if command -v gitleaks >/dev/null 2>&1; then
+    gitleaks protect --staged --verbose
+    EXIT_CODE=$?
+    if [ $EXIT_CODE -ne 0 ]; then
+        echo "❌ [pre-commit] Gitleaks mendeteksi kredensial rahasia pada staged changes!"
+        echo "Harap bersihkan kunci sebelum melakukan commit."
+        exit $EXIT_CODE
+    fi
+elif command -v docker >/dev/null 2>&1; then
+    echo "[pre-commit] Menggunakan docker image gitleaks..."
+    docker run --rm -v "$(pwd):/path" zricethezav/gitleaks:latest protect --staged --source="/path" --verbose
+    EXIT_CODE=$?
+    if [ $EXIT_CODE -ne 0 ]; then
+        echo "❌ [pre-commit] Gitleaks mendeteksi kredensial rahasia pada staged changes!"
+        exit $EXIT_CODE
+    fi
+else
+    echo "⚠️  [pre-commit] Gitleaks CLI belum terpasang di sistem PATH."
+    echo "ℹ️  Unduh gitleaks: https://github.com/gitleaks/gitleaks"
+
+    # Fast guard against common secret patterns in staged files
+    STAGED_DIFF=$(git diff --cached)
+    
+    # Check for .env files being committed
+    if git diff --cached --name-only | grep -q "\.env"; then
+        echo "❌ [pre-commit] Detected .env file in staged changes! Do not commit secrets."
+        exit 1
+    fi
+    
+    # JWT token pattern (eyJ...)
+    if echo "$STAGED_DIFF" | grep -E -q "eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}"; then
+        echo "❌ [pre-commit] Ditemukan pola JWT token pada perubahan yang akan di-commit!"
+        exit 1
+    fi
+    
+    # Supabase URL/key pattern
+    if echo "$STAGED_DIFF" | grep -E -q "supabase_[a-z_]+=|sk-[A-Za-z0-9]{30,}|eyJhbGciOi"; then
+        echo "❌ [pre-commit] Ditemukan API key/credential pattern pada staged changes!"
+        exit 1
+    fi
+    
+    # UPSTASH credentials
+    if echo "$STAGED_DIFF" | grep -E -q "UPSTASH_REDIS_(REST_URL|REST_TOKEN)="; then
+        echo "❌ [pre-commit] Ditemukan UPSTASH credential pada staged changes!"
+        exit 1
+    fi
+fi
+
+echo "✅ [pre-commit] Pemeriksaan rahasia selesai."
+exit 0

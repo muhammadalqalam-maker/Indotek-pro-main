@@ -1,61 +1,96 @@
 import 'dotenv/config';
 import express, { Request, Response, NextFunction } from 'express';
+import helmet from 'helmet';
+import { Redis } from '@upstash/redis';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { workflowRouter } from './src/server/routes';
 import { supabaseAdmin } from './src/server/supabaseAdmin';
+import { logger } from './src/server/logger';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// In-Memory Lightweight Rate Limiter for /api/workflows
-interface RateLimitEntry {
-  count: number;
-  resetTime: number;
-}
-const rateLimitMap = new Map<string, RateLimitEntry>();
+// Upstash Redis Rate Limiter (serverless-safe, distributed)
+const redis = process.env.UPSTASH_REDIS_REST_URL
+  ? new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    })
+  : null;
+
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 120; // 120 reqs/min
 
-function workflowRateLimiter(req: Request, res: Response, next: NextFunction) {
-  const forwarded = req.headers['x-forwarded-for'];
-  const ip = typeof forwarded === 'string' ? forwarded.split(',')[0].trim() : (req.socket.remoteAddress || 'unknown');
-  const now = Date.now();
+/**
+ * Get client IP with proper fallback chain.
+ * Vercel sets CF-Connecting-IP (Cloudflare) or X-Forwarded-For if proxied.
+ * Never trust X-Forwarded-For header directly; attackers can spoof.
+ * Vercel environment: CF-Connecting-IP is authoritative.
+ * Fallback: req.socket.remoteAddress for local dev.
+ */
+function getClientIp(req: Request): string {
+  // Cloudflare header (set by Vercel/CF)
+  const cfConnectingIp = req.headers['cf-connecting-ip'];
+  if (cfConnectingIp && typeof cfConnectingIp === 'string') {
+    return cfConnectingIp.trim();
+  }
 
-  // Periodic random cleanup of expired keys
-  if (Math.random() < 0.05) {
-    for (const [key, entry] of rateLimitMap.entries()) {
-      if (now > entry.resetTime) {
-        rateLimitMap.delete(key);
-      }
+  // X-Forwarded-For: only use first IP if behind single trusted proxy
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded && typeof forwarded === 'string') {
+    const firstIp = forwarded.split(',')[0].trim();
+    if (firstIp && /^[\d.a-f:]+$/i.test(firstIp)) {
+      return firstIp;
     }
   }
 
-  let entry = rateLimitMap.get(ip);
-  if (!entry || now > entry.resetTime) {
-    entry = { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS };
-    rateLimitMap.set(ip, entry);
-  } else {
-    entry.count += 1;
+  // Direct socket address (local dev or direct connection)
+  return req.socket.remoteAddress || 'unknown';
+}
+
+async function workflowRateLimiter(req: Request, res: Response, next: NextFunction) {
+  const ip = getClientIp(req);
+  const key = `ratelimit:${ip}`;
+  const now = Date.now();
+  const windowStart = now - RATE_LIMIT_WINDOW_MS;
+
+  try {
+    if (!redis) {
+      // Fallback: no rate limiting if Upstash not configured
+      logger.warn('Rate limiter skipped - Upstash Redis not configured', { ip });
+      return next();
+    }
+
+    // Increment counter (Redis auto-expires old keys)
+    const count = await redis.incr(key);
+    if (count === 1) {
+      // Set expiration only on first increment
+      await redis.expire(key, Math.ceil(RATE_LIMIT_WINDOW_MS / 1000));
+    }
+
+    const remaining = Math.max(0, RATE_LIMIT_MAX_REQUESTS - count);
+    const resetSeconds = Math.ceil(RATE_LIMIT_WINDOW_MS / 1000);
+
+    res.setHeader('RateLimit-Limit', RATE_LIMIT_MAX_REQUESTS.toString());
+    res.setHeader('RateLimit-Remaining', remaining.toString());
+    res.setHeader('RateLimit-Reset', resetSeconds.toString());
+
+    if (count > RATE_LIMIT_MAX_REQUESTS) {
+      res.setHeader('Retry-After', resetSeconds.toString());
+      return res.status(429).json({
+        error: 'Terlalu banyak permintaan pada API alur transaksi. Silakan tunggu beberapa saat.',
+        success: false,
+      });
+    }
+
+    next();
+  } catch (err: any) {
+    // If Redis fails, log but don't block traffic (fail open)
+    logger.error('Rate limiter Redis error - failing open', { ip, key }, err);
+    next();
   }
-
-  const remaining = Math.max(0, RATE_LIMIT_MAX_REQUESTS - entry.count);
-  const resetSeconds = Math.ceil((entry.resetTime - now) / 1000);
-
-  res.setHeader('RateLimit-Limit', RATE_LIMIT_MAX_REQUESTS.toString());
-  res.setHeader('RateLimit-Remaining', remaining.toString());
-  res.setHeader('RateLimit-Reset', resetSeconds.toString());
-
-  if (entry.count > RATE_LIMIT_MAX_REQUESTS) {
-    res.setHeader('Retry-After', resetSeconds.toString());
-    return res.status(429).json({
-      error: 'Terlalu banyak permintaan pada API alur transaksi. Silakan tunggu beberapa saat.',
-      success: false,
-    });
-  }
-
-  next();
 }
 
 async function startServer() {
@@ -63,25 +98,49 @@ async function startServer() {
   const PORT = Number(process.env.PORT) || 3000;
   const isProduction = process.env.NODE_ENV === 'production';
 
-  // Security Headers Middleware (Express replacement for Firebase Hosting headers)
+  // Helmet: secure HTTP headers (X-Frame-Options, HSTS, etc.)
+  // contentSecurityPolicy: false to use custom CSP below
+  app.use(
+    helmet({
+      contentSecurityPolicy: false, // Custom CSP below
+      hsts: {
+        maxAge: 31536000, // 1 year
+        includeSubDomains: true,
+        preload: true,
+      },
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+      xContentTypeOptions: true,
+      xXssProtection: true,
+      frameguard: { action: 'deny' },
+    })
+  );
+
+  // Custom Security Headers Middleware
   app.use((_req, res, next) => {
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
+    // Content-Security-Policy: aligned with vercel.json
+    // Remove 'unsafe-eval' (was security risk), tighten https: to specific Supabase origins
     res.setHeader(
       'Content-Security-Policy',
       [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
-        "style-src 'self' 'unsafe-inline' https: https://fonts.googleapis.com",
-        "font-src 'self' https: data: https://fonts.gstatic.com",
+        "script-src 'self' 'unsafe-inline'", // Keep unsafe-inline for React (common pattern)
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' data: https://fonts.gstatic.com",
         "img-src 'self' data: blob: https:",
-        "connect-src 'self' https: wss:",
-        "frame-ancestors 'self' https://*.google.com https://*.run.app https://*.googleusercontent.com",
+        "connect-src 'self' https://*.supabase.co wss://*.supabase.co https:", // Specific Supabase + other https APIs
+        "frame-ancestors 'none'",
         "base-uri 'self'",
         "form-action 'self'",
       ].join('; ')
     );
+
+    // Permissions-Policy: allow camera/geolocation for field report features
+    // Set permissive here; Vercel edge can further restrict if needed
+    res.setHeader(
+      'Permissions-Policy',
+      'camera=(self), microphone=(), geolocation=(self), payment=(), usb=()'
+    );
+
     next();
   });
 
@@ -116,7 +175,7 @@ async function startServer() {
         timestamp: new Date().toISOString(),
       });
     } catch (err: any) {
-      console.error('[Health Readiness Probe Failed]:', err?.message || err);
+      logger.error('Health readiness probe failed', { endpoint: '/api/health/ready' }, err);
       res.status(503).json({
         status: 'unavailable',
         service: 'Indotek Pro Enterprise Trusted Backend',
@@ -145,11 +204,18 @@ async function startServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[Indotek Pro] Trusted Server active on port ${PORT} (mode: ${process.env.NODE_ENV || 'development'})`);
+    logger.info('Indotek Pro server started', {
+      port: PORT,
+      mode: process.env.NODE_ENV || 'development',
+      rateLimiterEnabled: !!redis,
+    });
+    if (!redis) {
+      logger.warn('Upstash Redis not configured - rate limiting disabled');
+    }
   });
 }
 
-export { workflowRateLimiter, startServer, rateLimitMap };
+export { workflowRateLimiter, startServer, getClientIp };
 
 const isMainModule = Boolean(
   process.argv[1] &&
@@ -159,7 +225,7 @@ const isMainModule = Boolean(
 
 if (isMainModule) {
   startServer().catch((err) => {
-    console.error('Failed to start server:', err);
+    logger.error('Failed to start server', {}, err);
     process.exit(1);
   });
 }

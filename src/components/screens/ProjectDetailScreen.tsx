@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Calendar,
   MapPin,
@@ -33,13 +34,13 @@ import { generateProjectSCurve } from '../../utils/scurve';
 import { downloadDocumentTemplate } from '../../utils/exportUtils';
 
 export const ProjectDetailScreen: React.FC = () => {
+  const navigate = useNavigate();
   const {
     projects,
     selectedProjectId,
     setSelectedProjectId,
     projectDetailTab,
     setProjectDetailTab,
-    setCurrentScreen,
     materials,
     fieldReports,
     budgetLines,
@@ -82,8 +83,9 @@ export const ProjectDetailScreen: React.FC = () => {
       endDate: currentProject.targetEndDate,
       currentActualProgress: currentProject.progressActual,
       reportingDate: '2026-10-09',
+      wbsItems: projectWBS,
     });
-  }, [currentProject]);
+  }, [currentProject, projectWBS]);
 
   const handleDownloadDoc = (docName: string) => {
     try {
@@ -114,7 +116,7 @@ export const ProjectDetailScreen: React.FC = () => {
       {/* Top Navigation & Back Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <button
-          onClick={() => setCurrentScreen('projects')}
+          onClick={() => navigate('/projects')}
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#285744] hover:text-[#12352B] transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -169,14 +171,14 @@ export const ProjectDetailScreen: React.FC = () => {
               {/* Meta details list */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs pt-4 border-t border-[#E2E8E4]">
                 <div>
-                  <span className="text-[#69766F] block text-[11px]">Klien / Pemilik</span>
+                  <span className="text-[#69766F] block text-xs">Klien / Pemilik</span>
                   <span className="font-semibold text-[#202B26] truncate block mt-0.5">
                     {currentProject.client}
                   </span>
                 </div>
 
                 <div>
-                  <span className="text-[#69766F] block text-[11px]">Lokasi Site</span>
+                  <span className="text-[#69766F] block text-xs">Lokasi Site</span>
                   <span className="font-semibold text-[#202B26] truncate block mt-0.5 flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5 text-[#69766F] shrink-0" />
                     {currentProject.location}
@@ -184,14 +186,14 @@ export const ProjectDetailScreen: React.FC = () => {
                 </div>
 
                 <div>
-                  <span className="text-[#69766F] block text-[11px]">Project Manager</span>
+                  <span className="text-[#69766F] block text-xs">Project Manager</span>
                   <span className="font-semibold text-[#202B26] truncate block mt-0.5">
                     {currentProject.projectManager}
                   </span>
                 </div>
 
                 <div>
-                  <span className="text-[#69766F] block text-[11px]">Target Selesai</span>
+                  <span className="text-[#69766F] block text-xs">Target Selesai</span>
                   <span className="font-semibold text-[#202B26] font-mono tabular-nums block mt-0.5 flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5 text-[#69766F] shrink-0" />
                     {formatDateIndo(currentProject.targetEndDate)}
@@ -214,7 +216,7 @@ export const ProjectDetailScreen: React.FC = () => {
                   planned={currentProject.progressPlanned}
                   size="md"
                 />
-                <div className="flex justify-between text-[11px] text-[#69766F] mt-1 font-mono tabular-nums">
+                <div className="flex justify-between text-xs text-[#69766F] mt-1 font-mono tabular-nums">
                   <span>Realisasi</span>
                   <span>Rencana: {formatPercent(currentProject.progressPlanned)}</span>
                 </div>
@@ -271,7 +273,7 @@ export const ProjectDetailScreen: React.FC = () => {
                     referrerPolicy="no-referrer"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                  <span className="absolute bottom-3 left-3 text-[11px] text-white/90 font-mono bg-black/50 px-2 py-0.5 rounded">
+                  <span className="absolute bottom-3 left-3 text-xs text-white/90 font-mono bg-black/50 px-2 py-0.5 rounded">
                     Dokumentasi Terkini Site
                   </span>
                 </div>
@@ -287,19 +289,19 @@ export const ProjectDetailScreen: React.FC = () => {
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
                       <div className="p-3 rounded-lg bg-[#F5F7F6] border border-[#E2E8E4]">
-                        <span className="text-[11px] text-[#69766F] block">Tenaga Kerja Harian</span>
+                        <span className="text-xs text-[#69766F] block">Tenaga Kerja Harian</span>
                         <span className="text-base font-bold font-mono text-[#202B26] tabular-nums">
                           87 Orang
                         </span>
                       </div>
                       <div className="p-3 rounded-lg bg-[#F5F7F6] border border-[#E2E8E4]">
-                        <span className="text-[11px] text-[#69766F] block">Jam Selamat K3</span>
+                        <span className="text-xs text-[#69766F] block">Jam Selamat K3</span>
                         <span className="text-base font-bold font-mono text-[#1C6843] tabular-nums">
                           184.200 Jam
                         </span>
                       </div>
                       <div className="p-3 rounded-lg bg-[#F5F7F6] border border-[#E2E8E4]">
-                        <span className="text-[11px] text-[#69766F] block">Sisa Waktu SPMK</span>
+                        <span className="text-xs text-[#69766F] block">Sisa Waktu SPMK</span>
                         <span className="text-base font-bold font-mono text-[#202B26] tabular-nums">
                           67 Hari Kerja
                         </span>
@@ -350,7 +352,7 @@ export const ProjectDetailScreen: React.FC = () => {
                         {m.status}
                       </Badge>
                     </div>
-                    <div className="flex justify-between items-center text-[11px] text-[#69766F] mt-2">
+                    <div className="flex justify-between items-center text-xs text-[#69766F] mt-2">
                       <span className="font-mono tabular-nums">{m.wbsCode} · Bobot {m.weightPercent}%</span>
                       <span className="font-mono tabular-nums">{formatDateIndo(m.plannedDate)}</span>
                     </div>
@@ -370,7 +372,7 @@ export const ProjectDetailScreen: React.FC = () => {
               <h3 className="text-sm font-bold text-[#202B26]">Struktur Rincian Kerja (WBS)</h3>
               <p className="text-xs text-[#69766F]">Daftar paket pekerjaan dan bobot penyelesaian</p>
             </div>
-            <Button variant="secondary" size="sm" onClick={() => setCurrentScreen('schedule')}>
+            <Button variant="secondary" size="sm" onClick={() => navigate('/schedule')}>
               Buka Modul Jadwal Penuh
             </Button>
           </div>
@@ -421,7 +423,7 @@ export const ProjectDetailScreen: React.FC = () => {
               <h3 className="text-sm font-bold text-[#202B26]">Rencana Anggaran Biaya (RAB Proyek)</h3>
               <p className="text-xs text-[#69766F]">Rincian pagu anggaran per divisi pekerjaan</p>
             </div>
-            <Button variant="secondary" size="sm" onClick={() => setCurrentScreen('budget')}>
+            <Button variant="secondary" size="sm" onClick={() => navigate('/budget')}>
               Buka Pengendalian Biaya Penuh
             </Button>
           </div>
@@ -467,7 +469,7 @@ export const ProjectDetailScreen: React.FC = () => {
               <h3 className="text-sm font-bold text-[#202B26]">Logistik Material Lapangan</h3>
               <p className="text-xs text-[#69766F]">Alokasi stok dan status kebutuhan material</p>
             </div>
-            <Button variant="secondary" size="sm" onClick={() => setCurrentScreen('materials')}>
+            <Button variant="secondary" size="sm" onClick={() => navigate('/materials')}>
               Kelola Gudang Penuh
             </Button>
           </div>
@@ -490,7 +492,7 @@ export const ProjectDetailScreen: React.FC = () => {
                     <td className="py-3 px-4 font-mono font-bold text-[#12352B]">{m.code}</td>
                     <td className="py-3 px-4">
                       <div className="font-semibold text-[#202B26]">{m.name}</div>
-                      <div className="text-[11px] text-[#69766F]">{m.specification}</div>
+                      <div className="text-xs text-[#69766F]">{m.specification}</div>
                     </td>
                     <td className="py-3 px-4 font-mono font-bold tabular-nums text-[#202B26] text-right">
                       {m.currentStock.toLocaleString('id-ID')} {m.unit}
@@ -523,7 +525,7 @@ export const ProjectDetailScreen: React.FC = () => {
               <h3 className="text-sm font-bold text-[#202B26]">Laporan Harian Proyek</h3>
               <p className="text-xs text-[#69766F]">Catatan cuaca, tenaga kerja, dan aktivitas fisik harian</p>
             </div>
-            <Button variant="secondary" size="sm" onClick={() => setCurrentScreen('field-reports')}>
+            <Button variant="secondary" size="sm" onClick={() => navigate('/field-reports')}>
               Buka Semua Laporan Lapangan
             </Button>
           </div>
@@ -543,15 +545,15 @@ export const ProjectDetailScreen: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                   <div>
-                    <span className="text-[#69766F] block text-[11px]">Pengawas Lapangan</span>
+                    <span className="text-[#69766F] block text-xs">Pengawas Lapangan</span>
                     <span className="font-semibold text-[#202B26]">{report.siteSupervisor}</span>
                   </div>
                   <div>
-                    <span className="text-[#69766F] block text-[11px]">Kondisi Cuaca</span>
+                    <span className="text-[#69766F] block text-xs">Kondisi Cuaca</span>
                     <span className="font-semibold text-[#202B26]">Pagi: {report.weatherMorning} · Sore: {report.weatherAfternoon}</span>
                   </div>
                   <div>
-                    <span className="text-[#69766F] block text-[11px]">Total Pekerja</span>
+                    <span className="text-[#69766F] block text-xs">Total Pekerja</span>
                     <span className="font-semibold text-[#202B26] font-mono tabular-nums">
                       {report.workforce.reduce((a, b) => a + b.count, 0)} Orang
                     </span>
@@ -627,7 +629,7 @@ export const ProjectDetailScreen: React.FC = () => {
                   </div>
                   <div className="min-w-0">
                     <div className="font-semibold text-[#202B26] truncate">{doc.title}</div>
-                    <div className="text-[11px] text-[#69766F] font-mono mt-0.5 tabular-nums">
+                    <div className="text-xs text-[#69766F] font-mono mt-0.5 tabular-nums">
                       {doc.code} · {doc.size} · {doc.date}
                     </div>
                   </div>

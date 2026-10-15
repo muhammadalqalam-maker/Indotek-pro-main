@@ -923,7 +923,7 @@ export const INITIAL_TEAM_MEMBERS: TeamMember[] = [
     phone: '+62 812-8871-209',
     assignedProjectIds: ['prj-001'],
     assignedProjects: ['Menara Nusantara Office & Mixed-Use'],
-    status: 'Di Lapangan',
+    status: 'Aktif',
     lastActive: '12 menit lalu',
     permissions: {
       canViewBudget: true,
@@ -1007,7 +1007,7 @@ export const INITIAL_TEAM_MEMBERS: TeamMember[] = [
     phone: '+62 856-7890-123',
     assignedProjectIds: ['prj-001'],
     assignedProjects: ['Menara Nusantara Office & Mixed-Use'],
-    status: 'Di Lapangan',
+    status: 'Aktif',
     lastActive: '18 menit lalu',
     permissions: {
       canViewBudget: false,

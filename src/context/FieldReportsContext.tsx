@@ -7,10 +7,11 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import { FieldReport, FieldReportStatus } from '../types';
-import { firestoreService } from '../services/firestoreService';
+import { dataService } from '../services/dataService';
 import { useAuth } from './AuthContext';
-import { useUI } from './UIContext';
+import { useUI, getScreenIdFromPathname } from './UIContext';
 
 export interface FieldReportsContextType {
   fieldReports: FieldReport[];
@@ -23,7 +24,9 @@ const FieldReportsContext = createContext<FieldReportsContextType | undefined>(u
 
 export const FieldReportsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { currentUser } = useAuth();
-  const { workspaceId, actorInfo, currentScreen, projectDetailTab, isTabVisible, addToast } = useUI();
+  const { workspaceId, actorInfo, projectDetailTab, isTabVisible, addToast, setLoadingFieldReports } = useUI();
+  const location = useLocation();
+  const screenId = getScreenIdFromPathname(location.pathname);
 
   const [fieldReports, setFieldReports] = useState<FieldReport[]>([]);
 
@@ -32,25 +35,28 @@ export const FieldReportsProvider: React.FC<{ children: ReactNode }> = ({ childr
     if (!currentUser || !isTabVisible) return;
 
     const needsFieldReportsRealtime =
-      currentScreen === 'field-reports' ||
-      (currentScreen === 'project-detail' && projectDetailTab === 'reports');
+      screenId === 'field-reports' ||
+      (screenId === 'project-detail' && projectDetailTab === 'reports');
 
     if (!needsFieldReportsRealtime) return;
 
-    const unsub = firestoreService.subscribeFieldReports(
-      (items) => setFieldReports(items),
-      (err) => console.warn('Field reports sync notice:', err),
+    setLoadingFieldReports(true);
+    const unsub = dataService.subscribeFieldReports(
+      (items) => {
+        setFieldReports(items);
+        setLoadingFieldReports(false);
+      },
       workspaceId
     );
 
     return () => { unsub?.(); };
-  }, [currentUser, isTabVisible, currentScreen, projectDetailTab, workspaceId]);
+  }, [currentUser, isTabVisible, location.pathname, projectDetailTab, workspaceId]);
 
   const addFieldReport = async (
-    reportData: Omit<FieldReport, 'id' | 'reportNumber' | 'status'>
+    reportData: Omit<FieldReport, 'id' | 'reportNumber' | 'status' | 'createdAt' | 'updatedAt'>
   ) => {
     try {
-      await firestoreService.addFieldReport(reportData, actorInfo, workspaceId);
+      await dataService.addFieldReport(reportData, actorInfo, workspaceId);
       addToast({
         type: 'success',
         title: 'Laporan Lapangan Terkirim',
@@ -73,7 +79,8 @@ export const FieldReportsProvider: React.FC<{ children: ReactNode }> = ({ childr
     notes?: string
   ) => {
     try {
-      await firestoreService.reviewFieldReport(reportId, reviewerName, status, notes, actorInfo, workspaceId);
+      const decision: 'approved' | 'rejected' = status === 'Disetujui' ? 'approved' : 'rejected';
+      await dataService.reviewFieldReport(reportId, decision, reviewerName, notes, actorInfo, workspaceId);
       addToast({
         type: 'success',
         title: 'Status LHP Diperbarui',

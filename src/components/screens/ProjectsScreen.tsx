@@ -18,6 +18,8 @@ import { ProgressBar } from '../common/ProgressBar';
 import { SearchInput } from '../common/SearchInput';
 import { EmptyState } from '../common/EmptyState';
 import { Pagination } from '../common/Pagination';
+import { DataCard } from '../common/DataCard';
+import { ResponsiveTable } from '../common/ResponsiveTable';
 import {
   formatCurrencyIDR,
   formatCompactIDR,
@@ -158,7 +160,7 @@ export const ProjectsScreen: React.FC = () => {
                 >
                   <span>{status}</span>
                   <span
-                    className={`text-[10px] px-1.5 py-0.2 rounded font-mono tabular-nums ${
+                    className={`text-xs px-1.5 py-0.2 rounded font-mono tabular-nums ${
                       isActive ? 'bg-[#285744] text-white' : 'bg-[#EAEFEA] text-[#69766F]'
                     }`}
                   >
@@ -210,151 +212,219 @@ export const ProjectsScreen: React.FC = () => {
         />
       ) : (
         <div className="bg-white rounded-xl border border-[#E2E8E4] shadow-2xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-[#FAFBFB] text-[#69766F] border-b border-[#E2E8E4]">
-                  <th
-                    className="py-3 px-4 font-semibold cursor-pointer hover:text-[#202B26] select-none text-left"
-                    onClick={() => handleSort('name')}
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <span>Nama Proyek & Kode</span>
-                      <ArrowUpDown className="w-3.5 h-3.5" />
-                    </div>
-                  </th>
-                  <th className="py-3 px-4 font-semibold text-left hidden md:table-cell">Klien & Lokasi</th>
-                  <th className="py-3 px-4 font-semibold text-left hidden lg:table-cell">Project Manager</th>
-                  <th
-                    className="py-3 px-4 font-semibold text-right cursor-pointer hover:text-[#202B26] select-none"
-                    onClick={() => handleSort('contractValue')}
-                  >
-                    <div className="flex items-center justify-end gap-1.5">
-                      <span>Nilai Kontrak</span>
-                      <ArrowUpDown className="w-3.5 h-3.5" />
-                    </div>
-                  </th>
-                  <th
-                    className="py-3 px-4 font-semibold text-left cursor-pointer hover:text-[#202B26] select-none"
-                    onClick={() => handleSort('progressActual')}
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <span>Progres Fisik</span>
-                      <ArrowUpDown className="w-3.5 h-3.5" />
-                    </div>
-                  </th>
-                  <th className="py-3 px-4 font-semibold text-left">Status Jadwal</th>
-                  <th className="py-3 px-4 font-semibold text-left hidden sm:table-cell">Status</th>
-                  <th className="py-3 px-4 font-semibold text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E2E8E4]/70">
-                {paginatedProjects.map((project) => {
-                  const scheduleVariant =
-                    project.scheduleStatus === 'Tepat Waktu'
-                      ? 'success'
-                      : project.scheduleStatus === 'Kritis'
-                      ? 'warning'
-                      : 'danger';
-
-                  const statusVariant =
-                    project.status === 'Berjalan'
-                      ? 'primary'
-                      : project.status === 'Selesai'
-                      ? 'success'
-                      : 'neutral';
-
-                  return (
-                    <tr
-                      key={project.id}
-                      onClick={() => navigateToProjectDetail(project.id)}
-                      className="hover:bg-[#F5F7F6]/80 transition-colors group cursor-pointer"
+          <ResponsiveTable
+            data={paginatedProjects}
+            renderTable={() => (
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-[#FAFBFB] text-[#69766F] border-b border-[#E2E8E4]">
+                    <th
+                      className="py-3 px-4 font-semibold cursor-pointer hover:text-[#202B26] select-none text-left"
+                      onClick={() => handleSort('name')}
                     >
-                      <td className="py-3.5 px-4 min-w-[200px]">
-                        <div className="font-bold text-[#202B26] group-hover:text-[#12352B] transition-colors leading-snug">
-                          {project.name}
-                        </div>
-                        <div className="text-[11px] text-[#69766F] font-mono mt-0.5 tabular-nums">
-                          {project.code} · {project.category}
-                        </div>
-                      </td>
+                      <div className="flex items-center gap-1.5">
+                        <span>Nama Proyek & Kode</span>
+                        <ArrowUpDown className="w-3.5 h-3.5" />
+                      </div>
+                    </th>
+                    <th className="py-3 px-4 font-semibold text-left hidden md:table-cell">Klien & Lokasi</th>
+                    <th className="py-3 px-4 font-semibold text-left hidden lg:table-cell">Project Manager</th>
+                    <th
+                      className="py-3 px-4 font-semibold text-right cursor-pointer hover:text-[#202B26] select-none"
+                      onClick={() => handleSort('contractValue')}
+                    >
+                      <div className="flex items-center justify-end gap-1.5">
+                        <span>Nilai Kontrak</span>
+                        <ArrowUpDown className="w-3.5 h-3.5" />
+                      </div>
+                    </th>
+                    <th
+                      className="py-3 px-4 font-semibold text-left cursor-pointer hover:text-[#202B26] select-none"
+                      onClick={() => handleSort('progressActual')}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>Progres Fisik</span>
+                        <ArrowUpDown className="w-3.5 h-3.5" />
+                      </div>
+                    </th>
+                    <th className="py-3 px-4 font-semibold text-left">Status Jadwal</th>
+                    <th className="py-3 px-4 font-semibold text-left hidden sm:table-cell">Status</th>
+                    <th className="py-3 px-4 font-semibold text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E2E8E4]/70">
+                  {paginatedProjects.map((project) => {
+                    const scheduleVariant =
+                      project.scheduleStatus === 'Tepat Waktu'
+                        ? 'success'
+                        : project.scheduleStatus === 'Kritis'
+                        ? 'warning'
+                        : 'danger';
 
-                      <td className="py-3.5 px-4 hidden md:table-cell">
-                        <div className="font-medium text-[#202B26] truncate max-w-[160px]">
-                          {project.client}
-                        </div>
-                        <div className="text-[11px] text-[#69766F] truncate max-w-[160px] flex items-center gap-1 mt-0.5">
-                          <MapPin className="w-3 h-3 shrink-0" />
-                          <span>{project.location}</span>
-                        </div>
-                      </td>
+                    const statusVariant =
+                      project.status === 'Berjalan'
+                        ? 'primary'
+                        : project.status === 'Selesai'
+                        ? 'success'
+                        : 'neutral';
 
-                      <td className="py-3.5 px-4 text-[#4F5D56] hidden lg:table-cell">
-                        <div className="font-medium text-[#202B26]">{project.projectManager}</div>
-                        <div className="text-[11px] text-[#69766F]">
-                          Site: {project.siteEngineer}
+                    return (
+                      <tr
+                        key={project.id}
+                        onClick={() => navigateToProjectDetail(project.id)}
+                        className="hover:bg-[#F5F7F6]/80 transition-colors group cursor-pointer"
+                      >
+                        <td className="py-3.5 px-4 min-w-[200px]">
+                          <div className="font-bold text-[#202B26] group-hover:text-[#12352B] transition-colors leading-snug">
+                            {project.name}
+                          </div>
+                          <div className="text-xs text-[#69766F] font-mono mt-0.5 tabular-nums">
+                            {project.code} · {project.category}
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4 hidden md:table-cell">
+                          <div className="font-medium text-[#202B26] truncate max-w-[160px]">
+                            {project.client}
+                          </div>
+                          <div className="text-xs text-[#69766F] truncate max-w-[160px] flex items-center gap-1 mt-0.5">
+                            <MapPin className="w-3 h-3 shrink-0" />
+                            <span>{project.location}</span>
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-[#4F5D56] hidden lg:table-cell">
+                          <div className="font-medium text-[#202B26]">{project.projectManager}</div>
+                          <div className="text-xs text-[#69766F]">
+                            Site: {project.siteEngineer}
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4 whitespace-nowrap text-right">
+                          <div className="font-mono font-bold text-[#202B26] tabular-nums">
+                            {formatCurrencyIDR(project.contractValue)}
+                          </div>
+                          <div className="text-xs text-[#69766F] font-mono tabular-nums">
+                            RAB: {formatCompactIDR(project.approvedBudget)}
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4 min-w-[150px]">
+                          <div className="flex items-center justify-between text-xs mb-1 font-mono tabular-nums">
+                            <span className="font-bold text-[#202B26]">
+                              {formatPercent(project.progressActual)}
+                            </span>
+                            <span className="text-[#69766F]">
+                              Plan: {formatPercent(project.progressPlanned)}
+                            </span>
+                          </div>
+                          <ProgressBar
+                            value={project.progressActual}
+                            planned={project.progressPlanned}
+                            size="sm"
+                            variant={
+                              project.progressActual >= project.progressPlanned ? 'primary' : 'warning'
+                            }
+                          />
+                        </td>
+
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <Badge variant={scheduleVariant} size="sm" dot>
+                            {project.scheduleStatus}
+                          </Badge>
+                        </td>
+
+                        <td className="py-3.5 px-4 hidden sm:table-cell whitespace-nowrap">
+                          <Badge variant={statusVariant} size="sm">
+                            {project.status}
+                          </Badge>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                          <Button
+                            variant="secondary"
+                            size="xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigateToProjectDetail(project.id);
+                            }}
+                            rightIcon={<ArrowUpRight className="w-3.5 h-3.5" />}
+                          >
+                            Detail
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+            renderCard={(project) => {
+              const scheduleVariant =
+                project.scheduleStatus === 'Tepat Waktu'
+                  ? 'success'
+                  : project.scheduleStatus === 'Kritis'
+                  ? 'warning'
+                  : 'danger';
+
+              const statusVariant =
+                project.status === 'Berjalan'
+                  ? 'primary'
+                  : project.status === 'Selesai'
+                  ? 'success'
+                  : 'neutral';
+
+              return (
+                <DataCard
+                  title={project.name}
+                  subtitle={project.client}
+                  metadata={[
+                    { label: 'Kode', value: <span className="font-mono">{project.code}</span> },
+                    { label: 'Status', value: <Badge variant={statusVariant} size="sm">{project.status}</Badge> },
+                    { label: 'Lokasi', value: project.location },
+                    { label: 'Kategori', value: project.category },
+                    {
+                      label: 'Nilai Kontrak',
+                      value: <span className="font-mono font-semibold">{formatCurrencyIDR(project.contractValue)}</span>,
+                      highlight: true
+                    },
+                    {
+                      label: 'Progres',
+                      value: (
+                        <div className="space-y-1 w-full">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-semibold">{formatPercent(project.progressActual)}</span>
+                            <span className="text-slate-500">Plan: {formatPercent(project.progressPlanned)}</span>
+                          </div>
+                          <ProgressBar
+                            value={project.progressActual}
+                            planned={project.progressPlanned}
+                            size="sm"
+                            variant={project.progressActual >= project.progressPlanned ? 'primary' : 'warning'}
+                          />
                         </div>
-                      </td>
-
-                      <td className="py-3.5 px-4 whitespace-nowrap text-right">
-                        <div className="font-mono font-bold text-[#202B26] tabular-nums">
-                          {formatCurrencyIDR(project.contractValue)}
-                        </div>
-                        <div className="text-[11px] text-[#69766F] font-mono tabular-nums">
-                          RAB: {formatCompactIDR(project.approvedBudget)}
-                        </div>
-                      </td>
-
-                      <td className="py-3.5 px-4 min-w-[150px]">
-                        <div className="flex items-center justify-between text-[11px] mb-1 font-mono tabular-nums">
-                          <span className="font-bold text-[#202B26]">
-                            {formatPercent(project.progressActual)}
-                          </span>
-                          <span className="text-[#69766F]">
-                            Plan: {formatPercent(project.progressPlanned)}
-                          </span>
-                        </div>
-                        <ProgressBar
-                          value={project.progressActual}
-                          planned={project.progressPlanned}
-                          size="sm"
-                          variant={
-                            project.progressActual >= project.progressPlanned ? 'primary' : 'warning'
-                          }
-                        />
-                      </td>
-
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <Badge variant={scheduleVariant} size="sm" dot>
-                          {project.scheduleStatus}
-                        </Badge>
-                      </td>
-
-                      <td className="py-3.5 px-4 hidden sm:table-cell whitespace-nowrap">
-                        <Badge variant={statusVariant} size="sm">
-                          {project.status}
-                        </Badge>
-                      </td>
-
-                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                        <Button
-                          variant="secondary"
-                          size="xs"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigateToProjectDetail(project.id);
-                          }}
-                          rightIcon={<ArrowUpRight className="w-3.5 h-3.5" />}
-                        >
-                          Detail
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      )
+                    },
+                    { label: 'Jadwal', value: <Badge variant={scheduleVariant} size="sm" dot>{project.scheduleStatus}</Badge> },
+                  ]}
+                  actions={
+                    <Button
+                      variant="secondary"
+                      size="xs"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigateToProjectDetail(project.id);
+                      }}
+                      rightIcon={<ArrowUpRight className="w-3.5 h-3.5" />}
+                    >
+                      Detail
+                    </Button>
+                  }
+                  onClick={() => navigateToProjectDetail(project.id)}
+                />
+              );
+            }}
+          />
 
           <Pagination
             currentPage={currentPage}

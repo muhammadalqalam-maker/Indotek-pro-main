@@ -15,7 +15,9 @@ import {
   XCircle,
   ShieldCheck,
   ShieldAlert,
-  Edit3
+  Edit3,
+  FileText,
+  Printer,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
@@ -26,6 +28,10 @@ import { SearchInput } from '../common/SearchInput';
 import { Modal } from '../common/Modal';
 import { FieldReport, FieldReportStatus } from '../../types';
 import { formatDateIndo } from '../../utils/formatters';
+import { AttachmentUploader } from '../common/AttachmentUploader';
+import { generateFieldReportPDF } from '../../utils/pdfGenerator';
+import { enqueueOfflineFieldReport } from '../../utils/offlineQueue';
+import { compressImage } from '../../utils/imageCompression';
 
 export const FieldReportsScreen: React.FC = () => {
   const { fieldReports, addFieldReport, reviewFieldReport, projects, addToast } = useApp();
@@ -77,42 +83,156 @@ export const FieldReportsScreen: React.FC = () => {
     });
   }, [fieldReports, search, selectedProjectId]);
 
-  const handleCreateReport = (e: React.FormEvent) => {
+  const [reportPhotos, setReportPhotos] = useState<File[]>([]);
+  const [photoCaptions, setPhotoCaptions] = useState<string[]>(['', '', '']);
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+
+  const handleCreateReport = async (e: React.FormEvent) => {
     e.preventDefault();
     const proj = projects.find((p) => p.id === reportForm.projectId);
     if (!proj) return;
 
-    addFieldReport({
-      projectId: proj.id,
-      projectName: proj.name,
-      date: new Date().toISOString().split('T')[0],
-      weatherMorning: reportForm.weatherMorning,
-      weatherAfternoon: reportForm.weatherAfternoon,
-      workingHours: Number(reportForm.workingHours) || 8,
-      siteSupervisor: reportForm.siteSupervisor,
-      workforce: [
-        { role: 'Tukang Besi & Cor', count: Number(reportForm.tukangCount) || 0 },
-        { role: 'Helper & Pekerja Umum', count: Number(reportForm.helperCount) || 0 },
-      ],
-      completedWorks: [reportForm.completedWork],
-      materialsUsed: [
-        { name: 'Beton Readymix FC 35', quantity: '48 m³' },
-        { name: 'Besi D16 BJTS 420B', quantity: '180 batang' },
-      ],
-      equipmentUsed: [
-        { name: 'Tower Crane 01', hours: 7 },
-        { name: 'Concrete Pump Trailer', hours: 5 },
-      ],
-      blockers: reportForm.blockers,
-      photos: [
-        {
-          url: 'https://images.unsplash.com/photo-1541888946425-d0fbb18615f3?auto=format&fit=crop&w=800&q=80',
-          caption: 'Inspeksi penulangan slab lantai zona C sebelum pengecoran',
-        },
-      ],
-    });
+    setIsSubmittingReport(true);
+    try {
+      const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
 
-    setIsNewReportModalOpen(false);
+      // Kompres seluruh foto yang dipilih (maks 3)
+      const compressedPhotos: Array<{ id: string; blob: Blob; fileName: string; mimeType: string; sizeBytes: number; caption: string }> = [];
+      const uiPhotos: Array<{ url: string; caption: string }> = [];
+
+      for (let i = 0; i < reportPhotos.length; i++) {
+        const file = reportPhotos[i];
+        const res = await compressImage(file, 1600, 0.75);
+        const caption = photoCaptions[i] || `Foto Fisik Lapangan ${i + 1}`;
+        compressedPhotos.push({
+          id: `photo-${Date.now()}-${i}`,
+          blob: res.blob,
+          fileName: res.fileName,
+          mimeType: res.mimeType,
+          sizeBytes: res.compressedSize,
+          caption,
+        });
+        uiPhotos.push({
+          url: URL.createObjectURL(res.blob),
+          caption,
+        });
+      }
+
+      if (isOffline) {
+        // Simpan ke antrean offline IndexedDB dengan idempotency key
+        await enqueueOfflineFieldReport({
+          workspaceId: userProfile?.workspaceId || '',
+          projectId: proj.id,
+          projectName: proj.name,
+          reportDate: new Date().toISOString().split('T')[0],
+          weatherMorning: reportForm.weatherMorning,
+          weatherAfternoon: reportForm.weatherAfternoon,
+          workingHours: Number(reportForm.workingHours) || 8,
+          siteSupervisor: reportForm.siteSupervisor,
+          workforce: [
+            { role: 'Tukang Besi & Cor', count: Number(reportForm.tukangCount) || 0 },
+            { role: 'Helper & Pekerja Umum', count: Number(reportForm.helperCount) || 0 },
+          ],
+          completedWorks: [reportForm.completedWork],
+          materialsUsed: [
+            { name: 'Beton Readymix FC 35', quantity: '48 m³' },
+            { name: 'Besi D16 BJTS 420B', quantity: '180 batang' },
+          ],
+          equipmentUsed: [
+            { name: 'Tower Crane 01', hours: 7 },
+            { name: 'Concrete Pump Trailer', hours: 5 },
+          ],
+          blockers: reportForm.blockers,
+          photos: compressedPhotos,
+        });
+
+        // Tambah optimis ke layar agar pengawas tetap bisa melihat draft
+        addFieldReport({
+          projectId: proj.id,
+          projectName: proj.name,
+          date: new Date().toISOString().split('T')[0],
+          weatherMorning: reportForm.weatherMorning,
+          weatherAfternoon: reportForm.weatherAfternoon,
+          workingHours: Number(reportForm.workingHours) || 8,
+          siteSupervisor: reportForm.siteSupervisor,
+          workforce: [
+            { role: 'Tukang Besi & Cor', count: Number(reportForm.tukangCount) || 0 },
+            { role: 'Helper & Pekerja Umum', count: Number(reportForm.helperCount) || 0 },
+          ],
+          completedWorks: [reportForm.completedWork],
+          materialsUsed: [
+            { name: 'Beton Readymix FC 35', quantity: '48 m³' },
+            { name: 'Besi D16 BJTS 420B', quantity: '180 batang' },
+          ],
+          equipmentUsed: [
+            { name: 'Tower Crane 01', hours: 7 },
+            { name: 'Concrete Pump Trailer', hours: 5 },
+          ],
+          blockers: reportForm.blockers,
+          photos: uiPhotos.length > 0 ? uiPhotos : [
+            {
+              url: 'https://images.unsplash.com/photo-1541888946425-d0fbb18615f3?auto=format&fit=crop&w=800&q=80',
+              caption: 'Inspeksi penulangan slab lantai zona C sebelum pengecoran',
+            },
+          ],
+        });
+
+        addToast({
+          type: 'warning',
+          title: 'Tersimpan di Antrean Offline (Mode Pesawat)',
+          message: `Laporan dan ${compressedPhotos.length} foto disimpan di memori perangkat. Akan otomatis disinkronkan saat online.`,
+        });
+      } else {
+        // Online: simpan langsung
+        addFieldReport({
+          projectId: proj.id,
+          projectName: proj.name,
+          date: new Date().toISOString().split('T')[0],
+          weatherMorning: reportForm.weatherMorning,
+          weatherAfternoon: reportForm.weatherAfternoon,
+          workingHours: Number(reportForm.workingHours) || 8,
+          siteSupervisor: reportForm.siteSupervisor,
+          workforce: [
+            { role: 'Tukang Besi & Cor', count: Number(reportForm.tukangCount) || 0 },
+            { role: 'Helper & Pekerja Umum', count: Number(reportForm.helperCount) || 0 },
+          ],
+          completedWorks: [reportForm.completedWork],
+          materialsUsed: [
+            { name: 'Beton Readymix FC 35', quantity: '48 m³' },
+            { name: 'Besi D16 BJTS 420B', quantity: '180 batang' },
+          ],
+          equipmentUsed: [
+            { name: 'Tower Crane 01', hours: 7 },
+            { name: 'Concrete Pump Trailer', hours: 5 },
+          ],
+          blockers: reportForm.blockers,
+          photos: uiPhotos.length > 0 ? uiPhotos : [
+            {
+              url: 'https://images.unsplash.com/photo-1541888946425-d0fbb18615f3?auto=format&fit=crop&w=800&q=80',
+              caption: 'Inspeksi penulangan slab lantai zona C sebelum pengecoran',
+            },
+          ],
+        });
+
+        addToast({
+          type: 'success',
+          title: 'Laporan Diterbitkan',
+          message: `Laporan harian berhasil dikirim ke server.`,
+        });
+      }
+
+      setReportPhotos([]);
+      setPhotoCaptions(['', '', '']);
+      setIsNewReportModalOpen(false);
+    } catch (err: any) {
+      addToast({
+        type: 'danger',
+        title: 'Gagal Menyimpan Laporan',
+        message: err.message,
+      });
+    } finally {
+      setIsSubmittingReport(false);
+    }
   };
 
   const handleReviewAction = async (status: FieldReportStatus, notes?: string) => {
@@ -257,7 +377,7 @@ export const FieldReportsScreen: React.FC = () => {
                     {report.projectName}
                   </div>
 
-                  <div className="text-[11px] text-[#69766F] space-y-1">
+                  <div className="text-xs text-[#69766F] space-y-1">
                     <div className="flex justify-between">
                       <span>Tanggal:</span>
                       <span className="font-mono tabular-nums text-[#202B26]">
@@ -317,9 +437,20 @@ export const FieldReportsScreen: React.FC = () => {
                 </div>
               </div>
 
-              <div className="text-right text-xs">
-                <span className="text-[#69766F] block text-[11px]">Pengawas Pembuat Laporan</span>
-                <span className="font-semibold text-[#202B26]">{selectedReport.siteSupervisor}</span>
+              <div className="flex flex-col sm:items-end gap-2 text-xs">
+                <Button
+                  variant="secondary"
+                  size="xs"
+                  leftIcon={<Printer className="w-3.5 h-3.5" />}
+                  onClick={() => generateFieldReportPDF(selectedReport)}
+                  className="min-h-[44px]"
+                >
+                  Cetak PDF (A4)
+                </Button>
+                <div className="text-right">
+                  <span className="text-[#69766F] block text-xs">Pengawas Pembuat Laporan</span>
+                  <span className="font-semibold text-[#202B26]">{selectedReport.siteSupervisor}</span>
+                </div>
               </div>
             </div>
 
@@ -350,13 +481,13 @@ export const FieldReportsScreen: React.FC = () => {
                   )}
                 </div>
                 {selectedReport.verifiedBy && (
-                  <p className="text-[#69766F] text-[11px]">
+                  <p className="text-[#69766F] text-xs">
                     Diverifikasi oleh: <strong className="text-[#202B26]">{selectedReport.verifiedBy}</strong>
                     {selectedReport.verifiedAt && ` pada ${formatDateIndo(selectedReport.verifiedAt.split('T')[0])}`}
                   </p>
                 )}
                 {selectedReport.reviewerNotes && (
-                  <p className="text-[11px] text-[#A82A20] font-medium bg-[#FCE8E6] p-1.5 rounded mt-1">
+                  <p className="text-xs text-[#A82A20] font-medium bg-[#FCE8E6] p-1.5 rounded mt-1">
                     Catatan Review: {selectedReport.reviewerNotes}
                   </p>
                 )}
@@ -397,7 +528,7 @@ export const FieldReportsScreen: React.FC = () => {
                         </Button>
                       </>
                     ) : (
-                      <span className="text-[10px] text-[#9E6B05] bg-[#FFF8EC] px-2 py-1 rounded border border-[#FCE6B1]">
+                      <span className="text-xs text-[#9E6B05] bg-[#FFF8EC] px-2 py-1 rounded border border-[#FCE6B1]">
                         Menunggu Paraf PM
                       </span>
                     )}
@@ -519,7 +650,7 @@ export const FieldReportsScreen: React.FC = () => {
                           referrerPolicy="no-referrer"
                         />
                       </div>
-                      <div className="p-2.5 text-[11px] text-[#4F5D56] bg-white">
+                      <div className="p-2.5 text-xs text-[#4F5D56] bg-white">
                         {photo.caption}
                       </div>
                     </div>
@@ -527,6 +658,14 @@ export const FieldReportsScreen: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {/* Attachment Uploader & Signed URL Gallery */}
+            <AttachmentUploader
+              workspaceId={selectedReport.workspaceId || userProfile?.workspaceId || ''}
+              recordType="field_report"
+              recordId={selectedReport.id}
+              title="Galeri Foto & Bukti Dokumen Lapangan Resmi"
+            />
           </div>
         ) : (
           <div className="lg:col-span-2 bg-white rounded-xl border border-[#E2E8E4] p-12 text-center text-xs text-[#69766F]">
@@ -544,11 +683,11 @@ export const FieldReportsScreen: React.FC = () => {
         maxWidth="lg"
         footer={
           <>
-            <Button variant="secondary" size="sm" onClick={() => setIsNewReportModalOpen(false)}>
+            <Button variant="secondary" size="sm" onClick={() => setIsNewReportModalOpen(false)} className="min-h-[44px]">
               Batal
             </Button>
-            <Button variant="primary" size="sm" onClick={handleCreateReport}>
-              Simpan & Terbitkan Laporan
+            <Button variant="primary" size="sm" onClick={handleCreateReport} disabled={isSubmittingReport} className="min-h-[44px]">
+              {isSubmittingReport ? 'Menyimpan & Mengompres...' : 'Simpan & Terbitkan Laporan'}
             </Button>
           </>
         }
@@ -559,7 +698,7 @@ export const FieldReportsScreen: React.FC = () => {
             <select
               value={reportForm.projectId}
               onChange={(e) => setReportForm({ ...reportForm, projectId: e.target.value })}
-              className="w-full p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26]"
+              className="w-full min-h-[44px] p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26]"
             >
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -569,13 +708,13 @@ export const FieldReportsScreen: React.FC = () => {
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block font-medium text-[#202B26] mb-1">Cuaca Pagi</label>
               <select
                 value={reportForm.weatherMorning}
                 onChange={(e) => setReportForm({ ...reportForm, weatherMorning: e.target.value as any })}
-                className="w-full p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26]"
+                className="w-full min-h-[44px] p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26]"
               >
                 <option value="Cerah">Cerah</option>
                 <option value="Berawan">Berawan</option>
@@ -589,7 +728,7 @@ export const FieldReportsScreen: React.FC = () => {
               <select
                 value={reportForm.weatherAfternoon}
                 onChange={(e) => setReportForm({ ...reportForm, weatherAfternoon: e.target.value as any })}
-                className="w-full p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26]"
+                className="w-full min-h-[44px] p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26]"
               >
                 <option value="Cerah">Cerah</option>
                 <option value="Berawan">Berawan</option>
@@ -599,14 +738,14 @@ export const FieldReportsScreen: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block font-medium text-[#202B26] mb-1">Jumlah Tukang</label>
               <input
                 type="number"
                 value={reportForm.tukangCount}
                 onChange={(e) => setReportForm({ ...reportForm, tukangCount: e.target.value })}
-                className="w-full p-2 bg-white border border-[#E2E8E4] rounded-lg font-mono text-[#202B26]"
+                className="w-full min-h-[44px] p-2 bg-white border border-[#E2E8E4] rounded-lg font-mono text-[#202B26]"
               />
             </div>
 
@@ -616,7 +755,7 @@ export const FieldReportsScreen: React.FC = () => {
                 type="number"
                 value={reportForm.helperCount}
                 onChange={(e) => setReportForm({ ...reportForm, helperCount: e.target.value })}
-                className="w-full p-2 bg-white border border-[#E2E8E4] rounded-lg font-mono text-[#202B26]"
+                className="w-full min-h-[44px] p-2 bg-white border border-[#E2E8E4] rounded-lg font-mono text-[#202B26]"
               />
             </div>
           </div>
@@ -627,7 +766,7 @@ export const FieldReportsScreen: React.FC = () => {
               rows={2}
               value={reportForm.completedWork}
               onChange={(e) => setReportForm({ ...reportForm, completedWork: e.target.value })}
-              className="w-full p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26]"
+              className="w-full p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26] min-h-[60px]"
             />
           </div>
 
@@ -637,8 +776,50 @@ export const FieldReportsScreen: React.FC = () => {
               type="text"
               value={reportForm.blockers}
               onChange={(e) => setReportForm({ ...reportForm, blockers: e.target.value })}
-              className="w-full p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26]"
+              className="w-full min-h-[44px] p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26]"
             />
+          </div>
+
+          {/* Foto Dokumentasi Fisik Lapangan (Maks 3 Foto) */}
+          <div className="p-3 bg-[#FAFBFB] rounded-lg border border-[#E2E8E4] space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="block font-bold text-[#202B26]">
+                Foto Dokumentasi Lapangan (Maks 3 Foto):
+              </label>
+              <span className="text-xs text-[#69766F] font-mono">{reportPhotos.length}/3 dipilih</span>
+            </div>
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              multiple
+              onChange={(e) => {
+                const files = Array.from(e.target.files || []).slice(0, 3);
+                setReportPhotos(files);
+              }}
+              className="w-full text-xs text-[#202B26] file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#12352B] file:text-white hover:file:bg-[#1C4D3F] cursor-pointer min-h-[44px]"
+            />
+            {reportPhotos.map((file, idx) => (
+              <div key={idx} className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+                <span className="font-mono text-xs text-[#285744] shrink-0 truncate max-w-[140px]">
+                  📷 {file.name}
+                </span>
+                <input
+                  type="text"
+                  placeholder={`Keterangan foto ${idx + 1} (contoh: Pengecoran Zona A)...`}
+                  value={photoCaptions[idx] || ''}
+                  onChange={(e) => {
+                    const next = [...photoCaptions];
+                    next[idx] = e.target.value;
+                    setPhotoCaptions(next);
+                  }}
+                  className="w-full p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26] min-h-[44px]"
+                />
+              </div>
+            ))}
+            <p className="text-xs text-[#69766F]">
+              * Foto otomatis dikompres ke maks 1600px JPEG 75% di perangkat. Dapat diunggah saat offline / mode pesawat.
+            </p>
           </div>
         </form>
       </Modal>
@@ -688,7 +869,7 @@ export const FieldReportsScreen: React.FC = () => {
                 placeholder="Contoh: Bukti foto pengecoran zona B belum terlampir, mohon upload foto rebar."
                 className="w-full p-2.5 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26] focus:outline-none focus:border-[#12352B]"
               />
-              <p className="text-[11px] text-[#69766F] mt-1">
+              <p className="text-xs text-[#69766F] mt-1">
                 Catatan ini akan tersimpan permanen pada riwayat verifikasi laporan dan terkirim ke pengawas.
               </p>
             </div>
