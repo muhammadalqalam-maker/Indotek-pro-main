@@ -137,7 +137,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       const profile: UserProfile = {
-        uid: profileData.id,
+        uid: sessionUser.id,
         email: profileData.email || appUser.email || '',
         name: profileData.full_name || appUser.displayName || 'User',
         role: memberData?.role?.toLowerCase() || 'auditor',
