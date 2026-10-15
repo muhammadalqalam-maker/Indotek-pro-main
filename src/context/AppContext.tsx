@@ -4,7 +4,7 @@
  * 
  * Enterprise Multi-Tenant Orchestrator Application Context
  * Modularized domain architecture composed of:
- * - UIContext: Navigation, toasts, settings, dialogs, audit log, quotas
+ * - UIContext: Navigation, toasts, settings, dialogs, audit log
  * - ProjectsContext: Projects, WBS, milestones, RAB lines, activities
  * - BudgetContext: Budget revisions, addenda, and site petty cash
  * - MaterialsContext: Inventory materials, stock mutations, stock opname adjustments
@@ -35,7 +35,7 @@ import {
   WBSItem,
   BudgetVersion
 } from '../types';
-import { firestoreService, AppSettings } from '../services/firestoreService';
+import { AppSettings } from '../services/dataService';
 import { UIProvider, useUI, ScreenId, ToastMessage } from './UIContext';
 import { ProjectsProvider, useProjects } from './ProjectsContext';
 import { BudgetProvider, useBudget } from './BudgetContext';
@@ -48,8 +48,6 @@ export type { ScreenId, ToastMessage, AppSettings };
 export { useUI, useProjects, useBudget, useMaterials, useProcurement, useFieldReports, useTeam };
 
 export interface AppContextType {
-  currentScreen: ScreenId;
-  setCurrentScreen: (screen: ScreenId) => void;
   selectedProjectId: string;
   setSelectedProjectId: (id: string) => void;
   projectDetailTab: string;
@@ -93,13 +91,26 @@ export interface AppContextType {
   // Loading & Error States
   isLoadingData: boolean;
   loadError: string | null;
-  isQuotaExhausted: boolean;
   isTabVisible: boolean;
   refreshData: () => Promise<void>;
 
+  // Per-domain loading states
+  loadingProjects: boolean;
+  setLoadingProjects: (loading: boolean) => void;
+  loadingBudget: boolean;
+  setLoadingBudget: (loading: boolean) => void;
+  loadingMaterials: boolean;
+  setLoadingMaterials: (loading: boolean) => void;
+  loadingTeam: boolean;
+  setLoadingTeam: (loading: boolean) => void;
+  loadingFieldReports: boolean;
+  setLoadingFieldReports: (loading: boolean) => void;
+  loadingProcurement: boolean;
+  setLoadingProcurement: (loading: boolean) => void;
+
   // Workflows & Actions
   addProject: (newProj: Omit<Project, 'id' | 'totalMilestones' | 'completedMilestones'>) => Promise<string>;
-  approvePurchaseOrder: (poId: string, approverName: string) => Promise<void>;
+  approvePurchaseOrder: (poId: string, approverName: string, overrideReason?: string) => Promise<void>;
   rejectPurchaseOrder: (poId: string, rejectorName: string, reason: string) => Promise<void>;
   addPurchaseOrder: (po: Omit<PurchaseOrder, 'id' | 'poNumber' | 'status'>) => Promise<void>;
   addStockMutation: (mutation: Omit<StockMutation, 'id'>) => Promise<void>;
@@ -162,19 +173,15 @@ export interface AppContextType {
   settings: AppSettings;
   updateSettings: (newSettings: Partial<AppSettings>) => Promise<void>;
 
-  // Cloud Firestore Sync State
-  isFirestoreSyncing: boolean;
 }
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   return (
-    <UIProvider>
-      <ProjectsProvider>
-        <BudgetContextProviderWrapper>
-          {children}
-        </BudgetContextProviderWrapper>
-      </ProjectsProvider>
-    </UIProvider>
+    <ProjectsProvider>
+      <BudgetContextProviderWrapper>
+        {children}
+      </BudgetContextProviderWrapper>
+    </ProjectsProvider>
   );
 };
 
@@ -212,7 +219,6 @@ export const useApp = (): AppContextType => {
     ui.setIsLoadingData(true);
     ui.setLoadError(null);
     try {
-      firestoreService.invalidateCache();
       await Promise.all([
         projectsDomain.refreshProjects(true),
         materialsDomain.loadMaterialsData(),
@@ -228,8 +234,6 @@ export const useApp = (): AppContextType => {
 
   return {
     // UI & Navigation
-    currentScreen: ui.currentScreen,
-    setCurrentScreen: ui.setCurrentScreen,
     selectedProjectId: ui.selectedProjectId,
     setSelectedProjectId: ui.setSelectedProjectId,
     projectDetailTab: ui.projectDetailTab,
@@ -252,10 +256,8 @@ export const useApp = (): AppContextType => {
     updateSettings: ui.updateSettings,
     isLoadingData: ui.isLoadingData,
     loadError: ui.loadError,
-    isQuotaExhausted: ui.isQuotaExhausted,
     isTabVisible: ui.isTabVisible,
     refreshData,
-    isFirestoreSyncing: ui.isFirestoreSyncing,
     pendingActions: ui.pendingActions,
     isActionPending: ui.isActionPending,
     notifications: ui.notifications,
@@ -264,6 +266,20 @@ export const useApp = (): AppContextType => {
     unreadNotificationCount: ui.unreadNotificationCount,
     auditLogs: ui.auditLogs,
     recordAuditEvent: ui.recordAuditEvent,
+
+    // Per-domain loading states
+    loadingProjects: ui.loadingProjects,
+    setLoadingProjects: ui.setLoadingProjects,
+    loadingBudget: ui.loadingBudget,
+    setLoadingBudget: ui.setLoadingBudget,
+    loadingMaterials: ui.loadingMaterials,
+    setLoadingMaterials: ui.setLoadingMaterials,
+    loadingTeam: ui.loadingTeam,
+    setLoadingTeam: ui.setLoadingTeam,
+    loadingFieldReports: ui.loadingFieldReports,
+    setLoadingFieldReports: ui.setLoadingFieldReports,
+    loadingProcurement: ui.loadingProcurement,
+    setLoadingProcurement: ui.setLoadingProcurement,
 
     // Projects
     projects: projectsDomain.projects,
