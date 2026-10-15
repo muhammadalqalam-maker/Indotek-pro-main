@@ -66,11 +66,26 @@ export async function authenticateTrustedActor(
 
       // Format: test-actor:<role>:<uid>:<name>:<email>:<workspaceId>
       const parts = token.split(':');
-      const testRole = (parts[1] as AppRole) || 'Owner / Director';
-      uid = parts[2] || 'test-user-id';
-      name = parts[3] || 'Test Actor';
-      email = parts[4] || '';
-      const wsId = parts[5] || (req.headers['x-workspace-id'] as string) || (req.body?.workspaceId as string) || 'default-ws';
+      
+      if (parts.length < 6) {
+        res.status(400).json({
+          error: 'Malformed test-actor token. Expected format: test-actor:<role>:<uid>:<name>:<email>:<workspaceId>',
+        });
+        return;
+      }
+
+      const testRole = parts[1] as AppRole;
+      uid = parts[2];
+      name = parts[3];
+      email = parts[4];
+      const wsId = parts[5];
+
+      if (!uid || !name || !testRole) {
+        res.status(400).json({
+          error: 'Invalid test-actor token: uid, name, and role cannot be empty.',
+        });
+        return;
+      }
 
       req.actor = {
         uid,

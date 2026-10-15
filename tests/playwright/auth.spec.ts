@@ -98,6 +98,27 @@ test.describe('Authentication Flows', () => {
         });
       });
 
+      await page.route('**/rest/v1/user_profiles*', async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify([{
+            id: '00000000-0000-0000-0000-000000000001',
+            email: 'test@indotek.com',
+            display_name: 'Test User',
+            workspace_id: 'ws-test',
+            role: 'Owner',
+            assigned_projects: null,
+            approval_status: 'approved',
+            department: 'Engineering',
+            nip: '12345',
+            status: 'active',
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z'
+          }]),
+        });
+      });
+
       await page.route('**/rest/v1/workspace_members*', async (route) => {
         await route.fulfill({
           status: 200,
@@ -162,6 +183,71 @@ test.describe('Authentication Flows', () => {
 
       await page.click('button:has-text("Masuk")');
       await expect(page.locator('button:has-text("Masuk")[disabled]')).toBeVisible();
+    });
+
+    test('completes two-step auth flow without hanging (regression for C2)', async ({ page }) => {
+      // Mock auth token endpoint with delay
+      await page.route('**/auth/v1/token*', async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            access_token: 'mock-access-token',
+            user: { id: '00000000-0000-0000-0000-000000000001', email: 'test@indotek.com' },
+          }),
+        });
+      });
+
+      // Mock user_profiles endpoint (step 2 of auth flow)
+      await page.route('**/rest/v1/user_profiles*', async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify([{
+            id: '00000000-0000-0000-0000-000000000001',
+            email: 'test@indotek.com',
+            display_name: 'Test User',
+            workspace_id: 'ws-test',
+            role: 'Owner',
+            assigned_projects: null,
+            approval_status: 'approved',
+            department: 'Engineering',
+            nip: '12345',
+            status: 'active',
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z'
+          }]),
+        });
+      });
+
+      // Mock workspace_members
+      await page.route('**/rest/v1/workspace_members*', async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify([{
+            id: '00000000-0000-0000-0000-000000000001',
+            workspace_id: 'ws-test',
+            user_id: '00000000-0000-0000-0000-000000000001',
+            role: 'Owner',
+            created_at: '2024-01-01T00:00:00Z',
+          }]),
+        });
+      });
+
+      await page.goto('/');
+      await page.fill('input[type="email"]', 'test@indotek.com');
+      await page.fill('input[type="password"]', 'password123');
+      await page.click('button:has-text("Masuk")');
+
+      // Verify loading state appears
+      await expect(page.locator('button:has-text("Masuk")[disabled]')).toBeVisible();
+
+      // Critical regression check: auth flow completes, no infinite loading
+      // If user_profiles mock missing, this would timeout with isPendingApproval=true
+      await expect(page.locator('h1:has-text("Dashboard Eksekutif")')).toBeVisible({ timeout: 10000 });
     });
   });
 
