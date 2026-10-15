@@ -37,7 +37,7 @@ BEGIN
   ) THEN
     CREATE TRIGGER trg_payment_terms_updated_at
       BEFORE UPDATE ON public.payment_terms
-      FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+      FOR EACH ROW EXECUTE FUNCTION private.touch_updated_at();
   END IF;
 END$$;
 
@@ -62,9 +62,9 @@ DECLARE v_member_role text;
 BEGIN
   SELECT role INTO v_member_role FROM public.workspace_members
   WHERE user_id = auth.uid() AND workspace_id = p_workspace_id AND status = 'Aktif';
-  IF v_member_role IS NULL THEN RAISE EXCEPTION 'Akses ditolak: bukan anggota aktif workspace.'; END IF;
+  IF v_member_role IS NULL THEN RAISE EXCEPTION 'Akses ditolak: bukan anggota aktif workspace.' USING ERRCODE = '42501'; END IF;
   IF NOT EXISTS (SELECT 1 FROM public.projects WHERE id = p_project_id AND workspace_id = p_workspace_id) THEN
-    RAISE EXCEPTION 'Proyek tidak ditemukan dalam workspace ini.';
+    RAISE EXCEPTION 'Proyek tidak ditemukan dalam workspace ini.' USING ERRCODE = 'P0002';
   END IF;
   IF p_require_role IS NOT NULL THEN
     IF NOT (
@@ -72,7 +72,7 @@ BEGIN
       v_member_role = p_require_role OR
       (p_require_role IN ('finance', 'Finance Manager', 'Finance / Accounting') AND v_member_role IN ('finance', 'Finance / Accounting', 'Finance Manager'))
     ) THEN
-      RAISE EXCEPTION 'Akses ditolak: peran "%" diperlukan.', p_require_role;
+      RAISE EXCEPTION 'Akses ditolak: peran % diperlukan.', p_require_role USING ERRCODE = '42501';
     END IF;
   END IF;
 END;
@@ -100,14 +100,14 @@ DECLARE
   v_existing_sum   numeric;
 BEGIN
   PERFORM private.check_payment_terms_access(p_workspace_id, p_project_id);
-  IF p_persen < 0 OR p_persen > 100 THEN RAISE EXCEPTION 'Persen harus antara 0-100.'; END IF;
+  IF p_persen < 0 OR p_persen > 100 THEN RAISE EXCEPTION 'Persen harus antara 0-100.' USING ERRCODE = '22003'; END IF;
 
   SELECT COALESCE(SUM(persen), 0) INTO v_existing_sum
   FROM public.payment_terms
   WHERE project_id = p_project_id AND workspace_id = p_workspace_id
     AND (p_id IS NULL OR id <> p_id);
   IF v_existing_sum + p_persen > 100.0 THEN
-    RAISE EXCEPTION 'Total persen termin melebihi 100%%. Tersisa: %%', (100 - v_existing_sum);
+    RAISE EXCEPTION 'Total persen termin melebihi 100%%. Tersisa: %', (100 - v_existing_sum) USING ERRCODE = '22023';
   END IF;
 
   SELECT COALESCE(SUM(CAST(planned_amount AS numeric)), 0)::bigint INTO v_contract_value
@@ -124,7 +124,7 @@ BEGIN
       masa_pemeliharaan_hari = p_masa_pemeliharaan_hari,
       keterangan = p_keterangan, updated_at = now()
     WHERE id = p_id AND project_id = p_project_id AND workspace_id = p_workspace_id;
-    IF NOT FOUND THEN RAISE EXCEPTION 'Termin tidak ditemukan.'; END IF;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Termin tidak ditemukan.' USING ERRCODE = 'P0002'; END IF;
     v_result_id := p_id;
   ELSE
     INSERT INTO public.payment_terms (workspace_id, project_id, jenis, urutan, label, persen, nominal, milestone_id, masa_pemeliharaan_hari, keterangan, status)
@@ -147,10 +147,10 @@ AS $$
 BEGIN
   PERFORM private.check_payment_terms_access(p_workspace_id, p_project_id);
   IF EXISTS (SELECT 1 FROM public.payment_terms WHERE id = p_id AND status IN ('Tagih','Lunas')) THEN
-    RAISE EXCEPTION 'Termin yang sudah ditagih/lunas tidak dapat dihapus.';
+    RAISE EXCEPTION 'Termin yang sudah ditagih/lunas tidak dapat dihapus.' USING ERRCODE = '23503';
   END IF;
   DELETE FROM public.payment_terms WHERE id = p_id AND project_id = p_project_id AND workspace_id = p_workspace_id;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Termin tidak ditemukan.'; END IF;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Termin tidak ditemukan.' USING ERRCODE = 'P0002'; END IF;
   RETURN jsonb_build_object('message', 'Termin berhasil dihapus.');
 END;
 $$;
@@ -165,12 +165,12 @@ AS $$
 DECLARE v_current_status text;
 BEGIN
   PERFORM private.check_payment_terms_access(p_workspace_id, p_project_id, 'Finance Manager');
-  IF p_status NOT IN ('Tagih','Lunas') THEN RAISE EXCEPTION 'Status tidak valid. Pilihan: Tagih atau Lunas.'; END IF;
+  IF p_status NOT IN ('Tagih','Lunas') THEN RAISE EXCEPTION 'Status tidak valid. Pilihan: Tagih atau Lunas.' USING ERRCODE = '22023'; END IF;
   SELECT status INTO v_current_status FROM public.payment_terms
   WHERE id = p_id AND workspace_id = p_workspace_id AND project_id = p_project_id;
-  IF v_current_status IS NULL THEN RAISE EXCEPTION 'Termin tidak ditemukan.'; END IF;
-  IF v_current_status = 'Lunas' THEN RAISE EXCEPTION 'Termin yang sudah lunas tidak dapat diubah.'; END IF;
-  IF v_current_status = 'Tagih' AND p_status = 'Tagih' THEN RAISE EXCEPTION 'Termin sudah berstatus Tagih.'; END IF;
+  IF v_current_status IS NULL THEN RAISE EXCEPTION 'Termin tidak ditemukan.' USING ERRCODE = 'P0002'; END IF;
+  IF v_current_status = 'Lunas' THEN RAISE EXCEPTION 'Termin yang sudah lunas tidak dapat diubah.' USING ERRCODE = '23503'; END IF;
+  IF v_current_status = 'Tagih' AND p_status = 'Tagih' THEN RAISE EXCEPTION 'Termin sudah berstatus Tagih.' USING ERRCODE = '23505'; END IF;
 
   UPDATE public.payment_terms SET
     status = p_status,
@@ -179,7 +179,7 @@ BEGIN
     keterangan = COALESCE(p_keterangan, keterangan), updated_at = now()
   WHERE id = p_id AND workspace_id = p_workspace_id AND project_id = p_project_id;
 
-  INSERT INTO public.audit_logs (workspace_id, actor_id, action, resource_type, resource_id, diff_json)
+  INSERT INTO public.audit_logs (workspace_id, actor_id, action, record_type, record_id, metadata)
   VALUES (p_workspace_id, auth.uid(), 'UPDATE_STATUS', 'payment_terms', p_id,
     jsonb_build_object('from', v_current_status, 'to', p_status, 'tanggal', p_tanggal))
   ON CONFLICT DO NOTHING;

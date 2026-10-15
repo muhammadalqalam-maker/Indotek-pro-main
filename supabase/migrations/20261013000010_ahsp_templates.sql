@@ -471,7 +471,7 @@ begin
   select * into a from private.require_actor(p_workspace_id);
 
   if a.actor_role not in ('owner', 'finance', 'project_manager') then
-    raise exception 'Hanya Owner, Finance, atau Project Manager yang dapat melakukan seed AHSP PUPR.', a.actor_role using errcode = '42501';
+    raise exception 'Hanya Owner, Finance, atau Project Manager yang dapat melakukan seed AHSP PUPR.' using errcode = '42501';
   end if;
 
   -- =========================================================================

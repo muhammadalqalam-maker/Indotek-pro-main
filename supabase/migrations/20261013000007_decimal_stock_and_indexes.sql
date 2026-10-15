@@ -8,6 +8,9 @@
 
 -- 1. Ubah tipe kolom kuantitas di materials
 
+-- Drop policy materials_insert karena referensi current_stock di WITH CHECK
+drop policy if exists materials_insert on public.materials;
+
 alter table public.materials
   drop constraint if exists materials_current_stock_check;
 
@@ -15,6 +18,10 @@ alter table public.materials
   alter column current_stock type numeric(18,3) using current_stock::numeric(18,3),
   alter column current_stock set default 0,
   add constraint materials_current_stock_check check (current_stock >= 0);
+
+-- Recreate policy materials_insert dengan definisi asli
+create policy materials_insert on public.materials for insert to authenticated
+  with check ((select private.has_perm(workspace_id, 'materials', 'create')) and current_stock = 0 and status = 'Aman');
 
 alter table public.materials
   drop constraint if exists materials_min_stock_check;

@@ -332,13 +332,14 @@ begin
   if v_sod_mode = 'strict' then
     raise exception
       'Pelanggaran Segregation of Duties: % tidak boleh menyetujui % yang dibuat sendiri (sod_mode=strict).',
-      p_actor_role, p_doc_type using errcode = '42501';
+      p_actor_role, p_doc_type
+      using errcode = '42501';
   end if;
 
   -- Mode owner_override: hanya Owner yang boleh override
   if p_actor_role != 'owner' then
     raise exception
-      'Pelanggaran SoD: hanya Owner yang dapat menggunakan override pada sod_mode=owner_override.',
+      'Pelanggaran SoD: hanya Owner yang dapat menggunakan override pada sod_mode=owner_override.'
       using errcode = '42501';
   end if;
 
@@ -346,7 +347,8 @@ begin
   if p_override_reason is null or length(trim(p_override_reason)) < 15 then
     raise exception
       'Override SoD memerlukan alasan minimal 15 karakter. Alasan diberikan: "%".',
-      coalesce(p_override_reason, '(kosong)') using errcode = '22023';
+      coalesce(p_override_reason, '(kosong)')
+      using errcode = '22023';
   end if;
 
   -- Catat audit override
@@ -458,8 +460,6 @@ end;
 $$;
 
 grant execute on function public.approve_purchase_order(uuid, uuid, text) to authenticated;
--- Pertahankan grant lama (tanpa override_reason) untuk kompatibilitas
-grant execute on function public.approve_purchase_order(uuid, uuid) to authenticated;
 
 
 -- Override approve_petty_cash dengan SoD check
@@ -476,7 +476,8 @@ begin
   select * into a from private.require_actor(p_workspace_id);
 
   if a.actor_role not in ('owner', 'finance') then
-    raise exception 'Peran "%" tidak berwenang menyetujui kas kecil.', a.actor_role using errcode = '42501';
+    raise exception 'Peran "%" tidak berwenang menyetujui kas kecil.', a.actor_role
+      using errcode = '42501';
   end if;
 
   select * into cash
@@ -489,7 +490,8 @@ begin
   end if;
 
   if cash.status != 'Menunggu' then
-    raise exception 'Voucher kas kecil berstatus "%" tidak dapat disetujui.', cash.status using errcode = '42501';
+    raise exception 'Voucher kas kecil berstatus "%" tidak dapat disetujui.', cash.status
+      using errcode = '42501';
   end if;
 
   -- SoD Check
@@ -520,7 +522,6 @@ end;
 $$;
 
 grant execute on function public.approve_petty_cash(uuid, uuid, text) to authenticated;
-grant execute on function public.approve_petty_cash(uuid, uuid) to authenticated;
 
 
 -- Override approve_budget_revision dengan SoD check
@@ -550,7 +551,8 @@ begin
   end if;
 
   if rev.status != 'Menunggu' then
-    raise exception 'Revisi anggaran berstatus "%" tidak dapat disetujui.', rev.status using errcode = '42501';
+    raise exception 'Revisi anggaran berstatus "%" tidak dapat disetujui.', rev.status
+      using errcode = '42501';
   end if;
 
   -- SoD Check
@@ -589,7 +591,6 @@ end;
 $$;
 
 grant execute on function public.approve_budget_revision(uuid, uuid, text) to authenticated;
-grant execute on function public.approve_budget_revision(uuid, uuid) to authenticated;
 
 
 -- ─────────────────────────────────────────────────────────────────────────────

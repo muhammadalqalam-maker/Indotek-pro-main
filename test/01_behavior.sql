@@ -502,11 +502,11 @@ select bobot_persen from public.boq_items where workspace_id=:'ws' and kode_item
 
 \echo '--- T45 Storage: Attachment access by record_type (field_report assigned user can access)'
 reset role;
-insert into public.attachments (workspace_id, record_type, record_id, file_name, storage_path, file_size, uploader_id)
+insert into public.attachments (workspace_id, record_type, record_id, storage_path, size_bytes, uploaded_by)
 values (
   :'ws', 'field_report',
   (select id from public.field_reports where workspace_id=:'ws' limit 1),
-  'daily_report.pdf', 'attachments/test.pdf', 102400,
+  'attachments/test.pdf', 102400,
   '00000000-0000-0000-0000-0000000000a5'
 ) returning id as att_id \gset
 
@@ -519,11 +519,11 @@ select count(*) as procurement_see_field_report_att from public.attachments wher
 
 \echo '--- T46 Storage: DELETE restricted to uploader or Owner'
 reset role;
-insert into public.attachments (workspace_id, record_type, record_id, file_name, storage_path, file_size, uploader_id)
+insert into public.attachments (workspace_id, record_type, record_id, storage_path, size_bytes, uploaded_by)
 values (
   :'ws', 'purchase_order',
   (select id from public.purchase_orders where workspace_id=:'ws' limit 1),
-  'invoice.pdf', 'attachments/inv.pdf', 204800,
+  'attachments/inv.pdf', 204800,
   '00000000-0000-0000-0000-0000000000a2'
 ) returning id as po_att_id \gset
 
@@ -541,7 +541,7 @@ select count(*) as po_attachment_after_owner_delete from public.attachments wher
 \echo '--- T47 Storage: Tenant isolation (outsider cannot see or upload attachments)'
 set role authenticated; select pg_temp.as_user('00000000-0000-0000-0000-0000000000b1');
 select count(*) as outsider_see_attachments from public.attachments where workspace_id=:'ws';
-insert into public.attachments (workspace_id, record_type, record_id, file_name, storage_path, file_size, uploader_id)
-values (:'ws', 'project', :'pid', 'hack.pdf', 'evil.pdf', 1024, '00000000-0000-0000-0000-0000000000b1');
+insert into public.attachments (workspace_id, record_type, record_id, storage_path, size_bytes, uploaded_by)
+values (:'ws', 'project', :'pid', 'evil.pdf', 1024, '00000000-0000-0000-0000-0000000000b1');
 
 \echo '=== All tests T1-T47 completed ==='
