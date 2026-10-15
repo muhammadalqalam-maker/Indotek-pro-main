@@ -28,9 +28,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (method === 'GET' && pathname === '/api/ready') {
     try {
       const supabaseUrl = process.env.VITE_SUPABASE_URL;
-      const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
+      const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-      if (!supabaseUrl || !supabaseKey) {
+      if (!supabaseUrl || !supabaseServiceKey) {
         return res.status(503).json({
           status: 'not_ready',
           reason: 'Missing Supabase configuration',
@@ -38,7 +38,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
-      const supabase = createClient(supabaseUrl, supabaseKey);
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
       
       // Simple query to verify DB connectivity
       const { error } = await supabase.from('workspaces').select('id').limit(1);
