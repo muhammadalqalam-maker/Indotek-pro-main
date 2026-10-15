@@ -1,55 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { workflowRouter } from './routes';
 import { supabaseAdmin } from './supabaseAdmin';
-
-// In-Memory Lightweight Rate Limiter for /api/workflows
-export interface RateLimitEntry {
-  count: number;
-  resetTime: number;
-}
-export const rateLimitMap = new Map<string, RateLimitEntry>();
-const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
-const RATE_LIMIT_MAX_REQUESTS = 120; // 120 reqs/min
-
-export function workflowRateLimiter(req: Request, res: Response, next: NextFunction) {
-  const forwarded = req.headers['x-forwarded-for'];
-  const ip = typeof forwarded === 'string' ? forwarded.split(',')[0].trim() : (req.socket.remoteAddress || 'unknown');
-  const now = Date.now();
-
-  // Periodic random cleanup of expired keys
-  if (Math.random() < 0.05) {
-    for (const [key, entry] of rateLimitMap.entries()) {
-      if (now > entry.resetTime) {
-        rateLimitMap.delete(key);
-      }
-    }
-  }
-
-  let entry = rateLimitMap.get(ip);
-  if (!entry || now > entry.resetTime) {
-    entry = { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS };
-    rateLimitMap.set(ip, entry);
-  } else {
-    entry.count += 1;
-  }
-
-  const remaining = Math.max(0, RATE_LIMIT_MAX_REQUESTS - entry.count);
-  const resetSeconds = Math.ceil((entry.resetTime - now) / 1000);
-
-  res.setHeader('RateLimit-Limit', RATE_LIMIT_MAX_REQUESTS.toString());
-  res.setHeader('RateLimit-Remaining', remaining.toString());
-  res.setHeader('RateLimit-Reset', resetSeconds.toString());
-
-  if (entry.count > RATE_LIMIT_MAX_REQUESTS) {
-    res.setHeader('Retry-After', resetSeconds.toString());
-    return res.status(429).json({
-      error: 'Terlalu banyak permintaan pada API alur transaksi. Silakan tunggu beberapa saat.',
-      success: false,
-    });
-  }
-
-  next();
-}
+import { standardRateLimit } from './rateLimit';
 
 export function createExpressApp() {
   const app = express();
@@ -89,8 +41,8 @@ export function createExpressApp() {
 
   // 1. Transactional Workflow Routes with Rate Limiting
   // Supports both /api/workflows and /workflows
-  app.use('/api/workflows', workflowRateLimiter, workflowRouter);
-  app.use('/workflows', workflowRateLimiter, workflowRouter);
+  app.use('/api/workflows', standardRateLimit, workflowRouter);
+  app.use('/workflows', standardRateLimit, workflowRouter);
 
   // 2. Liveness Health Check (responds quickly without external dependency)
   const healthHandler = (_req: Request, res: Response) => {

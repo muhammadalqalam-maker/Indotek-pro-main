@@ -26,7 +26,7 @@
         },
         {
           "key": "Permissions-Policy",
-          "value": "camera=(self), microphone=(), geolocation=(self), payment=(), usb=()"
+          "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
         },
         {
           "key": "X-Frame-Options",
@@ -47,6 +47,18 @@
         {
           "key": "Strict-Transport-Security",
           "value": "max-age=31536000; includeSubDomains; preload"
+        },
+        {
+          "key": "X-Permitted-Cross-Domain-Policies",
+          "value": "none"
+        },
+        {
+          "key": "Cross-Origin-Embedder-Policy",
+          "value": "require-corp"
+        },
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "same-origin-allow-popups"
         }
       ]
     }
