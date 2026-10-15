@@ -95,7 +95,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setCurrentUser(appUser);
 
       const { data: profileData, error: profileError } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .select('*')
         .eq('id', sessionUser.id)
         .maybeSingle();
@@ -104,7 +104,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.error('Error fetching user profile (Supabase):', profileError);
         setUserProfile(null);
         setActiveRole('Read-only Auditor');
-        setIsPendingApproval(true);
+        setIsPendingApproval(false);
         setIsAdminUser(false);
         setIsLoading(false);
         return;
@@ -113,7 +113,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (!profileData) {
         setUserProfile(null);
         setActiveRole('Read-only Auditor');
-        setIsPendingApproval(true);
+        setIsPendingApproval(false);
+        setIsAdminUser(false);
+        setIsLoading(false);
+        return;
+      }
+
+      // Get user's workspace from workspace_members table
+      const { data: memberData, error: memberError } = await supabase
+        .from('workspace_members')
+        .select('workspace_id, role, department, status')
+        .eq('user_id', sessionUser.id)
+        .maybeSingle();
+
+      if (memberError) {
+        console.error('Error fetching workspace membership (Supabase):', memberError);
+        setUserProfile(null);
+        setActiveRole('Read-only Auditor');
+        setIsPendingApproval(false);
         setIsAdminUser(false);
         setIsLoading(false);
         return;
@@ -122,19 +139,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const profile: UserProfile = {
         uid: profileData.id,
         email: profileData.email || appUser.email || '',
-        name: profileData.display_name || appUser.displayName || 'User',
-        role: profileData.role || 'auditor',
-        department: profileData.department || '',
+        name: profileData.full_name || appUser.displayName || 'User',
+        role: memberData?.role?.toLowerCase() || 'auditor',
+        department: memberData?.department || '',
         nip: profileData.nip || '',
-        workspaceId: profileData.workspace_id || '',
-        assignedProjectIds: profileData.assigned_projects || [],
-        status: profileData.status || 'Aktif',
+        workspaceId: memberData?.workspace_id || '',
+        assignedProjectIds: [],
+        status: memberData?.status || 'Aktif',
       };
 
       setUserProfile(profile);
 
-      const appRole = DB_ROLE_TO_APP_ROLE[profileData.role as keyof typeof DB_ROLE_TO_APP_ROLE] || 'Read-only Auditor';
-      const approvalStatus = profileData.approval_status || 'pending';
+      const appRole = DB_ROLE_TO_APP_ROLE[memberData?.role as keyof typeof DB_ROLE_TO_APP_ROLE] || 'Read-only Auditor';
+      const approvalStatus = memberData?.status === 'Aktif' ? 'approved' : 'pending';
 
       if (approvalStatus === 'pending') {
         setIsPendingApproval(true);
