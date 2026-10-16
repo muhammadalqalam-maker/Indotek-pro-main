@@ -60,7 +60,7 @@ export const TRANSLATIONS = {
     'settings.notifications': 'Peringatan & Alert',
     'settings.appearance': 'Kerapatan & Tampilan',
     'settings.audit': 'Jejak Audit & Tata Kelola',
-    'settings.savedSuccess': 'Pengaturan perusahaan berhasil disimpan ke Firestore.',
+    'settings.savedSuccess': 'Pengaturan perusahaan berhasil disimpan ke Supabase.',
 
     // Budget
     'budget.title': 'RAB & Pengendalian Biaya',
@@ -185,7 +185,7 @@ export const TRANSLATIONS = {
     'settings.notifications': 'Warnings & Alerts',
     'settings.appearance': 'Density & Appearance',
     'settings.audit': 'Audit Trail & Governance',
-    'settings.savedSuccess': 'Company settings successfully saved to Firestore.',
+    'settings.savedSuccess': 'Company settings successfully saved to Supabase.',
 
     // Budget
     'budget.title': 'BOQ & Budget Control',

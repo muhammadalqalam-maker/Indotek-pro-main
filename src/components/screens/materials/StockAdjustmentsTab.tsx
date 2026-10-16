@@ -116,7 +116,7 @@ export const StockAdjustmentsTab: React.FC<StockAdjustmentsTabProps> = ({
                     <td className="py-3.5 px-4 text-[#69766F] whitespace-nowrap">
                       <div>{adj.submittedBy}</div>
                       <div className="text-xs font-mono">
-                        {formatDateIndo(adj.submittedAt.split('T')[0])}
+                        {formatDateIndo(adj.submittedAt)}
                       </div>
                     </td>
 
@@ -160,7 +160,7 @@ export const StockAdjustmentsTab: React.FC<StockAdjustmentsTabProps> = ({
                         <div className="text-xs text-[#69766F]">
                           <span className="font-medium text-[#202B26]">{adj.reviewedBy}</span>
                           <div className="font-mono text-xs">
-                            {adj.reviewedAt ? formatDateIndo(adj.reviewedAt.split('T')[0]) : '-'}
+                            {adj.reviewedAt ? formatDateIndo(adj.reviewedAt) : '-'}
                           </div>
                         </div>
                       )}

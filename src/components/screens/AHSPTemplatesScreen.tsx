@@ -265,15 +265,15 @@ export const AHSPTemplatesScreen: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header Utama */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white  p-6 rounded-xl border border-border-subtle  shadow-sm">
         <div>
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-lg">
+            <div className="p-2.5 bg-warning-bg  text-warning  rounded-lg">
               <Calculator className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white">Analisis Harga Satuan Pekerjaan (AHSP)</h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+              <h1 className="text-xl font-bold text-text-primary ">Analisis Harga Satuan Pekerjaan (AHSP)</h1>
+              <p className="text-sm text-text-muted ">
                 Pustaka analisis koefisien x harga dasar mengacu pada Pedoman Permen PUPR No. 8 Tahun 2023.
               </p>
             </div>
@@ -284,10 +284,10 @@ export const AHSPTemplatesScreen: React.FC = () => {
           <button
             onClick={handleSeedPUPR}
             disabled={seeding}
-            className="flex items-center gap-2 px-3.5 py-2 text-sm font-semibold text-amber-900 dark:text-amber-200 bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/50 dark:hover:bg-amber-900/70 disabled:opacity-50 rounded-lg transition"
+            className="flex items-center gap-2 px-3.5 py-2 text-sm font-semibold text-text-primary bg-accent-gold hover:bg-accent-gold-dark disabled:opacity-50 rounded-lg transition"
             title="Seed 20 Item Acuan Permen PUPR 8/2023"
           >
-            {seeding ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-amber-600" />}
+            {seeding ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-warning" />}
             <span>Tanam 20 Item Standar PUPR</span>
           </button>
 
@@ -304,7 +304,7 @@ export const AHSPTemplatesScreen: React.FC = () => {
               });
               setShowTplModal(true);
             }}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-primary hover:bg-primary-hover rounded-lg shadow-sm transition"
           >
             <Plus className="w-4 h-4" />
             <span>Tambah Template AHSP</span>
@@ -313,15 +313,15 @@ export const AHSPTemplatesScreen: React.FC = () => {
       </div>
 
       {/* Filter & Bar Pencarian */}
-      <div className="flex flex-col md:flex-row items-center gap-3 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+      <div className="flex flex-col md:flex-row items-center gap-3 bg-white  p-4 rounded-xl border border-border-subtle ">
         <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
           <input
             type="text"
             placeholder="Cari kode AHSP, uraian pekerjaan, atau rujukan analisis..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+            className="w-full pl-9 pr-4 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-text-primary "
           />
         </div>
 
@@ -329,7 +329,7 @@ export const AHSPTemplatesScreen: React.FC = () => {
           <select
             value={selectedKategori}
             onChange={(e) => setSelectedKategori(e.target.value)}
-            className="px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+            className="px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-text-primary "
           >
             {kategoriList.map((k) => (
               <option key={k} value={k}>
@@ -341,7 +341,7 @@ export const AHSPTemplatesScreen: React.FC = () => {
           <button
             onClick={loadTemplates}
             title="Muat Ulang"
-            className="p-2 text-slate-500 hover:text-slate-800 dark:hover:text-white bg-slate-100 dark:bg-slate-700 rounded-lg transition"
+            className="p-2 text-text-muted hover:text-text-primary  bg-neutral-bg  rounded-lg transition"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
@@ -351,28 +351,28 @@ export const AHSPTemplatesScreen: React.FC = () => {
       {/* Grid Dua Kolom: Daftar Template & Detail Breakdown Kalkulasi */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Kolom Kiri: Tabel / Daftar Template */}
-        <div className="lg:col-span-7 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm flex flex-col">
-          <div className="px-5 py-3.5 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        <div className="lg:col-span-7 bg-white  rounded-xl border border-border-subtle  overflow-hidden shadow-sm flex flex-col">
+          <div className="px-5 py-3.5 bg-canvas  border-b border-border-subtle  flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-text-muted ">
               Daftar Analisis Harga ({filteredTemplates.length} Item)
             </span>
-            <span className="text-xs text-slate-400">Klik item untuk melihat breakdown</span>
+            <span className="text-xs text-text-muted">Klik item untuk melihat breakdown</span>
           </div>
 
-          <div className="divide-y divide-slate-100 dark:divide-slate-700/60 overflow-y-auto max-h-[680px]">
+          <div className="divide-y divide-slate-100  overflow-y-auto max-h-[680px]">
             {loading ? (
-              <div className="p-12 text-center text-slate-400">
-                <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-500" />
+              <div className="p-12 text-center text-text-muted">
+                <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-primary" />
                 Memuat pustaka AHSP...
               </div>
             ) : filteredTemplates.length === 0 ? (
               <div className="p-12 text-center">
-                <Layers className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-                <p className="font-semibold text-slate-700 dark:text-slate-300">Belum ada template AHSP</p>
-                <p className="text-xs text-slate-400 mt-1">Klik tombol &ldquo;Tanam 20 Item Standar PUPR&rdquo; untuk mengisi otomatis.</p>
+                <Layers className="w-10 h-10 text-text-muted  mx-auto mb-3" />
+                <p className="font-semibold text-text-secondary ">Belum ada template AHSP</p>
+                <p className="text-xs text-text-muted mt-1">Klik tombol &ldquo;Tanam 20 Item Standar PUPR&rdquo; untuk mengisi otomatis.</p>
                 <button
                   onClick={handleSeedPUPR}
-                  className="mt-4 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg transition"
+                  className="mt-4 px-4 py-2 bg-accent-gold hover:bg-accent-gold-dark text-white text-xs font-semibold rounded-lg transition"
                 >
                   Tanam 20 Item Permen PUPR 8/2023
                 </button>
@@ -387,24 +387,24 @@ export const AHSPTemplatesScreen: React.FC = () => {
                     onClick={() => viewDetail(tpl)}
                     className={`p-4 transition cursor-pointer flex items-center justify-between gap-4 ${
                       isSelected
-                        ? 'bg-blue-50/70 dark:bg-blue-950/40 border-l-4 border-l-blue-600'
-                        : 'hover:bg-slate-50 dark:hover:bg-slate-700/30'
+                        ? 'bg-primary/10/70  border-l-4 border-l-primary/20'
+                        : 'hover:bg-canvas '
                     }`}
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                        <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-neutral-bg  text-text-secondary ">
                           {tpl.kode}
                         </span>
-                        <span className="text-xs text-slate-400">({tpl.satuan})</span>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700/60 text-slate-500">
+                        <span className="text-xs text-text-muted">({tpl.satuan})</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-neutral-bg  text-text-muted">
                           {tpl.kategori}
                         </span>
                       </div>
-                      <div className="font-semibold text-sm text-slate-900 dark:text-white truncate">
+                      <div className="font-semibold text-sm text-text-primary  truncate">
                         {tpl.nama}
                       </div>
-                      <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-3">
+                      <div className="text-xs text-text-muted mt-0.5 flex items-center gap-3">
                         <span>{compCount} komponen rincian</span>
                         <span>•</span>
                         <span>Overhead: {tpl.overheadProfitPct}%</span>
@@ -433,7 +433,7 @@ export const AHSPTemplatesScreen: React.FC = () => {
                           setShowTplModal(true);
                         }}
                         title="Edit Template"
-                        className="p-1.5 text-slate-400 hover:text-blue-600 rounded transition"
+                        className="p-1.5 text-text-muted hover:text-primary rounded transition"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
@@ -443,11 +443,11 @@ export const AHSPTemplatesScreen: React.FC = () => {
                           handleDeleteTemplate(tpl);
                         }}
                         title="Hapus Template"
-                        className="p-1.5 text-slate-400 hover:text-red-600 rounded transition"
+                        className="p-1.5 text-text-muted hover:text-danger rounded transition"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                      <ChevronRight className={`w-4 h-4 text-slate-300 ${isSelected ? 'text-blue-600 translate-x-0.5' : ''}`} />
+                      <ChevronRight className={`w-4 h-4 text-text-muted ${isSelected ? 'text-primary translate-x-0.5' : ''}`} />
                     </div>
                   </div>
                 );
@@ -457,20 +457,20 @@ export const AHSPTemplatesScreen: React.FC = () => {
         </div>
 
         {/* Kolom Kanan: Breakdown Rincian Harga Satuan Terpilih */}
-        <div className="lg:col-span-5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm flex flex-col">
+        <div className="lg:col-span-5 bg-white  rounded-xl border border-border-subtle  overflow-hidden shadow-sm flex flex-col">
           {activeTemplate ? (
             <div className="p-5 flex-1 flex flex-col space-y-4">
               {/* Header Box Template Aktif */}
-              <div className="border-b border-slate-200 dark:border-slate-700 pb-4">
+              <div className="border-b border-border-subtle  pb-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <span className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400">
+                    <span className="font-mono text-xs font-bold text-primary ">
                       {activeTemplate.kode}
                     </span>
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white mt-0.5">
+                    <h3 className="text-base font-bold text-text-primary  mt-0.5">
                       {activeTemplate.nama}
                     </h3>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="text-xs text-text-muted mt-1">
                       Satuan: 1 {activeTemplate.satuan} • {activeTemplate.dasarHukum}
                     </p>
                   </div>
@@ -485,7 +485,7 @@ export const AHSPTemplatesScreen: React.FC = () => {
                       });
                       setShowCompModal(true);
                     }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 rounded-lg transition"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-primary  bg-primary/10  hover:bg-primary/20 rounded-lg transition"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Tambah Komponen</span>
@@ -494,8 +494,8 @@ export const AHSPTemplatesScreen: React.FC = () => {
               </div>
 
               {loadingCalc ? (
-                <div className="py-16 text-center text-slate-400">
-                  <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-500" />
+                <div className="py-16 text-center text-text-muted">
+                  <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-primary" />
                   Menghitung harga satuan dari katalog...
                 </div>
               ) : calculation ? (
@@ -504,9 +504,9 @@ export const AHSPTemplatesScreen: React.FC = () => {
                   <ResponsiveTable
                     data={calculation.components}
                     renderTable={() => (
-                      <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden text-xs">
+                      <div className="border border-border-subtle  rounded-lg overflow-hidden text-xs">
                         <table className="w-full text-left">
-                          <thead className="bg-slate-50 dark:bg-slate-900 text-slate-500 font-semibold border-b border-slate-200 dark:border-slate-700">
+                          <thead className="bg-canvas  text-text-muted font-semibold border-b border-border-subtle ">
                             <tr>
                               <th className="py-2 px-3">Komponen</th>
                               <th className="py-2 px-2 text-center">Koef</th>
@@ -515,19 +515,19 @@ export const AHSPTemplatesScreen: React.FC = () => {
                               <th className="py-2 px-2 text-center w-8"></th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                          <tbody className="divide-y divide-slate-100 ">
                             {calculation.components.length === 0 ? (
                               <tr>
-                                <td colSpan={5} className="py-6 text-center text-slate-400">
+                                <td colSpan={5} className="py-6 text-center text-text-muted">
                                   Belum ada rincian komponen untuk template ini.
                                 </td>
                               </tr>
                             ) : (
                               calculation.components.map((c) => (
-                                <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/20">
+                                <tr key={c.id} className="hover:bg-canvas ">
                                   <td className="py-2 px-3">
-                                    <div className="font-medium text-slate-800 dark:text-slate-200">{c.uraian}</div>
-                                    <div className="text-xs text-slate-400 flex items-center gap-1 font-mono">
+                                    <div className="font-medium text-text-primary ">{c.uraian}</div>
+                                    <div className="text-xs text-text-muted flex items-center gap-1 font-mono">
                                       <span>{c.jenis}</span>
                                       <span>•</span>
                                       <span>{c.kode}</span>
@@ -536,20 +536,20 @@ export const AHSPTemplatesScreen: React.FC = () => {
                                   <td className="py-2 px-2 text-center font-mono">
                                     {c.koefisien} {c.satuan}
                                   </td>
-                                  <td className="py-2 px-3 text-right font-mono text-slate-600 dark:text-slate-300">
+                                  <td className="py-2 px-3 text-right font-mono text-text-secondary ">
                                     {c.hasPrice ? (
                                       formatCurrencyIDR(c.hargaDasar)
                                     ) : (
-                                      <span className="text-amber-500 italic text-xs">Belum ada harga</span>
+                                      <span className="text-warning italic text-xs">Belum ada harga</span>
                                     )}
                                   </td>
-                                  <td className="py-2 px-3 text-right font-semibold font-mono text-slate-900 dark:text-white">
+                                  <td className="py-2 px-3 text-right font-semibold font-mono text-text-primary ">
                                     {formatCurrencyIDR(c.subtotal)}
                                   </td>
                                   <td className="py-2 px-2 text-center">
                                     <button
                                       onClick={() => handleDeleteComponent(c)}
-                                      className="text-slate-300 hover:text-red-500 transition"
+                                      className="text-text-muted hover:text-danger transition"
                                       title="Hapus Komponen"
                                     >
                                       <X className="w-3.5 h-3.5" />
@@ -580,7 +580,7 @@ export const AHSPTemplatesScreen: React.FC = () => {
                             value: c.hasPrice ? (
                               <span className="font-mono">{formatCurrencyIDR(c.hargaDasar)}</span>
                             ) : (
-                              <span className="text-amber-500 italic text-xs">Belum ada harga</span>
+                              <span className="text-warning italic text-xs">Belum ada harga</span>
                             ),
                           },
                           {
@@ -592,7 +592,7 @@ export const AHSPTemplatesScreen: React.FC = () => {
                         actions={
                           <button
                             onClick={() => handleDeleteComponent(c)}
-                            className="text-slate-400 hover:text-red-500 transition"
+                            className="text-text-muted hover:text-danger transition"
                             title="Hapus Komponen"
                           >
                             <X className="w-4 h-4" />
@@ -603,35 +603,35 @@ export const AHSPTemplatesScreen: React.FC = () => {
                   />
 
                   {/* Rekapitulasi Direct Cost & Overhead */}
-                  <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
-                    <div className="flex justify-between text-slate-600 dark:text-slate-300">
+                  <div className="bg-canvas  p-4 rounded-xl border border-border-subtle  space-y-2 text-xs">
+                    <div className="flex justify-between text-text-secondary ">
                       <span>Biaya Tenaga Kerja:</span>
                       <span className="font-mono font-medium">{formatCurrencyIDR(calculation.biayaTenaga)}</span>
                     </div>
-                    <div className="flex justify-between text-slate-600 dark:text-slate-300">
+                    <div className="flex justify-between text-text-secondary ">
                       <span>Biaya Bahan / Material:</span>
                       <span className="font-mono font-medium">{formatCurrencyIDR(calculation.biayaBahan)}</span>
                     </div>
-                    <div className="flex justify-between text-slate-600 dark:text-slate-300">
+                    <div className="flex justify-between text-text-secondary ">
                       <span>Biaya Alat & Subkon:</span>
                       <span className="font-mono font-medium">
                         {formatCurrencyIDR(calculation.biayaAlat + calculation.biayaSubkon)}
                       </span>
                     </div>
 
-                    <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex justify-between font-semibold text-slate-800 dark:text-slate-200">
+                    <div className="pt-2 border-t border-border-subtle  flex justify-between font-semibold text-text-primary ">
                       <span>Biaya Langsung (Direct Cost):</span>
                       <span className="font-mono">{formatCurrencyIDR(calculation.biayaLangsung)}</span>
                     </div>
 
-                    <div className="flex justify-between text-amber-700 dark:text-amber-400 font-medium">
+                    <div className="flex justify-between text-warning  font-medium">
                       <span>Overhead & Profit ({calculation.overheadProfitPct}%):</span>
                       <span className="font-mono">+{formatCurrencyIDR(calculation.overheadAmount)}</span>
                     </div>
 
-                    <div className="pt-2 border-t border-dashed border-slate-300 dark:border-slate-600 flex justify-between items-center text-sm font-bold text-slate-900 dark:text-white">
+                    <div className="pt-2 border-t border-dashed border-border-subtle  flex justify-between items-center text-sm font-bold text-text-primary ">
                       <span>Harga Satuan Pekerjaan:</span>
-                      <span className="text-base text-blue-600 dark:text-blue-400 font-mono">
+                      <span className="text-base text-primary  font-mono">
                         {formatCurrencyIDR(calculation.totalHargaSatuan)}
                       </span>
                     </div>
@@ -641,9 +641,9 @@ export const AHSPTemplatesScreen: React.FC = () => {
             </div>
           ) : (
             <div className="p-12 text-center my-auto">
-              <Calculator className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-              <p className="font-semibold text-slate-700 dark:text-slate-300">Pilih Template AHSP</p>
-              <p className="text-xs text-slate-400 mt-1">
+              <Calculator className="w-10 h-10 text-text-muted  mx-auto mb-3" />
+              <p className="font-semibold text-text-secondary ">Pilih Template AHSP</p>
+              <p className="text-xs text-text-muted mt-1">
                 Pilih salah satu analisis di daftar sebelah kiri untuk meninjau rincian koefisien dan total harga satuan.
               </p>
             </div>
@@ -654,12 +654,12 @@ export const AHSPTemplatesScreen: React.FC = () => {
       {/* MODAL: Tambah / Edit Template AHSP */}
       {showTplModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-              <h3 className="font-bold text-slate-900 dark:text-white">
+          <div className="bg-white  rounded-xl shadow-xl border border-border-subtle  w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-6 py-4 border-b border-border-subtle  flex items-center justify-between">
+              <h3 className="font-bold text-text-primary ">
                 {editingTpl ? 'Edit Template AHSP' : 'Tambah Template AHSP Baru'}
               </h3>
-              <button onClick={() => setShowTplModal(false)} className="text-slate-400 hover:text-slate-600">
+              <button onClick={() => setShowTplModal(false)} className="text-text-muted hover:text-text-secondary">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -667,8 +667,8 @@ export const AHSPTemplatesScreen: React.FC = () => {
             <form onSubmit={handleSaveTemplate} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Kode Analisis <span className="text-red-500">*</span>
+                  <label className="block text-xs font-semibold text-text-secondary  mb-1">
+                    Kode Analisis <span className="text-danger">*</span>
                   </label>
                   <input
                     type="text"
@@ -676,13 +676,13 @@ export const AHSPTemplatesScreen: React.FC = () => {
                     placeholder="PUPR-01, A.4.1.1.5"
                     value={tplForm.kode}
                     onChange={(e) => setTplForm({ ...tplForm, kode: e.target.value })}
-                    className="w-full px-3 py-2 text-sm font-mono bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-sm font-mono bg-canvas  border border-border-subtle  rounded-lg focus:ring-2 focus:ring-primary text-text-primary "
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Satuan Pekerjaan <span className="text-red-500">*</span>
+                  <label className="block text-xs font-semibold text-text-secondary  mb-1">
+                    Satuan Pekerjaan <span className="text-danger">*</span>
                   </label>
                   <input
                     type="text"
@@ -690,14 +690,14 @@ export const AHSPTemplatesScreen: React.FC = () => {
                     placeholder="m2, m3, kg, m', dll."
                     value={tplForm.satuan}
                     onChange={(e) => setTplForm({ ...tplForm, satuan: e.target.value })}
-                    className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg focus:ring-2 focus:ring-primary text-text-primary "
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Uraian / Nama Pekerjaan <span className="text-red-500">*</span>
+                <label className="block text-xs font-semibold text-text-secondary  mb-1">
+                  Uraian / Nama Pekerjaan <span className="text-danger">*</span>
                 </label>
                 <input
                   type="text"
@@ -705,19 +705,19 @@ export const AHSPTemplatesScreen: React.FC = () => {
                   placeholder="Contoh: Pembuatan 1 m3 beton mutu f'c=19.3 MPa (K-225)"
                   value={tplForm.nama}
                   onChange={(e) => setTplForm({ ...tplForm, nama: e.target.value })}
-                  className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+                  className="w-full px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg focus:ring-2 focus:ring-primary text-text-primary "
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-text-secondary  mb-1">
                     Kategori Divisi
                   </label>
                   <select
                     value={tplForm.kategori}
                     onChange={(e) => setTplForm({ ...tplForm, kategori: e.target.value })}
-                    className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg focus:ring-2 focus:ring-primary text-text-primary "
                   >
                     <option value="Pekerjaan Persiapan">Pekerjaan Persiapan</option>
                     <option value="Pekerjaan Tanah">Pekerjaan Tanah</option>
@@ -732,7 +732,7 @@ export const AHSPTemplatesScreen: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-text-secondary  mb-1">
                     Overhead & Profit (%)
                   </label>
                   <input
@@ -742,13 +742,13 @@ export const AHSPTemplatesScreen: React.FC = () => {
                     step="0.5"
                     value={tplForm.overheadProfitPct}
                     onChange={(e) => setTplForm({ ...tplForm, overheadProfitPct: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white font-semibold"
+                    className="w-full px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg focus:ring-2 focus:ring-primary text-text-primary  font-semibold"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-text-secondary  mb-1">
                   Keterangan / Nomor Rujukan SNI / AHSP
                 </label>
                 <textarea
@@ -756,22 +756,22 @@ export const AHSPTemplatesScreen: React.FC = () => {
                   placeholder="Misal: Lampiran Permen PUPR No. 8/2023 Pasal A.4.1.1.5"
                   value={tplForm.keterangan}
                   onChange={(e) => setTplForm({ ...tplForm, keterangan: e.target.value })}
-                  className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+                  className="w-full px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg focus:ring-2 focus:ring-primary text-text-primary "
                 />
               </div>
 
-              <div className="pt-3 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-2">
+              <div className="pt-3 border-t border-border-subtle  flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowTplModal(false)}
-                  className="px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 rounded-lg"
+                  className="px-4 py-2 text-sm text-text-secondary  hover:bg-neutral-bg rounded-lg"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={tplSubmitting}
-                  className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-2"
+                  className="px-4 py-2 text-sm font-semibold text-white bg-primary hover:bg-primary-hover rounded-lg flex items-center gap-2"
                 >
                   {tplSubmitting && <RefreshCw className="w-4 h-4 animate-spin" />}
                   <span>Simpan Template</span>
@@ -785,10 +785,10 @@ export const AHSPTemplatesScreen: React.FC = () => {
       {/* MODAL: Tambah Komponen AHSP */}
       {showCompModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-              <h3 className="font-bold text-slate-900 dark:text-white">Tambah Komponen Rincian AHSP</h3>
-              <button onClick={() => setShowCompModal(false)} className="text-slate-400 hover:text-slate-600">
+          <div className="bg-white  rounded-xl shadow-xl border border-border-subtle  w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-6 py-4 border-b border-border-subtle  flex items-center justify-between">
+              <h3 className="font-bold text-text-primary ">Tambah Komponen Rincian AHSP</h3>
+              <button onClick={() => setShowCompModal(false)} className="text-text-muted hover:text-text-secondary">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -796,13 +796,13 @@ export const AHSPTemplatesScreen: React.FC = () => {
             <form onSubmit={handleSaveComponent} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-text-secondary  mb-1">
                     Jenis Komponen
                   </label>
                   <select
                     value={compForm.jenis}
                     onChange={(e) => setCompForm({ ...compForm, jenis: e.target.value as AHSPComponentType })}
-                    className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg focus:ring-2 focus:ring-primary text-text-primary "
                   >
                     <option value="Tenaga">Tenaga (Upah)</option>
                     <option value="Bahan">Bahan (Material)</option>
@@ -812,7 +812,7 @@ export const AHSPTemplatesScreen: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-text-secondary  mb-1">
                     Kode Sumber Daya
                   </label>
                   <input
@@ -821,14 +821,14 @@ export const AHSPTemplatesScreen: React.FC = () => {
                     placeholder="Contoh: UPH-001, BHN-001"
                     value={compForm.kodeSumberDaya}
                     onChange={(e) => setCompForm({ ...compForm, kodeSumberDaya: e.target.value })}
-                    className="w-full px-3 py-2 text-sm font-mono bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-sm font-mono bg-canvas  border border-border-subtle  rounded-lg focus:ring-2 focus:ring-primary text-text-primary "
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Uraian Komponen <span className="text-red-500">*</span>
+                <label className="block text-xs font-semibold text-text-secondary  mb-1">
+                  Uraian Komponen <span className="text-danger">*</span>
                 </label>
                 <input
                   type="text"
@@ -836,13 +836,13 @@ export const AHSPTemplatesScreen: React.FC = () => {
                   placeholder="Contoh: Pekerja Konstruksi, Semen PC"
                   value={compForm.uraian}
                   onChange={(e) => setCompForm({ ...compForm, uraian: e.target.value })}
-                  className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+                  className="w-full px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg focus:ring-2 focus:ring-primary text-text-primary "
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-text-secondary  mb-1">
                     Satuan
                   </label>
                   <input
@@ -851,13 +851,13 @@ export const AHSPTemplatesScreen: React.FC = () => {
                     placeholder="OH, kg, m3, hari, dll."
                     value={compForm.satuan}
                     onChange={(e) => setCompForm({ ...compForm, satuan: e.target.value })}
-                    className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg focus:ring-2 focus:ring-primary text-text-primary "
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Koefisien <span className="text-red-500">*</span>
+                  <label className="block text-xs font-semibold text-text-secondary  mb-1">
+                    Koefisien <span className="text-danger">*</span>
                   </label>
                   <input
                     type="number"
@@ -867,23 +867,23 @@ export const AHSPTemplatesScreen: React.FC = () => {
                     placeholder="0.025"
                     value={compForm.koefisien}
                     onChange={(e) => setCompForm({ ...compForm, koefisien: e.target.value })}
-                    className="w-full px-3 py-2 text-sm font-semibold bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-sm font-semibold bg-canvas  border border-border-subtle  rounded-lg focus:ring-2 focus:ring-primary text-text-primary "
                   />
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-2">
+              <div className="pt-3 border-t border-border-subtle  flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowCompModal(false)}
-                  className="px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 rounded-lg"
+                  className="px-4 py-2 text-sm text-text-secondary  hover:bg-neutral-bg rounded-lg"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={compSubmitting}
-                  className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-2"
+                  className="px-4 py-2 text-sm font-semibold text-white bg-primary hover:bg-primary-hover rounded-lg flex items-center gap-2"
                 >
                   {compSubmitting && <RefreshCw className="w-4 h-4 animate-spin" />}
                   <span>Tambah Komponen</span>

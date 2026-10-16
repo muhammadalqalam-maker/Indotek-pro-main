@@ -5,7 +5,7 @@
 
 import * as XLSX from 'xlsx';
 import { BOQItem, BOQSummary, DivisionCategory } from '../types/rab';
-import { formatRupiah, terbilangRupiah } from './formatters';
+import { formatRupiah, getWitaDateISO, terbilangRupiah } from './formatters';
 
 export interface BOQImportRow {
   kode: string;
@@ -165,7 +165,7 @@ export function exportBOQToExcel(
 
   XLSX.utils.book_append_sheet(wb, ws, 'RAB Proyek');
 
-  const safeFilename = filename || `RAB_${summary.projectCode || 'Proyek'}_${new Date().toISOString().split('T')[0]}.xlsx`;
+  const safeFilename = filename || `RAB_${summary.projectCode || 'Proyek'}_${getWitaDateISO()}.xlsx`;
   XLSX.writeFile(wb, safeFilename);
 }
 

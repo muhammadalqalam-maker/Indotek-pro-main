@@ -12,7 +12,7 @@ import { useUI } from '../../../context/UIContext';
 import { useAuth } from '../../../context/AuthContext';
 import { supabaseDataService } from '../../../services/supabaseDataService';
 import { PaymentTerm, PaymentSchedule, PaymentTermJenis, PaymentTermStatus } from '../../../types/rab';
-import { formatCurrencyIDR, formatPercent } from '../../../utils/formatters';
+import { formatCurrencyIDR, formatPercent, getWitaDateISO } from '../../../utils/formatters';
 
 interface PaymentTermsTabProps {
   projectId: string;
@@ -20,9 +20,9 @@ interface PaymentTermsTabProps {
 }
 
 const STATUS_BADGE: Record<PaymentTermStatus, { label: string; cls: string }> = {
-  Draft:  { label: 'Draft',    cls: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300' },
-  Tagih:  { label: 'Ditagih', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' },
-  Lunas:  { label: 'Lunas',   cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' },
+  Draft:  { label: 'Draft',    cls: 'bg-neutral-bg text-text-secondary  ' },
+  Tagih:  { label: 'Ditagih', cls: 'bg-warning-bg text-warning  ' },
+  Lunas:  { label: 'Lunas',   cls: 'bg-success-border text-success  ' },
 };
 
 const JENIS_OPTIONS: PaymentTermJenis[] = ['UangMuka', 'Termin', 'Retensi'];
@@ -51,7 +51,7 @@ export const PaymentTermsTab: React.FC<PaymentTermsTabProps> = ({ projectId, pro
   const [formSaving, setFormSaving] = useState(false);
   const [statusTerm, setStatusTerm] = useState<PaymentTerm | null>(null);
   const [statusTarget, setStatusTarget] = useState<'Tagih' | 'Lunas'>('Tagih');
-  const [statusTanggal, setStatusTanggal] = useState(new Date().toISOString().split('T')[0]);
+  const [statusTanggal, setStatusTanggal] = useState(getWitaDateISO());
   const [statusKet, setStatusKet] = useState('');
   const [statusSaving, setStatusSaving] = useState(false);
 
@@ -141,7 +141,7 @@ export const PaymentTermsTab: React.FC<PaymentTermsTabProps> = ({ projectId, pro
   const openStatusModal = (term: PaymentTerm, target: 'Tagih' | 'Lunas') => {
     setStatusTerm(term);
     setStatusTarget(target);
-    setStatusTanggal(new Date().toISOString().split('T')[0]);
+    setStatusTanggal(getWitaDateISO());
     setStatusKet('');
   };
 
@@ -173,27 +173,27 @@ export const PaymentTermsTab: React.FC<PaymentTermsTabProps> = ({ projectId, pro
       label: 'Total Termin',
       value: formatCurrencyIDR(schedule?.summary.totalNominal ?? 0),
       sub: formatPercent(schedule?.summary.totalPersen ?? 0, 1) + ' dari kontrak',
-      cls: 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700',
+      cls: 'bg-canvas  border-border-subtle ',
     },
     {
       label: 'Telah Ditagih',
       value: formatCurrencyIDR(schedule?.summary.totalTagih ?? 0),
       sub: (schedule?.summary.countTagih ?? 0) + ' termin',
-      cls: 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800',
+      cls: 'bg-warning-bg  border-warning-border ',
     },
     {
       label: 'Sudah Lunas',
       value: formatCurrencyIDR(schedule?.summary.totalLunas ?? 0),
       sub: (schedule?.summary.countLunas ?? 0) + ' termin',
-      cls: 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800',
+      cls: 'bg-success-bg  border-success-border ',
     },
     {
       label: 'Sisa Alokasi',
       value: formatPercent(sisaPersen, 1),
       sub: sisaPersen > 0 ? 'Belum dialokasikan' : 'Sudah penuh',
       cls: sisaPersen > 0
-        ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800'
-        : 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800',
+        ? 'bg-primary/10  border-primary/20 '
+        : 'bg-success-bg  border-success-border ',
     },
   ];
 
@@ -204,28 +204,28 @@ export const PaymentTermsTab: React.FC<PaymentTermsTabProps> = ({ projectId, pro
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {summaryCards.map(card => (
             <div key={card.label} className={`p-4 rounded-xl border ${card.cls}`}>
-              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{card.label}</div>
-              <div className="text-lg font-bold font-mono text-slate-900 dark:text-white mt-1">{card.value}</div>
-              <div className="text-xs text-slate-400 mt-0.5">{card.sub}</div>
+              <div className="text-xs font-semibold text-text-muted uppercase tracking-wider">{card.label}</div>
+              <div className="text-lg font-bold font-mono text-text-primary  mt-1">{card.value}</div>
+              <div className="text-xs text-text-muted mt-0.5">{card.sub}</div>
             </div>
           ))}
         </div>
       )}
 
       {/* TOOLBAR */}
-      <div className="flex items-center justify-between bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+      <div className="flex items-center justify-between bg-white  p-4 rounded-xl border border-border-subtle ">
         <div className="flex items-center gap-2">
-          <CreditCard className="w-5 h-5 text-blue-600" />
-          <h3 className="font-semibold text-slate-800 dark:text-white text-sm">Jadwal Termin Pembayaran</h3>
+          <CreditCard className="w-5 h-5 text-primary" />
+          <h3 className="font-semibold text-text-primary  text-sm">Jadwal Termin Pembayaran</h3>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={loadData} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition" title="Muat ulang">
-            <RefreshCw className="w-4 h-4 text-slate-500" />
+          <button onClick={loadData} className="p-2 rounded-lg hover:bg-neutral-bg  transition" title="Muat ulang">
+            <RefreshCw className="w-4 h-4 text-text-muted" />
           </button>
           <button
             onClick={openAddModal}
             disabled={sisaPersen <= 0}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-primary hover:bg-primary-hover rounded-lg shadow-sm transition disabled:opacity-50"
           >
             <Plus className="w-4 h-4" />
             <span>Tambah Termin</span>
@@ -234,10 +234,10 @@ export const PaymentTermsTab: React.FC<PaymentTermsTabProps> = ({ projectId, pro
       </div>
 
       {/* TABEL TERMIN */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+      <div className="bg-white  rounded-xl border border-border-subtle  overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-300 text-xs font-semibold border-b border-slate-200 dark:border-slate-700">
+            <thead className="bg-canvas  text-text-secondary  text-xs font-semibold border-b border-border-subtle ">
               <tr>
                 <th className="py-3 px-4 w-8">No</th>
                 <th className="py-3 px-4">Label Termin</th>
@@ -249,48 +249,48 @@ export const PaymentTermsTab: React.FC<PaymentTermsTabProps> = ({ projectId, pro
                 <th className="py-3 px-4 text-center w-32">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
+            <tbody className="divide-y divide-slate-100 ">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-10 text-center text-slate-400">
-                    <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-blue-500" />
+                  <td colSpan={8} className="py-10 text-center text-text-muted">
+                    <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-primary" />
                     Memuat...
                   </td>
                 </tr>
               ) : !schedule?.terms.length ? (
                 <tr>
                   <td colSpan={8} className="py-12 text-center">
-                    <CreditCard className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-                    <p className="font-semibold text-slate-700 dark:text-slate-300">Belum ada jadwal termin</p>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <CreditCard className="w-10 h-10 text-text-muted  mx-auto mb-3" />
+                    <p className="font-semibold text-text-secondary ">Belum ada jadwal termin</p>
+                    <p className="text-xs text-text-muted mt-1">
                       Klik &quot;Tambah Termin&quot; untuk membuat termin uang muka, termin, atau retensi.
                     </p>
                   </td>
                 </tr>
               ) : (
                 schedule.terms.map((term, idx) => (
-                  <tr key={term.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-700/20 transition group">
-                    <td className="py-3 px-4 text-center text-xs text-slate-400 font-mono">{idx + 1}</td>
+                  <tr key={term.id} className="hover:bg-canvas/70  transition group">
+                    <td className="py-3 px-4 text-center text-xs text-text-muted font-mono">{idx + 1}</td>
                     <td className="py-3 px-4">
-                      <div className="font-semibold text-slate-800 dark:text-slate-200">{term.label}</div>
+                      <div className="font-semibold text-text-primary ">{term.label}</div>
                       {term.keterangan && (
-                        <div className="text-xs text-slate-400 truncate max-w-xs">{term.keterangan}</div>
+                        <div className="text-xs text-text-muted truncate max-w-xs">{term.keterangan}</div>
                       )}
                       {term.masaPemeliharaanHari && (
-                        <div className="text-xs text-slate-400">
+                        <div className="text-xs text-text-muted">
                           Masa pemeliharaan: {term.masaPemeliharaanHari} hari
                         </div>
                       )}
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/20 text-primary  ">
                         {JENIS_LABEL[term.jenis]}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-right font-mono text-slate-700 dark:text-slate-300">
+                    <td className="py-3 px-4 text-right font-mono text-text-secondary ">
                       {formatPercent(term.persen, 1)}
                     </td>
-                    <td className="py-3 px-4 text-right font-mono font-semibold text-slate-800 dark:text-slate-200">
+                    <td className="py-3 px-4 text-right font-mono font-semibold text-text-primary ">
                       {formatCurrencyIDR(term.nominal)}
                     </td>
                     <td className="py-3 px-4 text-center">
@@ -298,7 +298,7 @@ export const PaymentTermsTab: React.FC<PaymentTermsTabProps> = ({ projectId, pro
                         {STATUS_BADGE[term.status].label}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-center text-xs text-slate-400">
+                    <td className="py-3 px-4 text-center text-xs text-text-muted">
                       {term.status === 'Lunas' && term.tanggalLunas
                         ? term.tanggalLunas
                         : term.status === 'Tagih' && term.tanggalTagih
@@ -311,7 +311,7 @@ export const PaymentTermsTab: React.FC<PaymentTermsTabProps> = ({ projectId, pro
                           <>
                             <button
                               onClick={() => openEditModal(term)}
-                              className="p-1.5 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-600 transition"
+                              className="p-1.5 rounded-lg hover:bg-primary/20  text-primary transition"
                               title="Edit"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
@@ -319,7 +319,7 @@ export const PaymentTermsTab: React.FC<PaymentTermsTabProps> = ({ projectId, pro
                             {canChangeStatus && (
                               <button
                                 onClick={() => openStatusModal(term, 'Tagih')}
-                                className="p-1.5 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-600 transition"
+                                className="p-1.5 rounded-lg hover:bg-warning-bg  text-warning transition"
                                 title="Tagih"
                               >
                                 <ChevronRight className="w-3.5 h-3.5" />
@@ -327,7 +327,7 @@ export const PaymentTermsTab: React.FC<PaymentTermsTabProps> = ({ projectId, pro
                             )}
                             <button
                               onClick={() => handleDelete(term)}
-                              className="p-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 text-red-500 transition"
+                              className="p-1.5 rounded-lg hover:bg-danger  text-danger transition"
                               title="Hapus"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -337,14 +337,14 @@ export const PaymentTermsTab: React.FC<PaymentTermsTabProps> = ({ projectId, pro
                         {term.status === 'Tagih' && canChangeStatus && (
                           <button
                             onClick={() => openStatusModal(term, 'Lunas')}
-                            className="p-1.5 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-600 transition"
+                            className="p-1.5 rounded-lg hover:bg-success-border  text-success transition"
                             title="Tandai Lunas"
                           >
                             <CheckCircle2 className="w-3.5 h-3.5" />
                           </button>
                         )}
                         {term.status === 'Lunas' && (
-                          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                          <CheckCircle2 className="w-4 h-4 text-success" />
                         )}
                       </div>
                     </td>
@@ -359,88 +359,88 @@ export const PaymentTermsTab: React.FC<PaymentTermsTabProps> = ({ projectId, pro
       {/* MODAL FORM TERMIN */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="p-5 border-b border-slate-200 dark:border-slate-700">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">
+          <div className="bg-white  rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="p-5 border-b border-border-subtle ">
+              <h2 className="text-base font-bold text-text-primary ">
                 {editingTerm ? 'Edit Termin' : 'Tambah Termin Pembayaran'}
               </h2>
             </div>
             <form onSubmit={handleSaveTerm} className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Jenis *</label>
+                  <label className="text-xs font-semibold text-text-secondary ">Jenis *</label>
                   <select
                     value={form.jenis}
                     onChange={e => setForm(f => ({ ...f, jenis: e.target.value as PaymentTermJenis }))}
-                    className="mt-1 w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
+                    className="mt-1 w-full px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg text-text-primary "
                   >
                     {JENIS_OPTIONS.map(j => <option key={j} value={j}>{JENIS_LABEL[j]}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Urutan *</label>
+                  <label className="text-xs font-semibold text-text-secondary ">Urutan *</label>
                   <input
                     type="number" min={1}
                     value={form.urutan}
                     onChange={e => setForm(f => ({ ...f, urutan: parseInt(e.target.value) || 1 }))}
-                    className="mt-1 w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
+                    className="mt-1 w-full px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg text-text-primary "
                   />
                 </div>
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Label Termin</label>
+                <label className="text-xs font-semibold text-text-secondary ">Label Termin</label>
                 <input
                   type="text"
                   placeholder={JENIS_LABEL[form.jenis] + ' ' + form.urutan}
                   value={form.label}
                   onChange={e => setForm(f => ({ ...f, label: e.target.value }))}
-                  className="mt-1 w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
+                  className="mt-1 w-full px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg text-text-primary "
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                <label className="text-xs font-semibold text-text-secondary ">
                   Persentase (%) * {'\u2014'} Sisa: {formatPercent(sisaPersen + (editingTerm ? editingTerm.persen : 0), 1)}
                 </label>
                 <input
                   type="number" min={0.01} max={100} step={0.01} required placeholder="0.00"
                   value={form.persen}
                   onChange={e => setForm(f => ({ ...f, persen: e.target.value }))}
-                  className="mt-1 w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white font-mono"
+                  className="mt-1 w-full px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg text-text-primary  font-mono"
                 />
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-text-muted mt-0.5">
                   Nominal dihitung server dari nilai kontrak (budget_lines). Tidak dapat diinput manual.
                 </p>
               </div>
               {form.jenis === 'Retensi' && (
                 <div>
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Masa Pemeliharaan (hari)</label>
+                  <label className="text-xs font-semibold text-text-secondary ">Masa Pemeliharaan (hari)</label>
                   <input
                     type="number" min={1} placeholder="180"
                     value={form.masaPemeliharaanHari}
                     onChange={e => setForm(f => ({ ...f, masaPemeliharaanHari: e.target.value }))}
-                    className="mt-1 w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
+                    className="mt-1 w-full px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg text-text-primary "
                   />
                 </div>
               )}
               <div>
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Keterangan</label>
+                <label className="text-xs font-semibold text-text-secondary ">Keterangan</label>
                 <textarea
                   rows={2} placeholder="Uraian kondisi pembayaran (opsional)..."
                   value={form.keterangan}
                   onChange={e => setForm(f => ({ ...f, keterangan: e.target.value }))}
-                  className="mt-1 w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white resize-none"
+                  className="mt-1 w-full px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg text-text-primary  resize-none"
                 />
               </div>
               <div className="flex gap-3 pt-2">
                 <button
                   type="button" onClick={() => setShowModal(false)}
-                  className="flex-1 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg transition"
+                  className="flex-1 px-4 py-2 text-sm font-semibold text-text-secondary  bg-neutral-bg  hover:bg-neutral-bg  rounded-lg transition"
                 >
                   Batal
                 </button>
                 <button
                   type="submit" disabled={formSaving}
-                  className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition disabled:opacity-50"
+                  className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-primary hover:bg-primary-hover rounded-lg transition disabled:opacity-50"
                 >
                   {formSaving ? 'Menyimpan...' : 'Simpan Termin'}
                 </button>
@@ -453,44 +453,44 @@ export const PaymentTermsTab: React.FC<PaymentTermsTabProps> = ({ projectId, pro
       {/* MODAL UPDATE STATUS */}
       {statusTerm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm">
-            <div className="p-5 border-b border-slate-200 dark:border-slate-700">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">
+          <div className="bg-white  rounded-2xl shadow-2xl w-full max-w-sm">
+            <div className="p-5 border-b border-border-subtle ">
+              <h2 className="text-base font-bold text-text-primary ">
                 Tandai {statusTarget === 'Tagih' ? 'Ditagih' : 'Lunas'}
               </h2>
-              <p className="text-sm text-slate-500 mt-1">
+              <p className="text-sm text-text-muted mt-1">
                 {statusTerm.label} {'\u2014'} {formatCurrencyIDR(statusTerm.nominal)}
               </p>
             </div>
             <form onSubmit={handleUpdateStatus} className="p-5 space-y-4">
               <div>
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                <label className="text-xs font-semibold text-text-secondary ">
                   Tanggal {statusTarget === 'Tagih' ? 'Tagihan' : 'Pelunasan'} *
                 </label>
                 <input
                   type="date" required value={statusTanggal}
                   onChange={e => setStatusTanggal(e.target.value)}
-                  className="mt-1 w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
+                  className="mt-1 w-full px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg text-text-primary "
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Catatan (opsional)</label>
+                <label className="text-xs font-semibold text-text-secondary ">Catatan (opsional)</label>
                 <input
                   type="text" placeholder="No. kwitansi, bank transfer, dll."
                   value={statusKet} onChange={e => setStatusKet(e.target.value)}
-                  className="mt-1 w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
+                  className="mt-1 w-full px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg text-text-primary "
                 />
               </div>
               <div className="flex gap-3 pt-2">
                 <button
                   type="button" onClick={() => setStatusTerm(null)}
-                  className="flex-1 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 rounded-lg transition"
+                  className="flex-1 px-4 py-2 text-sm font-semibold text-text-secondary  bg-neutral-bg  hover:bg-neutral-bg rounded-lg transition"
                 >
                   Batal
                 </button>
                 <button
                   type="submit" disabled={statusSaving}
-                  className={`flex-1 px-4 py-2 text-sm font-semibold text-white rounded-lg transition disabled:opacity-50 ${statusTarget === 'Lunas' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-amber-600 hover:bg-amber-700'}`}
+                  className={`flex-1 px-4 py-2 text-sm font-semibold text-white rounded-lg transition disabled:opacity-50 ${statusTarget === 'Lunas' ? 'bg-success hover:bg-primary-hover' : 'bg-accent-gold hover:bg-accent-gold-dark'}`}
                 >
                   {statusSaving ? 'Menyimpan...' : 'Konfirmasi ' + (statusTarget === 'Tagih' ? 'Tagih' : 'Lunas')}
                 </button>

@@ -164,7 +164,7 @@ export const PettyCashTab: React.FC<PettyCashTabProps> = ({
                           <button
                             type="button"
                             onClick={() => setSelectedPettyForAttachment(item)}
-                            className="min-h-[44px] px-2.5 py-1 rounded-lg text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition text-xs inline-flex items-center gap-1 cursor-pointer"
+                            className="min-h-[44px] px-2.5 py-1 rounded-lg text-primary hover:text-primary-hover bg-primary/10 hover:bg-primary/15 border border-primary/20 transition text-xs inline-flex items-center gap-1 cursor-pointer"
                             title="Lihat / Unggah Bukti Nota & Kuitansi Kas Kecil"
                           >
                             <Paperclip className="w-3.5 h-3.5" />

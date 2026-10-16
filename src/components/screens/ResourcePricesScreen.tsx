@@ -31,7 +31,7 @@ import { useUI } from '../../context/UIContext';
 import { useAuth } from '../../context/AuthContext';
 import { supabaseDataService } from '../../services/supabaseDataService';
 import { ResourcePrice, ResourceType, ResourcePriceImportRow } from '../../types/rab';
-import { formatCurrencyIDR } from '../../utils/formatters';
+import { formatCurrencyIDR, getWitaDateISO } from '../../utils/formatters';
 import {
   parseResourcePricesFile,
   downloadResourcePriceTemplate,
@@ -78,7 +78,7 @@ export const ResourcePricesScreen: React.FC = () => {
     satuan: '',
     harga: '',
     wilayah: '',
-    berlakuMulai: new Date().toISOString().split('T')[0],
+    berlakuMulai: getWitaDateISO(),
     spesifikasi: '',
   });
   const [formSubmitting, setFormSubmitting] = useState<boolean>(false);
@@ -153,7 +153,7 @@ export const ResourcePricesScreen: React.FC = () => {
         satuan: item.satuan,
         harga: String(item.harga),
         wilayah: item.wilayah || '',
-        berlakuMulai: item.berlakuMulai || new Date().toISOString().split('T')[0],
+        berlakuMulai: item.berlakuMulai || getWitaDateISO(),
         spesifikasi: item.spesifikasi || '',
       });
     } else {
@@ -165,7 +165,7 @@ export const ResourcePricesScreen: React.FC = () => {
         satuan: '',
         harga: '',
         wilayah: '',
-        berlakuMulai: new Date().toISOString().split('T')[0],
+        berlakuMulai: getWitaDateISO(),
         spesifikasi: '',
       });
     }
@@ -275,13 +275,13 @@ export const ResourcePricesScreen: React.FC = () => {
   const renderBadgeJenis = (jenis: ResourceType) => {
     switch (jenis) {
       case 'Bahan':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">Bahan</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/20 text-primary  ">Bahan</span>;
       case 'Upah':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">Upah</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-border text-success  ">Upah</span>;
       case 'Alat':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">Alat</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning-bg text-text-primary  ">Alat</span>;
       case 'Subkon':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300">Subkon</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800  ">Subkon</span>;
       default:
         return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">{jenis}</span>;
     }
@@ -290,15 +290,15 @@ export const ResourcePricesScreen: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header Utama */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white  p-6 rounded-xl border border-border-subtle  shadow-sm">
         <div>
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg">
+            <div className="p-2.5 bg-primary/10  text-primary  rounded-lg">
               <DollarSign className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white">Katalog Harga Dasar Satuan</h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+              <h1 className="text-xl font-bold text-text-primary ">Katalog Harga Dasar Satuan</h1>
+              <p className="text-sm text-text-muted ">
                 Pustaka harga bahan, upah tenaga kerja, dan sewa alat untuk penyusunan AHSP & RAB proyek.
               </p>
             </div>
@@ -308,7 +308,7 @@ export const ResourcePricesScreen: React.FC = () => {
         <div className="flex flex-wrap items-center gap-2.5">
           <button
             onClick={() => downloadResourcePriceTemplate('xlsx')}
-            className="flex items-center gap-2 px-3.5 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg transition"
+            className="flex items-center gap-2 px-3.5 py-2 text-sm font-medium text-text-secondary  bg-neutral-bg  hover:bg-neutral-bg  rounded-lg transition"
             title="Download Template Format Excel"
           >
             <Download className="w-4 h-4" />
@@ -318,9 +318,9 @@ export const ResourcePricesScreen: React.FC = () => {
           <button
             onClick={() => exportResourcePricesToExcel(filteredItems)}
             disabled={filteredItems.length === 0}
-            className="flex items-center gap-2 px-3.5 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-50 rounded-lg transition"
+            className="flex items-center gap-2 px-3.5 py-2 text-sm font-medium text-text-secondary  bg-neutral-bg  hover:bg-neutral-bg  disabled:opacity-50 rounded-lg transition"
           >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            <FileSpreadsheet className="w-4 h-4 text-success" />
             <span>Ekspor Excel</span>
           </button>
 
@@ -330,7 +330,7 @@ export const ResourcePricesScreen: React.FC = () => {
               setParseResult(null);
               setShowImportModal(true);
             }}
-            className="flex items-center gap-2 px-3.5 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg transition"
+            className="flex items-center gap-2 px-3.5 py-2 text-sm font-medium text-primary  bg-primary/10  hover:bg-primary/20  rounded-lg transition"
           >
             <Upload className="w-4 h-4" />
             <span>Impor CSV / Excel</span>
@@ -338,7 +338,7 @@ export const ResourcePricesScreen: React.FC = () => {
 
           <button
             onClick={() => openForm()}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-primary hover:bg-primary-hover rounded-lg shadow-sm transition"
           >
             <Plus className="w-4 h-4" />
             <span>Tambah Harga</span>
@@ -349,46 +349,46 @@ export const ResourcePricesScreen: React.FC = () => {
       {/* Ringkasan Kategori */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
-          { label: 'Semua Kategori', key: 'Semua', count: stats.total, color: 'text-slate-800 dark:text-slate-100' },
-          { label: 'Bahan Material', key: 'Bahan', count: stats.bahan, color: 'text-blue-600 dark:text-blue-400' },
-          { label: 'Upah Tenaga', key: 'Upah', count: stats.upah, color: 'text-emerald-600 dark:text-emerald-400' },
-          { label: 'Sewa Alat', key: 'Alat', count: stats.alat, color: 'text-amber-600 dark:text-amber-400' },
-          { label: 'Subkontraktor', key: 'Subkon', count: stats.subkon, color: 'text-purple-600 dark:text-purple-400' },
+          { label: 'Semua Kategori', key: 'Semua', count: stats.total, color: 'text-text-primary ' },
+          { label: 'Bahan Material', key: 'Bahan', count: stats.bahan, color: 'text-primary ' },
+          { label: 'Upah Tenaga', key: 'Upah', count: stats.upah, color: 'text-success ' },
+          { label: 'Sewa Alat', key: 'Alat', count: stats.alat, color: 'text-warning ' },
+          { label: 'Subkontraktor', key: 'Subkon', count: stats.subkon, color: 'text-purple-600 ' },
         ].map((tab) => (
           <button
             key={tab.key}
             onClick={() => setSelectedJenis(tab.key)}
             className={`p-3.5 rounded-xl border text-left transition ${
               selectedJenis === tab.key
-                ? 'bg-blue-50/70 dark:bg-blue-950/30 border-blue-300 dark:border-blue-700 ring-2 ring-blue-500/20'
-                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-slate-300'
+                ? 'bg-primary/10/70  border-primary/20  ring-2 ring-primary/20'
+                : 'bg-white  border-border-subtle  hover:border-border-subtle'
             }`}
           >
-            <div className="text-xs text-slate-500 dark:text-slate-400">{tab.label}</div>
+            <div className="text-xs text-text-muted ">{tab.label}</div>
             <div className={`text-xl font-bold mt-1 ${tab.color}`}>{tab.count}</div>
           </button>
         ))}
       </div>
 
       {/* Filter & Bar Pencarian */}
-      <div className="flex flex-col md:flex-row items-center gap-3 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+      <div className="flex flex-col md:flex-row items-center gap-3 bg-white  p-4 rounded-xl border border-border-subtle ">
         <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
           <input
             type="text"
             placeholder="Cari kode sumber daya, uraian bahan/upah, atau spesifikasi..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+            className="w-full pl-9 pr-4 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-text-primary "
           />
         </div>
 
         <div className="flex items-center gap-2 w-full md:w-auto">
-          <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
+          <MapPin className="w-4 h-4 text-text-muted shrink-0" />
           <select
             value={selectedWilayah}
             onChange={(e) => setSelectedWilayah(e.target.value)}
-            className="px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+            className="px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-text-primary "
           >
             {uniqueWilayahList.map((w) => (
               <option key={w} value={w}>
@@ -400,7 +400,7 @@ export const ResourcePricesScreen: React.FC = () => {
           <button
             onClick={loadData}
             title="Muat Ulang"
-            className="p-2 text-slate-500 hover:text-slate-800 dark:hover:text-white bg-slate-100 dark:bg-slate-700 rounded-lg transition"
+            className="p-2 text-text-muted hover:text-text-primary  bg-neutral-bg  rounded-lg transition"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
@@ -408,13 +408,13 @@ export const ResourcePricesScreen: React.FC = () => {
       </div>
 
       {/* Tabel Data */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+      <div className="bg-white  rounded-xl border border-border-subtle  overflow-hidden shadow-sm">
         <ResponsiveTable
           data={filteredItems}
           renderTable={() => (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-300 font-medium border-b border-slate-200 dark:border-slate-700">
+                <thead className="bg-canvas  text-text-secondary  font-medium border-b border-border-subtle ">
                   <tr>
                     <th className="py-3 px-4 w-12 text-center">No</th>
                     <th className="py-3 px-4 w-28">Kode</th>
@@ -427,20 +427,20 @@ export const ResourcePricesScreen: React.FC = () => {
                     <th className="py-3 px-4 text-center w-24">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
+                <tbody className="divide-y divide-slate-100 ">
                   {loading ? (
                     <tr>
-                      <td colSpan={9} className="py-12 text-center text-slate-400">
-                        <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-500" />
+                      <td colSpan={9} className="py-12 text-center text-text-muted">
+                        <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-primary" />
                         Memuat katalog harga...
                       </td>
                     </tr>
                   ) : filteredItems.length === 0 ? (
                     <tr>
                       <td colSpan={9} className="py-12 text-center">
-                        <Layers className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-                        <p className="text-slate-600 dark:text-slate-300 font-medium">Belum ada item harga dasar ditemukan</p>
-                        <p className="text-xs text-slate-400 mt-1">
+                        <Layers className="w-10 h-10 text-text-muted  mx-auto mb-3" />
+                        <p className="text-text-secondary  font-medium">Belum ada item harga dasar ditemukan</p>
+                        <p className="text-xs text-text-muted mt-1">
                           {searchQuery
                             ? 'Tidak ada item yang cocok dengan kriteria pencarian.'
                             : 'Mulai dengan menambah harga satuan atau mengimpor file template Excel/CSV.'}
@@ -448,7 +448,7 @@ export const ResourcePricesScreen: React.FC = () => {
                         <div className="mt-4 flex items-center justify-center gap-2">
                           <button
                             onClick={() => openForm()}
-                            className="px-3.5 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition"
+                            className="px-3.5 py-1.5 text-xs font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition"
                           >
                             + Tambah Baru
                           </button>
@@ -456,7 +456,7 @@ export const ResourcePricesScreen: React.FC = () => {
                             onClick={() => {
                               setShowImportModal(true);
                             }}
-                            className="px-3.5 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 rounded-lg transition"
+                            className="px-3.5 py-1.5 text-xs font-medium text-primary  bg-primary/10  rounded-lg transition"
                           >
                             Impor File
                           </button>
@@ -467,31 +467,31 @@ export const ResourcePricesScreen: React.FC = () => {
                     filteredItems.map((item, idx) => (
                       <tr
                         key={item.id}
-                        className="hover:bg-slate-50/80 dark:hover:bg-slate-700/30 transition group"
+                        className="hover:bg-canvas/80  transition group"
                       >
-                        <td className="py-3 px-4 text-center text-slate-400 text-xs">{idx + 1}</td>
-                        <td className="py-3 px-4 font-mono font-semibold text-slate-700 dark:text-slate-200">
+                        <td className="py-3 px-4 text-center text-text-muted text-xs">{idx + 1}</td>
+                        <td className="py-3 px-4 font-mono font-semibold text-text-secondary ">
                           {item.kode}
                         </td>
                         <td className="py-3 px-4">{renderBadgeJenis(item.jenis)}</td>
                         <td className="py-3 px-4">
-                          <div className="font-medium text-slate-900 dark:text-white">{item.uraian}</div>
+                          <div className="font-medium text-text-primary ">{item.uraian}</div>
                           {item.spesifikasi && (
-                            <div className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 line-clamp-1">
+                            <div className="text-xs text-text-muted  mt-0.5 line-clamp-1">
                               {item.spesifikasi}
                             </div>
                           )}
                         </td>
-                        <td className="py-3 px-4 text-center font-mono text-slate-600 dark:text-slate-300">
+                        <td className="py-3 px-4 text-center font-mono text-text-secondary ">
                           {item.satuan}
                         </td>
-                        <td className="py-3 px-4 text-right font-semibold text-slate-900 dark:text-white">
+                        <td className="py-3 px-4 text-right font-semibold text-text-primary ">
                           {formatCurrencyIDR(item.harga)}
                         </td>
-                        <td className="py-3 px-4 text-slate-600 dark:text-slate-300 text-xs">
-                          {item.wilayah || <span className="text-slate-400 italic">Umum</span>}
+                        <td className="py-3 px-4 text-text-secondary  text-xs">
+                          {item.wilayah || <span className="text-text-muted italic">Umum</span>}
                         </td>
-                        <td className="py-3 px-4 text-slate-500 dark:text-slate-400 text-xs">
+                        <td className="py-3 px-4 text-text-muted  text-xs">
                           {item.berlakuMulai}
                         </td>
                         <td className="py-3 px-4 text-center">
@@ -499,14 +499,14 @@ export const ResourcePricesScreen: React.FC = () => {
                             <button
                               onClick={() => openForm(item)}
                               title="Ubah Item"
-                              className="p-1.5 text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition"
+                              className="p-1.5 text-text-muted hover:text-primary  hover:bg-primary/10  rounded transition"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => handleDelete(item)}
                               title="Hapus Item"
-                              className="p-1.5 text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition"
+                              className="p-1.5 text-text-muted hover:text-danger  hover:bg-danger-bg  rounded transition"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -529,7 +529,7 @@ export const ResourcePricesScreen: React.FC = () => {
                 { label: 'Harga Dasar', value: formatCurrencyIDR(item.harga), highlight: true },
                 {
                   label: 'Wilayah',
-                  value: item.wilayah || <span className="text-slate-400 italic">Umum</span>,
+                  value: item.wilayah || <span className="text-text-muted italic">Umum</span>,
                 },
                 { label: 'Mulai Berlaku', value: item.berlakuMulai },
                 ...(item.spesifikasi
@@ -540,13 +540,13 @@ export const ResourcePricesScreen: React.FC = () => {
                 <div className="flex gap-2">
                   <button
                     onClick={() => openForm(item)}
-                    className="flex-1 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg transition"
+                    className="flex-1 px-3 py-1.5 text-xs font-medium text-primary  bg-primary/10  hover:bg-primary/20  rounded-lg transition"
                   >
                     Ubah
                   </button>
                   <button
                     onClick={() => handleDelete(item)}
-                    className="px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg transition"
+                    className="px-3 py-1.5 text-xs font-medium text-danger  bg-danger-bg  hover:bg-danger  rounded-lg transition"
                   >
                     Hapus
                   </button>
@@ -557,7 +557,7 @@ export const ResourcePricesScreen: React.FC = () => {
         />
 
         {/* Footer info bar */}
-        <div className="p-3 bg-slate-50 dark:bg-slate-900/40 border-t border-slate-200 dark:border-slate-700 text-xs text-slate-500 flex justify-between items-center">
+        <div className="p-3 bg-canvas  border-t border-border-subtle  text-xs text-text-muted flex justify-between items-center">
           <span>Menampilkan {filteredItems.length} dari {items.length} item</span>
           <span>Standar mata uang: IDR (Bigint Rupiah)</span>
         </div>
@@ -566,14 +566,14 @@ export const ResourcePricesScreen: React.FC = () => {
       {/* MODAL: Tambah / Edit Item */}
       {showFormModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-              <h3 className="font-bold text-slate-900 dark:text-white">
+          <div className="bg-white  rounded-xl shadow-xl border border-border-subtle  w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-6 py-4 border-b border-border-subtle  flex items-center justify-between">
+              <h3 className="font-bold text-text-primary ">
                 {editingItem ? 'Edit Harga Dasar Satuan' : 'Tambah Harga Dasar Satuan'}
               </h3>
               <button
                 onClick={() => setShowFormModal(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="text-text-muted hover:text-text-secondary "
               >
                 <X className="w-5 h-5" />
               </button>
@@ -582,13 +582,13 @@ export const ResourcePricesScreen: React.FC = () => {
             <form onSubmit={handleSubmitForm} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Jenis Sumber Daya <span className="text-red-500">*</span>
+                  <label className="block text-xs font-semibold text-text-secondary  mb-1">
+                    Jenis Sumber Daya <span className="text-danger">*</span>
                   </label>
                   <select
                     value={formData.jenis}
                     onChange={(e) => setFormData({ ...formData, jenis: e.target.value as ResourceType })}
-                    className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg focus:ring-2 focus:ring-primary text-text-primary "
                   >
                     <option value="Bahan">Bahan (Material)</option>
                     <option value="Upah">Upah (Tenaga Kerja)</option>
@@ -598,8 +598,8 @@ export const ResourcePricesScreen: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Kode Sumber Daya <span className="text-red-500">*</span>
+                  <label className="block text-xs font-semibold text-text-secondary  mb-1">
+                    Kode Sumber Daya <span className="text-danger">*</span>
                   </label>
                   <input
                     type="text"
@@ -607,14 +607,14 @@ export const ResourcePricesScreen: React.FC = () => {
                     placeholder="Contoh: BHN-001, UPH-002"
                     value={formData.kode}
                     onChange={(e) => setFormData({ ...formData, kode: e.target.value })}
-                    className="w-full px-3 py-2 text-sm font-mono bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-sm font-mono bg-canvas  border border-border-subtle  rounded-lg focus:ring-2 focus:ring-primary text-text-primary "
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Uraian Item <span className="text-red-500">*</span>
+                <label className="block text-xs font-semibold text-text-secondary  mb-1">
+                  Uraian Item <span className="text-danger">*</span>
                 </label>
                 <input
                   type="text"
@@ -622,14 +622,14 @@ export const ResourcePricesScreen: React.FC = () => {
                   placeholder="Contoh: Semen Portland (PC) 50kg, Tukang Batu"
                   value={formData.uraian}
                   onChange={(e) => setFormData({ ...formData, uraian: e.target.value })}
-                  className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+                  className="w-full px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg focus:ring-2 focus:ring-primary text-text-primary "
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Satuan Pengukuran <span className="text-red-500">*</span>
+                  <label className="block text-xs font-semibold text-text-secondary  mb-1">
+                    Satuan Pengukuran <span className="text-danger">*</span>
                   </label>
                   <input
                     type="text"
@@ -637,13 +637,13 @@ export const ResourcePricesScreen: React.FC = () => {
                     placeholder="m3, kg, zak, OH, jam, dll."
                     value={formData.satuan}
                     onChange={(e) => setFormData({ ...formData, satuan: e.target.value })}
-                    className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg focus:ring-2 focus:ring-primary text-text-primary "
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Harga Satuan (Rp) <span className="text-red-500">*</span>
+                  <label className="block text-xs font-semibold text-text-secondary  mb-1">
+                    Harga Satuan (Rp) <span className="text-danger">*</span>
                   </label>
                   <input
                     type="number"
@@ -652,14 +652,14 @@ export const ResourcePricesScreen: React.FC = () => {
                     placeholder="75000"
                     value={formData.harga}
                     onChange={(e) => setFormData({ ...formData, harga: e.target.value })}
-                    className="w-full px-3 py-2 text-sm font-semibold bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-sm font-semibold bg-canvas  border border-border-subtle  rounded-lg focus:ring-2 focus:ring-primary text-text-primary "
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-text-secondary  mb-1">
                     Wilayah / Lokasi
                   </label>
                   <input
@@ -667,25 +667,25 @@ export const ResourcePricesScreen: React.FC = () => {
                     placeholder="Contoh: Balikpapan, IKN, Jakarta"
                     value={formData.wilayah}
                     onChange={(e) => setFormData({ ...formData, wilayah: e.target.value })}
-                    className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg focus:ring-2 focus:ring-primary text-text-primary "
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-text-secondary  mb-1">
                     Tanggal Mulai Berlaku
                   </label>
                   <input
                     type="date"
                     value={formData.berlakuMulai}
                     onChange={(e) => setFormData({ ...formData, berlakuMulai: e.target.value })}
-                    className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg focus:ring-2 focus:ring-primary text-text-primary "
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-text-secondary  mb-1">
                   Spesifikasi Teknis / Merk / Catatan
                 </label>
                 <textarea
@@ -693,22 +693,22 @@ export const ResourcePricesScreen: React.FC = () => {
                   placeholder="SNI Tipe I, Mutu K-250, Merk Gresik / Tiga Roda..."
                   value={formData.spesifikasi}
                   onChange={(e) => setFormData({ ...formData, spesifikasi: e.target.value })}
-                  className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+                  className="w-full px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg focus:ring-2 focus:ring-primary text-text-primary "
                 />
               </div>
 
-              <div className="pt-3 border-t border-slate-200 dark:border-slate-700 flex items-center justify-end gap-2">
+              <div className="pt-3 border-t border-border-subtle  flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowFormModal(false)}
-                  className="px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition"
+                  className="px-4 py-2 text-sm text-text-secondary  hover:bg-neutral-bg  rounded-lg transition"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={formSubmitting}
-                  className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg shadow-sm transition flex items-center gap-2"
+                  className="px-4 py-2 text-sm font-semibold text-white bg-primary hover:bg-primary-hover disabled:opacity-50 rounded-lg shadow-sm transition flex items-center gap-2"
                 >
                   {formSubmitting && <RefreshCw className="w-4 h-4 animate-spin" />}
                   <span>{editingItem ? 'Simpan Perubahan' : 'Tambahkan ke Katalog'}</span>
@@ -722,15 +722,15 @@ export const ResourcePricesScreen: React.FC = () => {
       {/* MODAL: Impor Excel / CSV */}
       {showImportModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+          <div className="bg-white  rounded-xl shadow-xl border border-border-subtle  w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-6 py-4 border-b border-border-subtle  flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Upload className="w-5 h-5 text-blue-600" />
-                <h3 className="font-bold text-slate-900 dark:text-white">Impor Katalog Harga Dasar (CSV / XLSX)</h3>
+                <Upload className="w-5 h-5 text-primary" />
+                <h3 className="font-bold text-text-primary ">Impor Katalog Harga Dasar (CSV / XLSX)</h3>
               </div>
               <button
                 onClick={() => setShowImportModal(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="text-text-muted hover:text-text-secondary "
               >
                 <X className="w-5 h-5" />
               </button>
@@ -738,16 +738,16 @@ export const ResourcePricesScreen: React.FC = () => {
 
             <div className="p-6 space-y-4">
               {/* Petunjuk format & template */}
-              <div className="bg-blue-50 dark:bg-blue-950/40 p-4 rounded-lg border border-blue-200 dark:border-blue-900/50 text-xs text-blue-900 dark:text-blue-200 flex items-start justify-between gap-3">
+              <div className="bg-primary/10  p-4 rounded-lg border border-primary/20  text-xs text-primary  flex items-start justify-between gap-3">
                 <div className="space-y-1">
                   <p className="font-semibold">Format Kolom File:</p>
-                  <p className="text-blue-700 dark:text-blue-300">
+                  <p className="text-primary ">
                     Kolom minimal: <strong>Kode, Jenis, Uraian, Satuan, Harga Satuan</strong> (kolom opsional: Wilayah, Spesifikasi).
                   </p>
                 </div>
                 <button
                   onClick={() => downloadResourcePriceTemplate('xlsx')}
-                  className="shrink-0 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium flex items-center gap-1 transition"
+                  className="shrink-0 px-2.5 py-1.5 bg-primary hover:bg-primary-hover text-white rounded font-medium flex items-center gap-1 transition"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Template</span>
@@ -757,7 +757,7 @@ export const ResourcePricesScreen: React.FC = () => {
               {/* Upload Dropzone */}
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-blue-500 rounded-xl p-6 text-center cursor-pointer transition bg-slate-50 dark:bg-slate-900/40"
+                className="border-2 border-dashed border-border-subtle  hover:border-primary/20 rounded-xl p-6 text-center cursor-pointer transition bg-canvas "
               >
                 <input
                   ref={fileInputRef}
@@ -766,16 +766,16 @@ export const ResourcePricesScreen: React.FC = () => {
                   onChange={handleFileChange}
                   className="hidden"
                 />
-                <FileSpreadsheet className="w-10 h-10 text-slate-400 mx-auto mb-2" />
-                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                <FileSpreadsheet className="w-10 h-10 text-text-muted mx-auto mb-2" />
+                <p className="text-sm font-semibold text-text-secondary ">
                   {importFile ? importFile.name : 'Klik atau seret file CSV / Excel ke sini'}
                 </p>
-                <p className="text-xs text-slate-400 mt-1">Mendukung format .xlsx, .xls, atau .csv (maksimal 5MB)</p>
+                <p className="text-xs text-text-muted mt-1">Mendukung format .xlsx, .xls, atau .csv (maksimal 5MB)</p>
               </div>
 
               {parsing && (
-                <div className="text-center py-4 text-xs text-slate-500 flex items-center justify-center gap-2">
-                  <RefreshCw className="w-4 h-4 animate-spin text-blue-500" />
+                <div className="text-center py-4 text-xs text-text-muted flex items-center justify-center gap-2">
+                  <RefreshCw className="w-4 h-4 animate-spin text-primary" />
                   <span>Memeriksa dan membaca isi file...</span>
                 </div>
               )}
@@ -783,14 +783,14 @@ export const ResourcePricesScreen: React.FC = () => {
               {/* Hasil Parsing Preview */}
               {parseResult && (
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between text-xs p-3 bg-slate-100 dark:bg-slate-900 rounded-lg">
+                  <div className="flex items-center justify-between text-xs p-3 bg-neutral-bg  rounded-lg">
                     <div className="flex items-center gap-4">
-                      <span className="flex items-center gap-1.5 text-emerald-600 font-semibold">
+                      <span className="flex items-center gap-1.5 text-success font-semibold">
                         <CheckCircle2 className="w-4 h-4" />
                         {parseResult.validRows.length} baris valid siap diimpor
                       </span>
                       {parseResult.invalidRows.length > 0 && (
-                        <span className="flex items-center gap-1.5 text-amber-600 font-semibold">
+                        <span className="flex items-center gap-1.5 text-warning font-semibold">
                           <AlertTriangle className="w-4 h-4" />
                           {parseResult.invalidRows.length} baris tidak lengkap
                         </span>
@@ -800,9 +800,9 @@ export const ResourcePricesScreen: React.FC = () => {
 
                   {/* Preview tabel kecil 5 baris pertama */}
                   {parseResult.validRows.length > 0 && (
-                    <div className="max-h-48 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-lg text-xs">
+                    <div className="max-h-48 overflow-y-auto border border-border-subtle  rounded-lg text-xs">
                       <table className="w-full text-left">
-                        <thead className="bg-slate-50 dark:bg-slate-900 sticky top-0 text-slate-500 font-medium border-b border-slate-200 dark:border-slate-700">
+                        <thead className="bg-canvas  sticky top-0 text-text-muted font-medium border-b border-border-subtle ">
                           <tr>
                             <th className="py-2 px-3">Kode</th>
                             <th className="py-2 px-3">Jenis</th>
@@ -811,9 +811,9 @@ export const ResourcePricesScreen: React.FC = () => {
                             <th className="py-2 px-3 text-right">Harga</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                        <tbody className="divide-y divide-slate-100 ">
                           {parseResult.validRows.slice(0, 5).map((row, i) => (
-                            <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800">
+                            <tr key={i} className="hover:bg-canvas ">
                               <td className="py-1.5 px-3 font-mono">{row.kode}</td>
                               <td className="py-1.5 px-3">{row.jenis}</td>
                               <td className="py-1.5 px-3">{row.uraian}</td>
@@ -824,7 +824,7 @@ export const ResourcePricesScreen: React.FC = () => {
                         </tbody>
                       </table>
                       {parseResult.validRows.length > 5 && (
-                        <div className="p-2 text-center text-slate-400 bg-slate-50 dark:bg-slate-900/50">
+                        <div className="p-2 text-center text-text-muted bg-canvas ">
                           ...dan {parseResult.validRows.length - 5} baris lainnya
                         </div>
                       )}
@@ -833,11 +833,11 @@ export const ResourcePricesScreen: React.FC = () => {
                 </div>
               )}
 
-              <div className="pt-3 border-t border-slate-200 dark:border-slate-700 flex items-center justify-end gap-2">
+              <div className="pt-3 border-t border-border-subtle  flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowImportModal(false)}
-                  className="px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition"
+                  className="px-4 py-2 text-sm text-text-secondary  hover:bg-neutral-bg  rounded-lg transition"
                 >
                   Batal
                 </button>
@@ -845,7 +845,7 @@ export const ResourcePricesScreen: React.FC = () => {
                   type="button"
                   onClick={handleExecuteImport}
                   disabled={importing || !parseResult || parseResult.validRows.length === 0}
-                  className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg shadow-sm transition flex items-center gap-2"
+                  className="px-4 py-2 text-sm font-semibold text-white bg-primary hover:bg-primary-hover disabled:opacity-50 rounded-lg shadow-sm transition flex items-center gap-2"
                 >
                   {importing && <RefreshCw className="w-4 h-4 animate-spin" />}
                   <span>Impor {parseResult?.validRows.length || 0} Item</span>

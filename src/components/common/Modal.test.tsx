@@ -126,7 +126,7 @@ describe('Modal', () => {
     expect(descElement).toHaveTextContent('Description text');
   });
 
-  it('focuses first focusable element on open', async () => {
+  it('focuses the dialog close button on open', async () => {
     render(
       <Modal {...defaultProps}>
         <input type="text" placeholder="First input" />
@@ -135,8 +135,8 @@ describe('Modal', () => {
     );
 
     await waitFor(() => {
-      const firstInput = screen.getByPlaceholderText('First input');
-      expect(document.activeElement).toBe(firstInput);
+      const closeButton = screen.getByRole('button', { name: 'Tutup Dialog' });
+      expect(document.activeElement).toBe(closeButton);
     }, { timeout: 200 });
   });
 

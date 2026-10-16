@@ -507,7 +507,7 @@ export const SettingsScreen: React.FC = () => {
 
               {/* Informational Security Notice */}
               <div className="p-3 bg-[#FAFBFB] border border-[#E2E8E4] rounded-lg text-[#4F5D56] text-xs leading-relaxed">
-                Log audit dilindungi oleh aturan keamanan Cloud Firestore (<code>allow update, delete: if false</code>).
+                Log audit dilindungi oleh kebijakan append-only dan Row Level Security Supabase.
                 Tidak ada pengguna yang dapat mengubah atau menghapus riwayat transaksi finansial, persetujuan addendum RAB, atau mutasi personil.
               </div>
 
@@ -584,7 +584,7 @@ export const SettingsScreen: React.FC = () => {
                             <tr key={log.id} className="hover:bg-[#F5F7F6]/80 transition-colors">
                               <td className="py-2.5 px-3 whitespace-nowrap">
                                 <div className="font-mono text-[#202B26] tabular-nums font-medium">
-                                  {formatDateIndo(log.timestamp.split('T')[0])}
+                                  {formatDateIndo(log.timestamp)}
                                 </div>
                                 <div className="font-mono text-xs text-text-muted truncate max-w-[130px]">
                                   {log.correlationId}

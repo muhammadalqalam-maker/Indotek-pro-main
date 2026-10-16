@@ -23,6 +23,7 @@ import { MetricCard } from '../common/MetricCard';
 import { Badge } from '../common/Badge';
 import { ProgressBar } from '../common/ProgressBar';
 import { Button } from '../common/Button';
+import { EmptyState } from '../common/EmptyState';
 import { SearchInput } from '../common/SearchInput';
 import { Modal } from '../common/Modal';
 import { SCurveChart } from '../charts/SCurveChart';
@@ -30,7 +31,7 @@ import { generateProjectSCurve } from '../../utils/scurve';
 import { generateBastMilestonePDF } from '../../utils/pdfGenerator';
 
 import { Milestone } from '../../types';
-import { formatDateIndo, formatPercent } from '../../utils/formatters';
+import { formatDateIndo, formatPercent, getWitaDateISO } from '../../utils/formatters';
 
 interface SignedMilestone extends Milestone {
   signedOffBy?: string;
@@ -72,6 +73,7 @@ export const ScheduleScreen: React.FC = () => {
     projects.find((p) => p.id === selectedProjectId) || projects[0];
 
   const scurveData = useMemo(() => {
+    if (!currentProject) return null;
     const projectWbs = wbsList.filter((w) => w.projectId === currentProject.id);
     return generateProjectSCurve({
       projectId: currentProject.id,
@@ -79,14 +81,14 @@ export const ScheduleScreen: React.FC = () => {
       startDate: currentProject.startDate,
       endDate: currentProject.targetEndDate,
       currentActualProgress: currentProject.progressActual,
-      reportingDate: '2026-10-09',
+      reportingDate: getWitaDateISO(),
       wbsItems: projectWbs,
     });
   }, [currentProject, wbsList]);
 
-  const projectMilestones = milestones.filter(
-    (m) => m.projectId === currentProject.id
-  );
+  const projectMilestones = currentProject
+    ? milestones.filter((m) => m.projectId === currentProject.id)
+    : [];
 
   const filteredWBS = useMemo(() => {
     return wbsList.filter((item) => {
@@ -118,7 +120,7 @@ export const ScheduleScreen: React.FC = () => {
   };
 
   const handleConfirmSignOff = async () => {
-    if (!signingMilestone) return;
+    if (!signingMilestone || !currentProject) return;
 
     if (!canSignOff) {
       addToast({
@@ -136,6 +138,15 @@ export const ScheduleScreen: React.FC = () => {
       // Toast already shown by AppContext rollback
     }
   };
+
+  if (!currentProject || !scurveData) {
+    return (
+      <EmptyState
+        title="Belum ada proyek untuk dijadwalkan"
+        description="Tambahkan proyek terlebih dahulu untuk melihat WBS, milestone, dan kurva-S."
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -197,7 +208,11 @@ export const ScheduleScreen: React.FC = () => {
           label="Pekerjaan Deviasi / Kritis"
           value={`${delayedTasks} Item`}
           subtitle="Membutuhkan jam lembur & rekayasa"
-          trend={{ value: delayedTasks > 0 ? 'Perlu Eskalasi' : 'Semua On Track', isPositive: delayedTasks === 0 }}
+          trend={{
+            value: delayedTasks > 0 ? 'Perlu Eskalasi' : wbsList.length > 0 ? 'Semua On Track' : 'Belum ada WBS',
+            isPositive: delayedTasks === 0 && wbsList.length > 0,
+            isNeutral: wbsList.length === 0,
+          }}
           icon={<AlertTriangle className="w-4 h-4 text-[#9E6B05]" />}
         />
       </div>

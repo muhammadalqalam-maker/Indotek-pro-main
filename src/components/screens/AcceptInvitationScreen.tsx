@@ -93,10 +93,10 @@ export const AcceptInvitationScreen: React.FC = () => {
   // Loading state while fetching token
   if (!token && !searchParams.has('token')) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-canvas">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-indigo-600 mx-auto mb-4" />
-          <p className="text-slate-600">Memuat...</p>
+          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-text-secondary">Memuat...</p>
         </div>
       </div>
     );
@@ -105,13 +105,13 @@ export const AcceptInvitationScreen: React.FC = () => {
   // Already accepted or expired
   if (success && error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center space-y-6">
-          <div className="mx-auto w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center">
-            <AlertCircle className="w-8 h-8 text-amber-600" />
+      <div className="min-h-screen flex items-center justify-center bg-canvas px-4">
+        <div className="max-w-md w-full bg-surface rounded-2xl border border-border-subtle shadow-lg p-8 text-center space-y-6">
+          <div className="mx-auto w-16 h-16 bg-warning-bg rounded-full flex items-center justify-center">
+            <AlertCircle className="w-8 h-8 text-warning" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900">Undangan tidak valid</h2>
-          <p className="text-slate-600">{error}</p>
+          <h2 className="text-2xl font-bold text-text-primary">Undangan tidak valid</h2>
+          <p className="text-text-secondary">{error}</p>
           <Button onClick={() => navigate('/masuk')} className="w-full">
             Masuk
           </Button>
@@ -123,20 +123,20 @@ export const AcceptInvitationScreen: React.FC = () => {
   // Success state
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center space-y-6">
-          <div className="mx-auto w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center">
-            <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+      <div className="min-h-screen flex items-center justify-center bg-canvas px-4">
+        <div className="max-w-md w-full bg-surface rounded-2xl border border-border-subtle shadow-lg p-8 text-center space-y-6">
+          <div className="mx-auto w-16 h-16 bg-success-bg rounded-full flex items-center justify-center">
+            <CheckCircle2 className="w-8 h-8 text-success" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900">Undangan Diterima!</h2>
-          <p className="text-slate-600">
+          <h2 className="text-2xl font-bold text-text-primary">Undangan Diterima!</h2>
+          <p className="text-text-secondary">
             {isPendingApproval
               ? 'Akun Anda sedang menunggu persetujuan administrator. Anda akan menerima email notifikasi setelah akun diaktifkan.'
               : 'Undangan berhasil diterima. Anda akan diarahkan ke halaman masuk...'
             }
           </p>
           <div className="flex justify-center">
-            <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
         </div>
       </div>
@@ -145,17 +145,17 @@ export const AcceptInvitationScreen: React.FC = () => {
 
   // Accepting state
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center space-y-6">
-        <div className="mx-auto w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center">
-          <ShieldCheck className="w-8 h-8 text-indigo-600" />
+    <div className="min-h-screen flex items-center justify-center bg-canvas px-4">
+      <div className="max-w-md w-full bg-surface rounded-2xl border border-border-subtle shadow-lg p-8 text-center space-y-6">
+        <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+          <ShieldCheck className="w-8 h-8 text-primary" />
         </div>
-        <h2 className="text-2xl font-bold text-slate-900">Menerima Undangan...</h2>
-        <p className="text-slate-600">
+        <h2 className="text-2xl font-bold text-text-primary">Menerima Undangan...</h2>
+        <p className="text-text-secondary">
           Silakan tunggu sebentar sementara kami memverifikasi undangan Anda.
         </p>
         <div className="flex justify-center">
-          <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
         </div>
       </div>
     </div>

@@ -31,7 +31,7 @@ export const BudgetRevisionsTab: React.FC<BudgetRevisionsTabProps> = ({
         <div>
           <h2 className="text-sm font-bold text-[#202B26]">Addendum & Revisi Pagu RAB</h2>
           <p className="text-xs text-[#69766F] mt-0.5">
-            Persetujuan addendum akan otomatis menyesuaikan baris RAB dan mencatat riwayat versi baru di Firestore
+            Persetujuan addendum akan otomatis menyesuaikan baris RAB dan mencatat riwayat versi baru di Supabase
           </p>
         </div>
 

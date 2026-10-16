@@ -19,10 +19,12 @@
   /* Status colors */
   --color-success: #1C6843;
   --color-success-bg: #E5F4EB;
+  --color-success-light: #E5F4EB;
   --color-success-border: #CDE9D7;
   
   --color-warning: #9E6B05;
   --color-warning-bg: #FFF3D8;
+  --color-warning-light: #FFF3D8;
   --color-warning-border: #FCE6B1;
   
   --color-danger: #A82A20;
@@ -35,6 +37,7 @@
   
   --color-info: #235D9F;
   --color-info-bg: #E8F0FA;
+  --color-info-light: #E8F0FA;
   --color-info-border: #CEE0F5;
   
   /* Neutral/Surface colors */
@@ -63,6 +66,7 @@
 
 @layer base {
   :root {
+    color-scheme: light;
     --primary-forest: #12352B;
     --primary-secondary: #285744;
     --accent-gold: #9E6B05;
@@ -103,16 +107,20 @@
     outline: 2px solid var(--primary-forest);
     outline-offset: 2px;
   }
-|
-  /* Button: Minimum 44px tap target (WCAG 2.5.5) */
+  /* Keep dense desktop controls compact; enforce touch targets on mobile. */
   button, [role="button"], input[type="button"], input[type="submit"] {
-    min-height: 44px;
-    min-width: 44px;
+    min-height: 0;
+    min-width: 0;
     display: flex;
     align-items: center;
     justify-content: center;
   }
-|
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  textarea,
+  select {
+    color: var(--color-text-primary);
+    border-color: var(--color-border-subtle);
+  }
   /* Links with sufficient touch area */
   a[href] {
     position: relative;
@@ -127,25 +135,29 @@
     min-width: 44px;
     min-height: 44px;
   }
-|
-  /* Form controls: 44px minimum */
-  input[type="text"],
-  input[type="email"],
-  input[type="password"],
-  input[type="number"],
-  input[type="date"],
-  input[type="search"],
-  textarea,
-  select {
-    min-height: 44px;
-  }
-|
-  /* Checkboxes and radio buttons with larger click zone */
+  /* Native checkbox colors follow the forest-green application palette. */
   input[type="checkbox"],
   input[type="radio"] {
-    min-width: 44px;
-    min-height: 44px;
+    width: 1.125rem;
+    height: 1.125rem;
+    min-width: 1.125rem;
+    min-height: 1.125rem;
+    accent-color: var(--color-primary);
     cursor: pointer;
+  }
+}
+
+@layer components {
+  @media (max-width: 767px) {
+    button, [role="button"], input[type="button"], input[type="submit"] {
+      min-height: 44px;
+      min-width: 44px;
+    }
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+    textarea,
+    select {
+      min-height: 44px;
+    }
   }
 }
 

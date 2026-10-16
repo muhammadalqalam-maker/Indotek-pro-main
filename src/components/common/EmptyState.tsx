@@ -23,7 +23,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
     <div
       className={`flex flex-col items-center justify-center text-center p-8 sm:p-12 border border-dashed border-border-light rounded-xl bg-neutral-bg ${className}`}
     >
-      <div className="w-12 h-12 rounded-xl bg-success-light text-primary-light flex items-center justify-center mb-4">
+      <div className="w-12 h-12 rounded-xl bg-success-bg text-primary-light flex items-center justify-center mb-4">
         {icon || <FolderSearch className="w-6 h-6" />}
       </div>
       <h4 className="text-sm font-semibold text-text-primary mb-1">{title}</h4>

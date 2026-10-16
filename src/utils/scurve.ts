@@ -1,3 +1,5 @@
+import { getWitaDateISO } from './formatters';
+
 /**
  * Indotek Pro — S-Curve Construction Progress Calculation Engine
  * 
@@ -92,7 +94,7 @@ export function generateProjectSCurve(params: GenerateProjectSCurveParams): Proj
     startDate,
     endDate,
     currentActualProgress: rawActualProgress,
-    reportingDate = new Date().toISOString().split('T')[0],
+    reportingDate = getWitaDateISO(),
     historicalActuals = [],
     boqItems = [],
     wbsItems = [],

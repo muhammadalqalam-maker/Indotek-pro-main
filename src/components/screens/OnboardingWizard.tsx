@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { HardHat, Building2, Globe, FileText, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useUI } from '../../context/UIContext';
 
 interface WizardState {
   companyName: string;
@@ -30,6 +31,7 @@ function slugify(text: string): string {
 }
 
 export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ userEmail, onComplete }) => {
+  const { addToast } = useUI();
   const [step, setStep] = useState<'form' | 'submitting' | 'success' | 'error'>('form');
   const [errorMsg, setErrorMsg] = useState('');
   const [form, setForm] = useState<WizardState>({
@@ -43,36 +45,44 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ userEmail, o
     setForm(prev => ({
       ...prev,
       companyName: name,
-      slug: prev.slug || slugify(name),
+      slug: !prev.slug || prev.slug === slugify(prev.companyName) ? slugify(name) : prev.slug,
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.companyName.trim() || !form.slug.trim()) return;
-
-    setStep('submitting');
-    setErrorMsg('');
-
-    const { data, error } = await supabase.rpc('create_workspace', {
-      p_name: form.companyName.trim(),
-      p_slug: form.slug.trim(),
-      p_address: form.address.trim(),
-      p_npwp: form.npwp.trim(),
-    });
-
-    if (error) {
-      setErrorMsg(error.message);
+    if (!/^[a-z0-9][a-z0-9-]{1,62}$/.test(form.slug.trim())) {
+      setErrorMsg('ID workspace harus 2–63 karakter, dimulai dengan huruf kecil atau angka, dan hanya berisi huruf kecil, angka, atau tanda hubung.');
       setStep('error');
       return;
     }
 
-    if (data?.success) {
+    setStep('submitting');
+    setErrorMsg('');
+
+    try {
+      const { data, error } = await supabase.rpc('create_workspace', {
+        p_name: form.companyName.trim(),
+        p_slug: form.slug.trim(),
+        p_address: form.address.trim(),
+        p_npwp: form.npwp.trim(),
+      });
+      if (error) throw new Error(error.message);
+      if (!data?.success) {
+        throw new Error(data?.message || 'Gagal membuat workspace.');
+      }
       setStep('success');
       setTimeout(() => onComplete(), 1500);
-    } else {
-      setErrorMsg(data?.message || 'Gagal membuat workspace.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setErrorMsg(message);
       setStep('error');
+      addToast({
+        type: 'danger',
+        title: 'Gagal Membuat Workspace',
+        message,
+      });
     }
   };
 
@@ -116,9 +126,9 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ userEmail, o
           </div>
 
           {step === 'error' && (
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200">
-              <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
-              <p className="text-xs text-red-700">{errorMsg}</p>
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-danger-bg border border-danger-border">
+              <AlertCircle className="w-4 h-4 text-danger mt-0.5 shrink-0" />
+              <p className="text-xs text-danger">{errorMsg}</p>
             </div>
           )}
 
@@ -126,7 +136,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ userEmail, o
             {/* Nama Perusahaan */}
             <div>
               <label className="block text-xs font-semibold text-[#202B26] mb-1.5">
-                Nama Perusahaan <span className="text-red-500">*</span>
+                Nama Perusahaan <span className="text-danger">*</span>
               </label>
               <input
                 id="onboarding-company-name"
@@ -142,7 +152,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ userEmail, o
             {/* Slug */}
             <div>
               <label className="block text-xs font-semibold text-[#202B26] mb-1.5">
-                ID Workspace (Slug) <span className="text-red-500">*</span>
+                ID Workspace (Slug) <span className="text-danger">*</span>
               </label>
               <div className="flex items-center gap-1">
                 <Globe className="w-4 h-4 text-[#69766F] shrink-0" />
@@ -150,8 +160,8 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ userEmail, o
                   id="onboarding-slug"
                   type="text"
                   required
+                  maxLength={63}
                   placeholder="contoh-konstruksi"
-                  pattern="^[a-z0-9][a-z0-9-]{1,62}$"
                   title="Huruf kecil, angka, dan tanda hubung. Minimal 2 karakter."
                   value={form.slug}
                   onChange={(e) => setForm(prev => ({ ...prev, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}

@@ -124,10 +124,11 @@ async function startServer() {
       [
         "default-src 'self'",
         "script-src 'self' 'unsafe-inline'", // Keep unsafe-inline for React (common pattern)
+        "worker-src 'self' blob:",
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' data: https://fonts.gstatic.com",
         "img-src 'self' data: blob: https:",
-        "connect-src 'self' https://*.supabase.co wss://*.supabase.co https:", // Specific Supabase + other https APIs
+        `connect-src 'self' https://*.supabase.co wss://*.supabase.co https:${isProduction ? '' : ' ws://localhost:* ws://127.0.0.1:*'}`,
         "frame-ancestors 'none'",
         "base-uri 'self'",
         "form-action 'self'",

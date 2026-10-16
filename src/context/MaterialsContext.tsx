@@ -118,7 +118,7 @@ export const MaterialsProvider: React.FC<{ children: ReactNode }> = ({ children 
       addToast({
         type: 'danger',
         title: 'Mutasi Material Gagal',
-        message: err?.message || 'Gagal memproses mutasi material di Firestore.',
+        message: err?.message || 'Gagal memproses mutasi material di Supabase.',
       });
       throw err;
     }

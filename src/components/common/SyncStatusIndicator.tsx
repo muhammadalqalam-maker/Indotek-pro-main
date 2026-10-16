@@ -5,7 +5,7 @@
  * Memungkinkan sinkronisasi manual dan inspeksi perbedaan konflik data server.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Wifi,
   WifiOff,
@@ -18,12 +18,18 @@ import {
 } from 'lucide-react';
 import {
   getOfflineQueue,
+  markOfflinePhotoUploaded,
   processOfflineSync,
   OfflineFieldReportItem,
   removeOfflineReport,
 } from '../../utils/offlineQueue';
 import { useApp } from '../../context/AppContext';
 import { useUI } from '../../context/UIContext';
+import { supabaseDataService } from '../../services/supabaseDataService';
+import type { FieldReport } from '../../types';
+
+const isWeatherCondition = (value: string): value is FieldReport['weatherMorning'] =>
+  ['Cerah', 'Berawan', 'Hujan Ringan', 'Hujan Deras'].includes(value);
 
 export const SyncStatusIndicator: React.FC = () => {
   const { addFieldReport, projects } = useApp();
@@ -35,13 +41,22 @@ export const SyncStatusIndicator: React.FC = () => {
   const [queue, setQueue] = useState<OfflineFieldReportItem[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [selectedConflict, setSelectedConflict] = useState<OfflineFieldReportItem | null>(null);
+  const queueErrorShown = useRef(false);
 
   const refreshQueue = async () => {
     try {
       const items = await getOfflineQueue();
       setQueue(items);
-    } catch {
-      // IndexedDB mungkin belum siap
+      queueErrorShown.current = false;
+    } catch (err) {
+      if (!queueErrorShown.current) {
+        queueErrorShown.current = true;
+        addToast({
+          type: 'danger',
+          title: 'Antrean Offline Tidak Tersedia',
+          message: err instanceof Error ? err.message : 'Tidak dapat membaca antrean laporan offline.',
+        });
+      }
     }
   };
 
@@ -85,13 +100,17 @@ export const SyncStatusIndicator: React.FC = () => {
     try {
       const res = await processOfflineSync(async (item) => {
         try {
+          if (!isWeatherCondition(item.weatherMorning) || !isWeatherCondition(item.weatherAfternoon)) {
+            throw new Error('Data cuaca laporan offline tidak valid; periksa laporan sebelum mencoba sinkronisasi lagi.');
+          }
+
           // Kirim laporan ke context/server
-          await addFieldReport({
+          const reportId = await addFieldReport({
             projectId: item.projectId,
             projectName: item.projectName,
             date: item.reportDate,
-            weatherMorning: item.weatherMorning as any,
-            weatherAfternoon: item.weatherAfternoon as any,
+            weatherMorning: item.weatherMorning,
+            weatherAfternoon: item.weatherAfternoon,
             workingHours: item.workingHours,
             siteSupervisor: item.siteSupervisor,
             workforce: item.workforce,
@@ -99,11 +118,23 @@ export const SyncStatusIndicator: React.FC = () => {
             materialsUsed: item.materialsUsed,
             equipmentUsed: item.equipmentUsed,
             blockers: item.blockers,
-            photos: item.photos.map((p) => ({
-              url: URL.createObjectURL(p.blob),
-              caption: p.caption,
-            })),
-          });
+            photos: [],
+          }, item.idempotencyKey);
+
+          for (const photo of item.photos) {
+            if (item.uploadedPhotoIds?.includes(photo.id)) continue;
+            await supabaseDataService.uploadAttachment({
+              workspaceId: item.workspaceId,
+              recordType: 'field_report',
+              recordId: reportId,
+              fileBlob: photo.blob,
+              fileName: photo.fileName,
+              mimeType: photo.mimeType,
+              sizeBytes: photo.sizeBytes,
+              caption: photo.caption,
+            });
+            await markOfflinePhotoUploaded(item.localId, photo.id);
+          }
 
           return { success: true };
         } catch (err: any) {
@@ -130,8 +161,20 @@ export const SyncStatusIndicator: React.FC = () => {
           message: `${res.succeeded} laporan harian offline berhasil disinkronkan ke server.`,
         });
       }
+      if (res.failed > 0) {
+        addToast({
+          type: 'danger',
+          title: 'Sinkronisasi Belum Selesai',
+          message: `${res.failed} laporan gagal disinkronkan. Data tetap disimpan di antrean untuk dicoba kembali.`,
+        });
+      }
     } catch (err: any) {
       console.error('Error saat sinkronisasi:', err);
+      addToast({
+        type: 'danger',
+        title: 'Gagal Menyinkronkan Laporan',
+        message: err?.message || 'Terjadi kesalahan saat memproses antrean offline.',
+      });
     } finally {
       setIsSyncing(false);
     }

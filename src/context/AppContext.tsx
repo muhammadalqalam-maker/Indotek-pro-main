@@ -64,7 +64,7 @@ export interface AppContextType {
   notificationsOpen: boolean;
   setNotificationsOpen: (o: boolean) => void;
 
-  // Data states (Real Firestore Collections)
+  // Data states (Supabase tables)
   projects: Project[];
   purchaseOrders: PurchaseOrder[];
   materials: MaterialItem[];
@@ -117,7 +117,10 @@ export interface AppContextType {
   submitStockAdjustment: (adj: Omit<StockAdjustment, 'id' | 'adjustmentNo' | 'status' | 'submittedAt'>) => Promise<void>;
   approveStockAdjustment: (adjId: string, approverName: string) => Promise<void>;
   rejectStockAdjustment: (adjId: string, rejectorName: string, reason: string) => Promise<void>;
-  addFieldReport: (report: Omit<FieldReport, 'id' | 'reportNumber' | 'status'>) => Promise<void>;
+  addFieldReport: (
+    report: Omit<FieldReport, 'id' | 'reportNumber' | 'status'>,
+    idempotencyKey?: string
+  ) => Promise<string>;
   reviewFieldReport: (reportId: string, reviewerName: string, status: FieldReportStatus, notes?: string) => Promise<void>;
 
   // Budget Revisions Workflow

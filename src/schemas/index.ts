@@ -26,7 +26,7 @@ export const CurrencyRupiahSchema = z
   .nonnegative({ message: 'Nilai mata uang tidak boleh negatif.' });
 
 /**
- * Base document schema enforced on all multi-tenant Firestore documents.
+ * Base entity schema enforced across multi-tenant records.
  */
 export const BaseEntitySchema = z.object({
   id: z.string().min(1, 'ID dokumen wajib diisi.'),
@@ -585,4 +585,3 @@ export const DocumentNumberActionRequestSchema = z
   .strict();
 
 export type DocumentNumberActionRequest = z.infer<typeof DocumentNumberActionRequestSchema>;
-

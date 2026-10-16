@@ -26,6 +26,7 @@ import { ALL_ROLES, ROLE_DEFINITIONS } from '../../lib/rbac';
 import { AppRole } from '../../types/rbac';
 import { SyncStatusIndicator } from '../common/SyncStatusIndicator';
 import { SearchBottomSheet } from './SearchBottomSheet';
+import { getNameInitials } from '../../utils/formatters';
 
 export const Topbar: React.FC = () => {
   const location = useLocation();
@@ -406,12 +407,12 @@ export const Topbar: React.FC = () => {
             title="Profil Pengguna & Sesi"
           >
             <div className="w-6 h-6 rounded-full bg-primary text-warning font-semibold text-xs flex items-center justify-center shrink-0">
-              {currentUser.displayName ? currentUser.displayName.slice(0, 2).toUpperCase() : 'BS'}
+              {getNameInitials(currentUser.displayName)}
             </div>
             <span className="hidden xl:inline text-xs truncate max-w-[100px]">
               {userProfile?.name?.split(' ')[0] || currentUser.displayName?.split(' ')[0] || 'User'}
             </span>
-            <span className="w-1.5 h-1.5 rounded-full bg-success" title="Terkoneksi Firebase" />
+            <span className="w-1.5 h-1.5 rounded-full bg-success" title="Terkoneksi Supabase" />
           </button>
         ) : (
           <Button

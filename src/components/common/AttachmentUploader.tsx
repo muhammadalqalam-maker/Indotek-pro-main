@@ -184,13 +184,13 @@ export const AttachmentUploader: React.FC<AttachmentUploaderProps> = ({
   };
 
   return (
-    <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 sm:p-5 mt-4">
+    <div className="bg-surface border border-border-subtle rounded-xl p-4 sm:p-5 mt-4 shadow-2xs">
       {/* Header */}
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div className="flex items-center gap-2">
-          <Camera className="w-5 h-5 text-indigo-400" />
-          <h4 className="text-sm font-semibold text-slate-100">{title}</h4>
-          <span className="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-medium">
+          <Camera className="w-5 h-5 text-primary-light" />
+          <h4 className="text-sm font-semibold text-text-primary">{title}</h4>
+          <span className="text-xs bg-neutral-bg text-text-muted px-2 py-0.5 rounded-full font-medium">
             {attachments.length}/{maxFiles}
           </span>
         </div>
@@ -200,9 +200,9 @@ export const AttachmentUploader: React.FC<AttachmentUploaderProps> = ({
           onClick={loadAttachments}
           disabled={loading}
           title="Perbarui URL signed galeri"
-          className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-xs text-slate-400 hover:text-slate-200 transition bg-slate-800/80 px-2.5 py-1.5 rounded-lg border border-slate-700 hover:border-slate-600 disabled:opacity-50"
+          className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-xs text-text-secondary hover:text-primary transition bg-white px-2.5 py-1.5 rounded-lg border border-border-subtle hover:border-border-light disabled:opacity-50"
         >
-          <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin text-indigo-400' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin text-primary' : ''}`} />
           Perbarui Link
         </button>
       </div>
@@ -217,7 +217,7 @@ export const AttachmentUploader: React.FC<AttachmentUploaderProps> = ({
               value={captionInput}
               onChange={(e) => setCaptionInput(e.target.value)}
               disabled={uploading}
-              className="flex-1 min-h-[44px] bg-slate-800/90 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+              className="flex-1 min-h-[44px] bg-canvas border border-border-subtle rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
 
             <input
@@ -234,7 +234,7 @@ export const AttachmentUploader: React.FC<AttachmentUploaderProps> = ({
 
             <label
               htmlFor={`attachment-input-${recordId}`}
-              className={`min-h-[44px] px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 cursor-pointer transition shadow-sm ${
+              className={`min-h-[44px] px-4 py-2.5 bg-primary hover:bg-primary-light text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 cursor-pointer transition shadow-sm ${
                 uploading ? 'opacity-50 pointer-events-none' : ''
               }`}
             >
@@ -251,7 +251,7 @@ export const AttachmentUploader: React.FC<AttachmentUploaderProps> = ({
               )}
             </label>
           </div>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-text-muted">
             * Foto otomatis dikompres ke maks 1600px JPEG 75% di perangkat untuk menghemat kuota lapangan.
           </p>
         </div>
@@ -259,11 +259,11 @@ export const AttachmentUploader: React.FC<AttachmentUploaderProps> = ({
 
       {/* Gallery List */}
       {loading && attachments.length === 0 ? (
-        <div className="py-6 text-center text-xs text-slate-500">Memuat galeri lampiran...</div>
+        <div className="py-6 text-center text-xs text-text-muted">Memuat galeri lampiran...</div>
       ) : attachments.length === 0 ? (
-        <div className="py-6 text-center border border-dashed border-slate-800 rounded-lg">
-          <ImageIcon className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-          <p className="text-xs text-slate-400">Belum ada foto atau dokumen lampiran yang diunggah.</p>
+        <div className="py-6 text-center border border-dashed border-border-light rounded-lg bg-canvas/60">
+          <ImageIcon className="w-8 h-8 text-text-muted mx-auto mb-2" />
+          <p className="text-xs text-text-muted">Belum ada foto atau dokumen lampiran yang diunggah.</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -274,7 +274,7 @@ export const AttachmentUploader: React.FC<AttachmentUploaderProps> = ({
             return (
               <div
                 key={item.id}
-                className="group relative bg-slate-800/80 border border-slate-700/80 rounded-lg overflow-hidden flex flex-col transition hover:border-slate-600"
+                className="group relative bg-white border border-border-subtle rounded-lg overflow-hidden flex flex-col transition hover:border-primary/40 hover:shadow-xs"
               >
                 {/* Thumbnail */}
                 <div
@@ -294,8 +294,8 @@ export const AttachmentUploader: React.FC<AttachmentUploaderProps> = ({
                       loading="lazy"
                     />
                   ) : (
-                    <div className="flex flex-col items-center justify-center text-slate-400 p-2 text-center">
-                      <FileText className="w-8 h-8 text-indigo-400 mb-1" />
+                    <div className="flex flex-col items-center justify-center text-text-muted p-2 text-center">
+                      <FileText className="w-8 h-8 text-primary-light mb-1" />
                       <span className="text-xs truncate max-w-[100px]">{item.storage_path.split('/').pop()}</span>
                     </div>
                   )}
@@ -308,10 +308,10 @@ export const AttachmentUploader: React.FC<AttachmentUploaderProps> = ({
                 {/* Caption & Metadata */}
                 <div className="p-2 flex flex-col justify-between flex-1">
                   <div className="min-h-[24px]">
-                    <p className="text-xs text-slate-200 font-medium truncate" title={item.caption || item.storage_path.split('/').pop()}>
+                    <p className="text-xs text-text-primary font-medium truncate" title={item.caption || item.storage_path.split('/').pop()}>
                       {item.caption || item.storage_path.split('/').pop()}
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-text-muted">
                       {item.size_bytes ? `${Math.round(item.size_bytes / 1024)} KB` : ''} •{' '}
                       {new Date(item.created_at).toLocaleDateString('id-ID', {
                         day: 'numeric',
@@ -321,7 +321,7 @@ export const AttachmentUploader: React.FC<AttachmentUploaderProps> = ({
                   </div>
 
                   {canDelete && (
-                    <div className="mt-2 pt-1 border-t border-slate-700/60 flex justify-end">
+                    <div className="mt-2 pt-1 border-t border-border-subtle flex justify-end">
                       <button
                         type="button"
                         onClick={(e) => {
@@ -329,7 +329,7 @@ export const AttachmentUploader: React.FC<AttachmentUploaderProps> = ({
                           handleDelete(item);
                         }}
                         title="Hapus foto ini"
-                        className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded p-1 transition"
+                        className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-danger hover:text-danger-hover hover:bg-danger-bg rounded p-1 transition"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

@@ -17,6 +17,10 @@ const hasRealConfig = Boolean(
     (typeof process !== 'undefined' && (process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY)))
 );
 
+export const isPasswordRecoveryRedirect =
+  typeof window !== 'undefined' &&
+  new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery';
+
 export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: typeof window !== 'undefined',

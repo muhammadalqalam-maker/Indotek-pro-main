@@ -154,7 +154,7 @@ describe('Sidebar Component', () => {
   describe('Accessibility', () => {
     it('has proper ARIA labels', () => {
       renderWithRouter(<Sidebar />);
-      expect(screen.getByLabelText(/Tutup Menu|Kelola Akun/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Kelola Akun & Hak Akses' })).toBeInTheDocument();
     });
 
     it('breadcrumb nav has aria-label', () => {

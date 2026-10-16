@@ -25,7 +25,7 @@ import { Button } from '../common/Button';
 import { SearchInput } from '../common/SearchInput';
 import { Modal } from '../common/Modal';
 import { PurchaseOrder } from '../../types';
-import { formatCurrencyIDR, formatDateIndo } from '../../utils/formatters';
+import { formatCurrencyIDR, formatDateIndo, getWitaDateISO } from '../../utils/formatters';
 import { AttachmentUploader } from '../common/AttachmentUploader';
 import { generatePurchaseOrderPDF } from '../../utils/pdfGenerator';
 import { DataCard } from '../common/DataCard';
@@ -58,15 +58,21 @@ export const ProcurementScreen: React.FC = () => {
 
   // Modal for New SPP / PO
   const [isNewPOModalOpen, setIsNewPOModalOpen] = useState(false);
+  const [isSubmittingPO, setIsSubmittingPO] = useState(false);
   const [newPOForm, setNewPOForm] = useState({
     projectId: projects[0]?.id || '',
-    supplierName: 'PT Semen Indonesia Distributor',
-    itemDescription: 'Pengadaan Tambahan Semen PCC & Pasir Cor',
-    quantitySummary: '500 sak semen, 50 m³ pasir cor',
-    totalCost: '65000000',
-    targetDeliveryDate: '2026-10-20',
-    requester: 'Ir. Hendra Kurniawan, IPM',
+    supplierName: '',
+    itemDescription: '',
+    quantitySummary: '',
+    totalCost: '',
+    targetDeliveryDate: getWitaDateISO(),
+    requester: userProfile?.name || currentUser?.displayName || '',
   });
+  useEffect(() => {
+    if (!newPOForm.projectId && projects.length > 0) {
+      setNewPOForm((form) => ({ ...form, projectId: projects[0].id }));
+    }
+  }, [newPOForm.projectId, projects]);
 
   // Modal for Rejecting PO
   const [rejectingPO, setRejectingPO] = useState<PurchaseOrder | null>(null);
@@ -98,25 +104,56 @@ export const ProcurementScreen: React.FC = () => {
   const inTransitCount = purchaseOrders.filter((p) => p.status === 'Dikirim').length;
   const totalSpend = purchaseOrders.reduce((a, b) => a + b.totalCost, 0);
 
-  const handleCreatePO = (e: React.FormEvent) => {
+  const handleCreatePO = async (e: React.FormEvent) => {
     e.preventDefault();
     const proj = projects.find((p) => p.id === newPOForm.projectId);
-    if (!proj) return;
+    const totalCost = Number(newPOForm.totalCost);
+    if (!proj) {
+      addToast({ type: 'danger', title: 'Proyek Belum Dipilih', message: 'Pilih proyek sebelum mengajukan pengadaan.' });
+      return;
+    }
+    if (!newPOForm.supplierName.trim() || !newPOForm.itemDescription.trim() || !newPOForm.quantitySummary.trim()) {
+      addToast({ type: 'danger', title: 'Data Belum Lengkap', message: 'Vendor, deskripsi item, dan kuantitas wajib diisi.' });
+      return;
+    }
+    if (!Number.isSafeInteger(totalCost) || totalCost <= 0) {
+      addToast({ type: 'danger', title: 'Biaya Tidak Valid', message: 'Masukkan estimasi biaya dalam Rupiah bulat yang lebih besar dari nol.' });
+      return;
+    }
+    if (!newPOForm.targetDeliveryDate) {
+      addToast({ type: 'danger', title: 'Tanggal Belum Diisi', message: 'Tentukan target tiba material di lapangan.' });
+      return;
+    }
 
-    addPurchaseOrder({
-      sppNumber: `SPP-${new Date().getFullYear()}-IND-${crypto.randomUUID().split('-')[0].toUpperCase()}`,
-      projectId: proj.id,
-      projectName: proj.name,
-      supplierName: newPOForm.supplierName,
-      itemDescription: newPOForm.itemDescription,
-      quantitySummary: newPOForm.quantitySummary,
-      totalCost: Number(newPOForm.totalCost) || 0,
-      requestDate: new Date().toISOString().split('T')[0],
-      targetDeliveryDate: newPOForm.targetDeliveryDate,
-      requester: newPOForm.requester,
-    });
-
-    setIsNewPOModalOpen(false);
+    setIsSubmittingPO(true);
+    try {
+      await addPurchaseOrder({
+        sppNumber: `SPP-${getWitaDateISO().slice(0, 4)}-IND-${crypto.randomUUID().split('-')[0].toUpperCase()}`,
+        projectId: proj.id,
+        projectName: proj.name,
+        supplierName: newPOForm.supplierName,
+        itemDescription: newPOForm.itemDescription,
+        quantitySummary: newPOForm.quantitySummary,
+        totalCost,
+        requestDate: getWitaDateISO(),
+        targetDeliveryDate: newPOForm.targetDeliveryDate,
+        requester: newPOForm.requester.trim() || userProfile?.name || currentUser?.displayName || activeRole,
+      });
+      setIsNewPOModalOpen(false);
+      setNewPOForm({
+        projectId: projects[0]?.id || '',
+        supplierName: '',
+        itemDescription: '',
+        quantitySummary: '',
+        totalCost: '',
+        targetDeliveryDate: getWitaDateISO(),
+        requester: userProfile?.name || currentUser?.displayName || '',
+      });
+    } catch {
+      // ProcurementContext already reports the failure to the user.
+    } finally {
+      setIsSubmittingPO(false);
+    }
   };
 
   return (
@@ -356,7 +393,7 @@ export const ProcurementScreen: React.FC = () => {
                                 const p = projects.find(pr => pr.id === order.projectId);
                                 generatePurchaseOrderPDF(order, p);
                               }}
-                              className="min-h-[44px] px-2 py-1 rounded-lg text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-300 transition text-xs inline-flex items-center gap-1"
+                              className="min-h-[44px] px-2 py-1 rounded-lg text-text-secondary hover:text-text-primary bg-neutral-bg hover:bg-neutral-bg border border-border-subtle transition text-xs inline-flex items-center gap-1"
                               title="Cetak Purchase Order (PDF A4)"
                             >
                               <Printer className="w-3.5 h-3.5" />
@@ -365,7 +402,7 @@ export const ProcurementScreen: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setAttachmentModalPO(order)}
-                              className="min-h-[44px] px-2 py-1 rounded-lg text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition text-xs inline-flex items-center gap-1"
+                              className="min-h-[44px] px-2 py-1 rounded-lg text-primary hover:text-primary bg-primary/10 hover:bg-primary/20 border border-primary/20 transition text-xs inline-flex items-center gap-1"
                               title="Lihat / Unggah Bukti Nota & Surat Jalan"
                             >
                               <Paperclip className="w-3.5 h-3.5" />
@@ -462,7 +499,7 @@ export const ProcurementScreen: React.FC = () => {
                           const p = projects.find(pr => pr.id === order.projectId);
                           generatePurchaseOrderPDF(order, p);
                         }}
-                        className="flex-1 px-3 py-2 rounded-lg text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 transition text-xs inline-flex items-center justify-center gap-1"
+                        className="flex-1 px-3 py-2 rounded-lg text-text-secondary bg-neutral-bg hover:bg-neutral-bg border border-border-subtle transition text-xs inline-flex items-center justify-center gap-1"
                         title="Cetak Purchase Order (PDF A4)"
                       >
                         <Printer className="w-3.5 h-3.5" />
@@ -471,7 +508,7 @@ export const ProcurementScreen: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setAttachmentModalPO(order)}
-                        className="flex-1 px-3 py-2 rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition text-xs inline-flex items-center justify-center gap-1"
+                        className="flex-1 px-3 py-2 rounded-lg text-primary bg-primary/10 hover:bg-primary/20 border border-primary/20 transition text-xs inline-flex items-center justify-center gap-1"
                         title="Lihat / Unggah Bukti Nota & Surat Jalan"
                       >
                         <Paperclip className="w-3.5 h-3.5" />
@@ -521,7 +558,7 @@ export const ProcurementScreen: React.FC = () => {
             <Button variant="secondary" size="sm" onClick={() => setIsNewPOModalOpen(false)}>
               Batal
             </Button>
-            <Button variant="primary" size="sm" onClick={handleCreatePO}>
+            <Button variant="primary" size="sm" onClick={handleCreatePO} isLoading={isSubmittingPO} disabled={isSubmittingPO}>
               Kirim untuk Persetujuan
             </Button>
           </>
@@ -533,6 +570,7 @@ export const ProcurementScreen: React.FC = () => {
             <select
               value={newPOForm.projectId}
               onChange={(e) => setNewPOForm({ ...newPOForm, projectId: e.target.value })}
+              required
               className="w-full p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26]"
             >
               {projects.map((p) => (
@@ -550,6 +588,7 @@ export const ProcurementScreen: React.FC = () => {
                 type="text"
                 value={newPOForm.supplierName}
                 onChange={(e) => setNewPOForm({ ...newPOForm, supplierName: e.target.value })}
+                required
                 className="w-full p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26]"
               />
             </div>
@@ -560,6 +599,9 @@ export const ProcurementScreen: React.FC = () => {
                 type="number"
                 value={newPOForm.totalCost}
                 onChange={(e) => setNewPOForm({ ...newPOForm, totalCost: e.target.value })}
+                min="1"
+                step="1"
+                required
                 className="w-full p-2 bg-white border border-[#E2E8E4] rounded-lg font-mono text-[#202B26]"
               />
             </div>
@@ -571,6 +613,7 @@ export const ProcurementScreen: React.FC = () => {
               type="text"
               value={newPOForm.itemDescription}
               onChange={(e) => setNewPOForm({ ...newPOForm, itemDescription: e.target.value })}
+              required
               className="w-full p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26]"
             />
           </div>
@@ -582,6 +625,7 @@ export const ProcurementScreen: React.FC = () => {
                 type="text"
                 value={newPOForm.quantitySummary}
                 onChange={(e) => setNewPOForm({ ...newPOForm, quantitySummary: e.target.value })}
+                required
                 className="w-full p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26]"
               />
             </div>
@@ -592,6 +636,7 @@ export const ProcurementScreen: React.FC = () => {
                 type="date"
                 value={newPOForm.targetDeliveryDate}
                 onChange={(e) => setNewPOForm({ ...newPOForm, targetDeliveryDate: e.target.value })}
+                required
                 className="w-full p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26]"
               />
             </div>
@@ -706,11 +751,11 @@ export const ProcurementScreen: React.FC = () => {
           }
         >
           <div className="space-y-4 text-xs">
-            <div className="flex items-start gap-2.5 p-3 rounded-lg bg-amber-50 border border-amber-200">
-              <ShieldAlert className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+            <div className="flex items-start gap-2.5 p-3 rounded-lg bg-warning-bg border border-warning-border">
+              <ShieldAlert className="w-4 h-4 text-warning mt-0.5 shrink-0" />
               <div>
-                <p className="font-semibold text-amber-800 text-xs">Konflik Segregation of Duties Terdeteksi</p>
-                <p className="text-amber-700 mt-0.5">
+                <p className="font-semibold text-text-primary text-xs">Konflik Segregation of Duties Terdeteksi</p>
+                <p className="text-warning mt-0.5">
                   Anda adalah pemohon PO <span className="font-mono font-bold">{sodOverridePO.poNumber}</span> sekaligus approver. 
                   Workspace ini dalam mode <strong>owner_override</strong> — Anda boleh menyetujui dengan menyertakan alasan.
                 </p>
@@ -736,7 +781,7 @@ export const ProcurementScreen: React.FC = () => {
 
             <div>
               <label className="block font-semibold text-[#202B26] mb-1.5">
-                Alasan Override <span className="text-red-500">*</span>
+                Alasan Override <span className="text-danger">*</span>
                 <span className="font-normal text-[#69766F] ml-1">(minimal 15 karakter)</span>
               </label>
               <textarea
@@ -750,7 +795,7 @@ export const ProcurementScreen: React.FC = () => {
               <p className="text-xs text-[#69766F] mt-1">
                 Alasan ini dicatat di <strong>audit log</strong> dan dikirim notifikasi ke Auditor.
                 {overrideReason.trim().length > 0 && overrideReason.trim().length < 15 && (
-                  <span className="text-red-500 ml-1">({15 - overrideReason.trim().length} karakter lagi)</span>
+                  <span className="text-danger ml-1">({15 - overrideReason.trim().length} karakter lagi)</span>
                 )}
               </p>
             </div>

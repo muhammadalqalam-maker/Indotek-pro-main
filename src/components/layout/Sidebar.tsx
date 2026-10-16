@@ -23,6 +23,7 @@ import { useApp, ScreenId } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { useUI } from '../../context/UIContext';
 import { useIsTablet } from '../../hooks/useMediaQuery';
+import { getNameInitials } from '../../utils/formatters';
 
 interface NavItem {
   id: ScreenId;
@@ -211,15 +212,15 @@ export const Sidebar: React.FC<{ isMobileDrawer?: boolean; onCloseMobile?: () =>
       {/* Footer / Account section */}
       <div className="p-3 border-t border-primary/90 shrink-0 bg-primary/50">
         <div className="flex items-center justify-between gap-2">
-          <div
+          <button
+            type="button"
             onClick={() => setIsLoginModalOpen(true)}
-            className="flex items-center gap-2.5 min-w-0 cursor-pointer group flex-1"
+            className="flex items-center gap-2.5 min-w-0 cursor-pointer group flex-1 text-left"
+            aria-label={currentUser ? 'Kelola Akun & Hak Akses' : 'Masuk Akun'}
             title={currentUser ? 'Kelola Akun & Hak Akses' : 'Masuk Akun'}
           >
             <div className="w-8 h-8 rounded-full bg-primary-light border border-warning/40 text-warning font-semibold text-xs flex items-center justify-center shrink-0 group-hover:border-warning transition-colors">
-              {currentUser?.displayName
-                ? currentUser.displayName.slice(0, 2).toUpperCase()
-                : 'BS'}
+              {getNameInitials(currentUser?.displayName)}
             </div>
             {(!isCollapsed || isMobileDrawer) && !isTabletIconMode && (
               <div className="flex flex-col min-w-0">
@@ -231,7 +232,7 @@ export const Sidebar: React.FC<{ isMobileDrawer?: boolean; onCloseMobile?: () =>
                 </span>
               </div>
             )}
-          </div>
+          </button>
 
           {!isMobileDrawer && (
             <button

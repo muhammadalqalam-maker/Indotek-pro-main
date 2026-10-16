@@ -50,10 +50,8 @@ export async function getProject(projectId: string): Promise<Project | null> {
 /** Create a new project – uses RPC to ensure security‑definer logic */
 export async function createProject(payload: Partial<Project>): Promise<string> {
   const wsId = await resolveCurrentWorkspaceId();
-  const id = crypto.randomUUID();
-  const { error } = await supabase.rpc('create_project', {
+  const { data, error } = await supabase.rpc('create_project', {
     p_workspace_id: wsId,
-    p_project_id: id,
     p_name: payload.name ?? null,
     p_client: payload.client ?? null,
     p_category: payload.category ?? null,
@@ -61,13 +59,19 @@ export async function createProject(payload: Partial<Project>): Promise<string> 
     p_project_manager: payload.projectManager ?? null,
     p_site_engineer: payload.siteEngineer ?? null,
     p_contract_value: payload.contractValue ?? null,
+    p_approved_budget: payload.approvedBudget ?? null,
     p_start_date: payload.startDate ?? null,
     p_target_end_date: payload.targetEndDate ?? null,
+    p_status: payload.status ?? null,
+    p_code: payload.code ?? null,
     p_description: payload.description ?? null,
-    p_image_url: (payload as any).image ?? null,
+    p_image_url: payload.image ?? null,
   });
   if (error) throw new Error(error.message);
-  return id;
+  if (!data || typeof data !== 'object' || !('id' in data) || typeof data.id !== 'string') {
+    throw new Error('RPC create_project returned an invalid project result.');
+  }
+  return data.id;
 }
 
 /** Update project metadata – only descriptive columns are allowed */

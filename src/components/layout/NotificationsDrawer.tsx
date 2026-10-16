@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { X, CheckCheck, AlertTriangle, AlertCircle, Info, CheckCircle2, Shield, FolderKanban } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
+import { useUI } from '../../context/UIContext';
 import { Button } from '../common/Button';
 
 export const NotificationsDrawer: React.FC = () => {
@@ -16,6 +17,7 @@ export const NotificationsDrawer: React.FC = () => {
   } = useApp();
 
   const { activeRole, canAccessProject } = useAuth();
+  const { addToast } = useUI();
   const [filterTab, setFilterTab] = useState<'all' | 'approvals' | 'alerts'>('all');
   const drawerRef = useRef<HTMLDivElement>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
@@ -116,7 +118,29 @@ export const NotificationsDrawer: React.FC = () => {
   const handleNotificationClick = (notif: typeof notifications[0]) => {
     markNotificationAsRead(notif.id);
     if (notif.targetScreen) {
-      navigate('/' + notif.targetScreen);
+      const targetRoutes: Record<string, string> = {
+        procurement: '/pengadaan',
+        materials: '/material',
+        budget: '/anggaran',
+        field_reports: '/laporan-harian',
+        schedule: '/jadwal',
+        proyek: '/proyek',
+        pengadaan: '/pengadaan',
+        material: '/material',
+        anggaran: '/anggaran',
+        'laporan-harian': '/laporan-harian',
+        jadwal: '/jadwal',
+      };
+      const targetPath = targetRoutes[notif.targetScreen];
+      if (!targetPath) {
+        addToast({
+          type: 'warning',
+          title: 'Tujuan Notifikasi Tidak Dikenal',
+          message: `Halaman "${notif.targetScreen}" belum tersedia.`,
+        });
+        return;
+      }
+      navigate(targetPath);
       setNotificationsOpen(false);
     }
   };

@@ -24,13 +24,17 @@ import {
   formatCurrencyIDR,
   formatCompactIDR,
   formatPercent,
-  formatDateIndo
+  formatDateIndo,
+  formatDateWITA,
+  formatDateTimeWITA,
+  getWitaDateISO,
 } from '../../utils/formatters';
 
 export const DashboardScreen: React.FC = () => {
   const navigate = useNavigate();
   const {
     projects,
+    milestones,
     navigateToProjectDetail,
     setIsAddProjectModalOpen,
     activities,
@@ -43,11 +47,12 @@ export const DashboardScreen: React.FC = () => {
     (p) => p.scheduleStatus === 'Terlambat' || p.scheduleStatus === 'Kritis'
   );
 
-  const totalContract = projects.reduce((acc, p) => acc + p.contractValue, 0);
   const totalRAB = projects.reduce((acc, p) => acc + p.approvedBudget, 0);
   const totalActual = projects.reduce((acc, p) => acc + p.actualCost, 0);
-  const avgProgress =
-    activeProjects.reduce((acc, p) => acc + p.progressActual, 0) / (activeProjects.length || 1);
+  const activeContractValue = activeProjects.reduce((acc, project) => acc + project.contractValue, 0);
+  const avgProgress = activeContractValue > 0
+    ? activeProjects.reduce((acc, project) => acc + project.progressActual * project.contractValue, 0) / activeContractValue
+    : activeProjects.reduce((acc, project) => acc + project.progressActual, 0) / (activeProjects.length || 1);
   const budgetUtilization = (totalActual / (totalRAB || 1)) * 100;
 
   // Calculate CPI (Cost Performance Index) = Earned Value / Actual Cost
@@ -57,26 +62,35 @@ export const DashboardScreen: React.FC = () => {
   const cpiLabel = cpi > 1.05 ? 'Efisien' : cpi < 0.95 ? 'Overspend' : 'Sesuai';
   const cpiTrend = cpi > 1.0 ? { value: cpiLabel, isPositive: true, label: `CPI ${cpi.toFixed(2)}` } : cpi > 0 ? { value: cpiLabel, isPositive: false, label: `CPI ${cpi.toFixed(2)}` } : undefined;
 
-  // Count completed projects this year (2026)
-  const completedThisYear = completedProjects.length;
-  const completedTrend = completedThisYear > 0 ? { value: `${completedThisYear} Proyek Selesai`, isPositive: true, label: 'tahun ini' } : undefined;
+  const completedTrend = completedProjects.length > 0
+    ? { value: `${completedProjects.length} Proyek Selesai`, isPositive: true, label: 'di portofolio' }
+    : undefined;
 
   // Count critical issues
   const lateProjects = projects.filter((p) => p.scheduleStatus === 'Terlambat').length;
   const criticalTrend = criticalProjects.length > 0 ? { value: lateProjects > 0 ? `${lateProjects} Terlambat` : 'Memerlukan perhatian', isPositive: false, label: '' } : undefined;
 
-  const monthlyCashflow = React.useMemo(() => {
-    const months = ['Jan 2026', 'Feb 2026', 'Mar 2026', 'Apr 2026', 'Mei 2026', 'Jun 2026'];
-    const rabM = totalRAB > 0 ? totalRAB / 1_000_000_000 : 50;
-    const actM = totalActual > 0 ? totalActual / 1_000_000_000 : 35;
-    const weights = [0.12, 0.15, 0.20, 0.18, 0.21, 0.14];
-    return months.map((month, idx) => {
-      const w = weights[idx] || 0.16;
-      const target = Number((rabM * w).toFixed(1));
-      const realisasi = Number((actM * w).toFixed(1));
-      return { month, target: Math.max(target, 0.5), realisasi: Math.max(realisasi, 0.2) };
-    });
-  }, [totalRAB, totalActual]);
+  const budgetPerformance = React.useMemo(
+    () => projects
+      .filter((project) => project.approvedBudget > 0 || project.actualCost > 0)
+      .sort((a, b) => Math.max(b.approvedBudget, b.actualCost) - Math.max(a.approvedBudget, a.actualCost))
+      .slice(0, 5),
+    [projects]
+  );
+  const maxProjectBudget = Math.max(
+    1,
+    ...budgetPerformance.map((project) => Math.max(project.approvedBudget, project.actualCost))
+  );
+  const todayWita = getWitaDateISO();
+  const nextMonthWita = new Date(`${todayWita}T00:00:00Z`);
+  nextMonthWita.setUTCDate(nextMonthWita.getUTCDate() + 30);
+  const upcomingMilestones = milestones
+    .filter((milestone) => {
+      const plannedDate = milestone.plannedDate.slice(0, 10);
+      return milestone.status !== 'Selesai' && plannedDate >= todayWita && plannedDate <= nextMonthWita.toISOString().slice(0, 10);
+    })
+    .sort((a, b) => a.plannedDate.localeCompare(b.plannedDate))
+    .slice(0, 3);
 
   return (
     <div className="space-y-6">
@@ -88,14 +102,14 @@ export const DashboardScreen: React.FC = () => {
             <span aria-hidden="true">·</span>
             <span>{settings.companyAddress ? settings.companyAddress.split(',').pop()?.trim() : 'Kantor Pusat'}</span>
             <span aria-hidden="true">·</span>
-            <span className="tabular-nums font-mono">WIB (UTC+7)</span>
+            <span className="tabular-nums font-mono">WITA (UTC+8)</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#202B26]">
             Dashboard Monitoring Portofolio
           </h1>
           <p className="text-xs text-[#69766F] mt-0.5">
             Ringkasan status proyek konstruksi, jadwal kurva-s, anggaran RAB, dan logistik lapangan per{' '}
-            <span className="font-semibold text-[#202B26]">Jumat, 9 Oktober 2026</span>
+            <span className="font-semibold text-[#202B26]">{formatDateWITA()}</span>
           </p>
         </div>
 
@@ -103,7 +117,7 @@ export const DashboardScreen: React.FC = () => {
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => navigate('/reports')}
+            onClick={() => navigate('/laporan')}
             leftIcon={<FileText className="w-4 h-4" />}
           >
             Ekspor Laporan
@@ -127,7 +141,7 @@ export const DashboardScreen: React.FC = () => {
           subtitle={`Dari ${projects.length} total portofolio kontrak`}
           trend={completedTrend}
           icon={<FolderKanban className="w-4 h-4" />}
-          onClick={() => navigate('/projects')}
+          onClick={() => navigate('/proyek')}
         />
 
         <MetricCard
@@ -136,7 +150,7 @@ export const DashboardScreen: React.FC = () => {
           subtitle="Agregat tertimbang lapangan"
           trend={undefined}
           icon={<TrendingUp className="w-4 h-4" />}
-          onClick={() => navigate('/schedule')}
+          onClick={() => navigate('/jadwal')}
         />
 
         <MetricCard
@@ -145,7 +159,7 @@ export const DashboardScreen: React.FC = () => {
           subtitle={`Pagu RAB: ${formatCompactIDR(totalRAB)} (${formatPercent(budgetUtilization)} terpakai)`}
           trend={cpiTrend}
           icon={<Coins className="w-4 h-4" />}
-          onClick={() => navigate('/budget')}
+          onClick={() => navigate('/anggaran')}
         />
 
         <MetricCard
@@ -154,7 +168,7 @@ export const DashboardScreen: React.FC = () => {
           subtitle="Memerlukan tindakan percepatan"
           trend={criticalTrend}
           icon={<AlertTriangle className="w-4 h-4 text-[#9E6B05]" />}
-          onClick={() => navigate('/projects')}
+          onClick={() => navigate('/proyek')}
         />
       </div>
 
@@ -168,15 +182,18 @@ export const DashboardScreen: React.FC = () => {
                 Peringatan Operasional: {criticalProjects.length} Proyek Butuh Eskalasi
               </span>
               <p className="text-[#69766F] mt-0.5 leading-relaxed">
-                <span className="font-medium text-[#202B26]">Jembatan Layang Pasteur</span> deviasi jadwal -6,5% karena relokasi pipa PDAM.{' '}
-                <span className="font-medium text-[#202B26]">Cluster Griya Asri BSD</span> stok semen PCC kritis (420 sak).
+                {criticalProjects.slice(0, 2).map((project) => (
+                  <span key={project.id} className="block">
+                    <span className="font-medium text-[#202B26]">{project.name}</span> — {project.scheduleStatus}
+                  </span>
+                ))}
               </p>
             </div>
           </div>
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => navigate('/projects')}
+            onClick={() => navigate('/proyek')}
             className="shrink-0 text-xs self-start sm:self-center"
           >
             Tinjau Eskalasi
@@ -196,7 +213,7 @@ export const DashboardScreen: React.FC = () => {
               </p>
             </div>
             <button
-              onClick={() => navigate('/projects')}
+              onClick={() => navigate('/proyek')}
               className="text-xs font-semibold text-[#285744] hover:text-[#12352B] flex items-center gap-1 hover:underline"
             >
               Lihat Semua Proyek <ArrowRight className="w-3.5 h-3.5" />
@@ -216,7 +233,7 @@ export const DashboardScreen: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E2E8E4]/70">
-                {activeProjects.slice(0, 5).map((project) => {
+                {activeProjects.length > 0 ? activeProjects.slice(0, 5).map((project) => {
                   const scheduleVariant =
                     project.scheduleStatus === 'Tepat Waktu'
                       ? 'success'
@@ -287,61 +304,68 @@ export const DashboardScreen: React.FC = () => {
                       </td>
                     </tr>
                   );
-                })}
+                }) : (
+                  <tr>
+                    <td colSpan={6} className="py-8 px-4 text-center text-xs text-[#69766F]">
+                      Belum ada proyek aktif di portofolio ini.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* 1-Span Right: Cash Flow & Budget Performance */}
+        {/* 1-Span Right: Budget Performance */}
         <div className="bg-white rounded-xl border border-[#E2E8E4] shadow-2xs p-5 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h2 className="text-sm font-bold text-[#202B26]">Realisasi Arus Kas</h2>
-              <span className="text-xs font-mono text-[#69766F] bg-[#F1F4F2] px-2 py-0.5 rounded">
-                Miliar IDR
-              </span>
+              <h2 className="text-sm font-bold text-[#202B26]">Anggaran & Realisasi Proyek</h2>
+              <span className="text-xs font-mono text-[#69766F] bg-[#F1F4F2] px-2 py-0.5 rounded">IDR</span>
             </div>
             <p className="text-xs text-[#69766F] mb-4">
-              Disbursement bulanan aktual vs target cash-flow termin
+              Pagu RAB dibandingkan dengan biaya aktual per proyek
             </p>
 
-            {/* Visual Bar Chart */}
             <div className="space-y-3 pt-2">
-              {monthlyCashflow.map((item, idx) => {
-                const maxVal = Math.max(...monthlyCashflow.map((m) => Math.max(m.target, m.realisasi)), 10);
-                const targetPct = (item.target / maxVal) * 100;
-                const realPct = (item.realisasi / maxVal) * 100;
+              {budgetPerformance.length > 0 ? budgetPerformance.map((project) => {
+                const budgetPct = (project.approvedBudget / maxProjectBudget) * 100;
+                const actualPct = (project.actualCost / maxProjectBudget) * 100;
                 return (
-                  <div key={idx} className="space-y-1">
-                    <div className="flex justify-between items-center text-xs font-mono tabular-nums">
-                      <span className="text-[#202B26] font-medium">{item.month}</span>
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="text-[#12352B] font-semibold">
-                          Rp {item.realisasi} M
-                        </span>
-                        <span className="text-[#A2B8AE]">/ {item.target} M</span>
-                      </div>
+                  <div key={project.id} className="space-y-1">
+                    <div className="flex justify-between items-center gap-2 text-xs">
+                      <span className="text-[#202B26] font-medium truncate">{project.name}</span>
+                      <span className="font-mono tabular-nums text-[#69766F] shrink-0">
+                        {formatCompactIDR(project.actualCost)} / {formatCompactIDR(project.approvedBudget)}
+                      </span>
                     </div>
-                    <div className="h-2 w-full bg-[#F1F4F2] rounded-full overflow-hidden flex">
-                      <div
-                        className="h-full bg-[#12352B] rounded-full"
-                        style={{ width: `${realPct}%` }}
-                      />
+                    <div className="relative h-2 w-full bg-[#F1F4F2] rounded-full overflow-hidden">
+                      <div className="absolute inset-y-0 left-0 bg-[#A2B8AE] rounded-full" style={{ width: `${budgetPct}%` }} />
+                      <div className="absolute inset-y-0 left-0 bg-[#12352B] rounded-full" style={{ width: `${actualPct}%` }} />
                     </div>
                   </div>
                 );
-              })}
+              }) : (
+                <p className="py-8 text-center text-xs text-[#69766F]">
+                  Data anggaran akan tampil setelah proyek dengan nilai RAB tersedia.
+                </p>
+              )}
             </div>
           </div>
 
           <div className="mt-6 pt-4 border-t border-[#E2E8E4] flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-sm bg-[#12352B]" />
-              <span className="text-[#69766F]">Realisasi Pembayaran</span>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-sm bg-[#12352B]" />
+                <span className="text-[#69766F]">Realisasi</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-sm bg-[#A2B8AE]" />
+                <span className="text-[#69766F]">Pagu RAB</span>
+              </span>
             </div>
             <button
-              onClick={() => navigate('/budget')}
+              onClick={() => navigate('/anggaran')}
               className="text-[#285744] font-medium hover:underline flex items-center gap-1"
             >
               Rincian RAB <ArrowRight className="w-3.5 h-3.5" />
@@ -363,14 +387,14 @@ export const DashboardScreen: React.FC = () => {
           </div>
 
           <div className="divide-y divide-[#E2E8E4]/60">
-            {activities.map((act) => (
+            {activities.length > 0 ? activities.map((act) => (
               <div key={act.id} className="py-3 first:pt-0 last:pb-0 flex items-start gap-3">
                 <div className="w-2 h-2 rounded-full bg-[#285744] mt-1.5 shrink-0" />
                 <div className="flex-1 min-w-0 text-xs">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-semibold text-[#202B26] truncate">{act.user}</span>
                     <span className="text-xs text-[#A2B8AE] whitespace-nowrap font-mono tabular-nums">
-                      {act.timestamp}
+                      {formatDateTimeWITA(act.timestamp)}
                     </span>
                   </div>
                   <p className="text-[#4F5D56] mt-0.5">{act.action}</p>
@@ -379,7 +403,7 @@ export const DashboardScreen: React.FC = () => {
                   </span>
                 </div>
               </div>
-            ))}
+            )) : <p className="py-4 text-xs text-[#69766F]">Belum ada aktivitas operasional.</p>}
           </div>
         </div>
 
@@ -395,59 +419,33 @@ export const DashboardScreen: React.FC = () => {
             </div>
 
             <div className="space-y-3">
-              <div className="p-3 rounded-lg border border-[#E2E8E4] bg-[#FAFBFB]">
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="font-semibold text-[#202B26]">
-                    Struktur Lantai 19-24 & Atap Crown
-                  </span>
-                  <Badge variant="warning" size="sm">
-                    25 Okt 2026
-                  </Badge>
+              {upcomingMilestones.length > 0 ? upcomingMilestones.map((milestone) => (
+                <div key={milestone.id} className="p-3 rounded-lg border border-[#E2E8E4] bg-[#FAFBFB]">
+                  <div className="flex items-center justify-between gap-2 text-xs mb-1">
+                    <span className="font-semibold text-[#202B26]">{milestone.title}</span>
+                    <Badge variant={milestone.status === 'Terlambat' ? 'danger' : 'info'} size="sm">
+                      {formatDateIndo(milestone.plannedDate)}
+                    </Badge>
+                  </div>
+                  <div className="text-xs text-[#69766F]">
+                    {projects.find((project) => project.id === milestone.projectId)?.name || 'Proyek'} · {milestone.wbsCode}
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <ProgressBar
+                      value={milestone.progress}
+                      size="sm"
+                      variant={milestone.status === 'Terlambat' ? 'danger' : 'warning'}
+                    />
+                    <span className="text-xs font-mono font-medium tabular-nums text-[#202B26]">
+                      {formatPercent(milestone.progress, 0)}
+                    </span>
+                  </div>
                 </div>
-                <div className="text-xs text-[#69766F]">
-                  Menara Nusantara Office · WBS-1.5 (Bobot: 12,0%)
-                </div>
-                <div className="mt-2 flex items-center gap-2">
-                  <ProgressBar value={78} size="sm" variant="warning" />
-                  <span className="text-xs font-mono font-medium tabular-nums text-[#202B26]">
-                    78%
-                  </span>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-lg border border-[#E2E8E4] bg-[#FAFBFB]">
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="font-semibold text-[#202B26]">
-                    Pemasangan Girder Segmental Span 3-4
-                  </span>
-                  <Badge variant="danger" size="sm">
-                    30 Okt 2026
-                  </Badge>
-                </div>
-                <div className="text-xs text-[#69766F]">
-                  Jembatan Layang Pasteur · WBS-2.3 (Bobot: 15,0%)
-                </div>
-                <div className="mt-2 flex items-center gap-2">
-                  <ProgressBar value={62} size="sm" variant="danger" />
-                  <span className="text-xs font-mono font-medium tabular-nums text-[#202B26]">
-                    62%
-                  </span>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-lg border border-[#E2E8E4] bg-[#FAFBFB]">
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="font-semibold text-[#202B26]">
-                    Topping Off Seremonial Gedung
-                  </span>
-                  <Badge variant="info" size="sm">
-                    5 Nov 2026
-                  </Badge>
-                </div>
-                <div className="text-xs text-[#69766F]">
-                  Menara Nusantara Office · WBS-1.6 (Bobot: 2,5%)
-                </div>
-              </div>
+              )) : (
+                <p className="py-6 text-center text-xs text-[#69766F]">
+                  Tidak ada milestone dalam 30 hari ke depan.
+                </p>
+              )}
             </div>
           </div>
 
@@ -455,7 +453,7 @@ export const DashboardScreen: React.FC = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate('/schedule')}
+              onClick={() => navigate('/jadwal')}
               rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
             >
               Buka Jadwal & Kurva-S Lengkap

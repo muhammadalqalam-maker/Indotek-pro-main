@@ -67,7 +67,7 @@ Pre-commit hook di `.githooks/pre-commit` melakukan scan otomatis untuk mencegah
 
 Dikonfigurasi di [`server.ts`](server.ts) dan [`vercel.json`](vercel.json):
 - Menghapus `unsafe-eval` untuk mencegah arbitrary code execution
-- Membatasi `connect-src` ke Supabase origins saja
+- Mengizinkan koneksi Supabase; development juga mengizinkan WebSocket lokal untuk Vite HMR
 - Menjalankan `frame-ancestors 'none'` untuk mencegah clickjacking
 
 ### Permissions-Policy
@@ -121,3 +121,13 @@ Klien tidak boleh menulis langsung ke kolom:
 - Nilai turunan (dihitung di DB)
 
 Lihat `/supabase/migrations/` untuk detail schema dan RLS policies.
+
+## Validasi
+
+```bash
+npm run lint
+npm test
+npm run test:sql
+```
+
+`npm run test:sql` menjalankan pemeriksaan kontrak/QA berbasis skrip. Pengujian migrasi terhadap PostgreSQL lokal tersedia melalui `test/run.sh` dan memerlukan PostgreSQL lokal.

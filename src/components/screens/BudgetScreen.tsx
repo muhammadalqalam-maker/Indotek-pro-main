@@ -360,7 +360,7 @@ export const BudgetScreen: React.FC = () => {
             Pengendalian Anggaran & Kas Proyek
           </h1>
           <p className="text-xs text-[#69766F] mt-0.5">
-            Monitoring serapan dana BOQ subkoleksi Firestore, komparasi addendum riwayat versi, dan auditabilitas mutasi
+            Monitoring serapan dana BOQ di Supabase, komparasi addendum riwayat versi, dan auditabilitas mutasi
           </p>
         </div>
 
@@ -404,12 +404,16 @@ export const BudgetScreen: React.FC = () => {
       )}
 
       {/* Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-[#E2E8E4] pb-px overflow-x-auto" role="tablist">
+      <div
+        className="flex items-center gap-2 border-b border-[#E2E8E4] pb-px overflow-x-auto"
+        role="tablist"
+        aria-label="Navigasi anggaran proyek"
+      >
         <button
           role="tab"
           aria-selected={activeTab === 'boq'}
           onClick={() => setActiveTab('boq')}
-          className={`px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors cursor-pointer border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
+          className={`shrink-0 px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors cursor-pointer border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
             activeTab === 'boq'
               ? 'border-[#12352B] text-[#12352B] bg-white font-bold'
               : 'border-transparent text-[#69766F] hover:text-[#202B26]'
@@ -423,7 +427,7 @@ export const BudgetScreen: React.FC = () => {
           role="tab"
           aria-selected={activeTab === 'rab'}
           onClick={() => setActiveTab('rab')}
-          className={`px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors cursor-pointer border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
+          className={`shrink-0 px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors cursor-pointer border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
             activeTab === 'rab'
               ? 'border-[#12352B] text-[#12352B] bg-white font-bold'
               : 'border-transparent text-[#69766F] hover:text-[#202B26]'
@@ -440,7 +444,7 @@ export const BudgetScreen: React.FC = () => {
           role="tab"
           aria-selected={activeTab === 'revisions'}
           onClick={() => setActiveTab('revisions')}
-          className={`px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors cursor-pointer border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
+          className={`shrink-0 px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors cursor-pointer border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
             activeTab === 'revisions'
               ? 'border-[#12352B] text-[#12352B] bg-white font-bold'
               : 'border-transparent text-[#69766F] hover:text-[#202B26]'
@@ -459,7 +463,7 @@ export const BudgetScreen: React.FC = () => {
           role="tab"
           aria-selected={activeTab === 'versions'}
           onClick={() => setActiveTab('versions')}
-          className={`px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors cursor-pointer border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
+          className={`shrink-0 px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors cursor-pointer border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
             activeTab === 'versions'
               ? 'border-[#12352B] text-[#12352B] bg-white font-bold'
               : 'border-transparent text-[#69766F] hover:text-[#202B26]'
@@ -476,7 +480,7 @@ export const BudgetScreen: React.FC = () => {
           role="tab"
           aria-selected={activeTab === 'petty_cash'}
           onClick={() => setActiveTab('petty_cash')}
-          className={`px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors cursor-pointer border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
+          className={`shrink-0 px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors cursor-pointer border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
             activeTab === 'petty_cash'
               ? 'border-[#12352B] text-[#12352B] bg-white font-bold'
               : 'border-transparent text-[#69766F] hover:text-[#202B26]'
@@ -495,7 +499,7 @@ export const BudgetScreen: React.FC = () => {
           role="tab"
           aria-selected={activeTab === 'payment_terms'}
           onClick={() => setActiveTab('payment_terms')}
-          className={`px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors cursor-pointer border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
+          className={`shrink-0 px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors cursor-pointer border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
             activeTab === 'payment_terms'
               ? 'border-[#12352B] text-[#12352B] bg-white font-bold'
               : 'border-transparent text-[#69766F] hover:text-[#202B26]'

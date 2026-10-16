@@ -6,6 +6,7 @@
  */
 
 import { BudgetLine, Project, PurchaseOrder, MaterialItem, WBSItem, Milestone } from '../types';
+import { formatDateWITA, getWitaDateISO } from './formatters';
 
 /** Info perusahaan dinamis dari workspace settings. */
 export interface CompanyInfo {
@@ -134,7 +135,7 @@ export function exportPurchaseOrdersToCSV(orders: PurchaseOrder[]): void {
     po.targetDeliveryDate,
   ]);
 
-  downloadCSV(`Daftar_PO_Pengadaan_Indotek_${new Date().toISOString().split('T')[0]}.csv`, headers, rows);
+  downloadCSV(`Daftar_PO_Pengadaan_Indotek_${getWitaDateISO()}.csv`, headers, rows);
 }
 
 /**
@@ -169,7 +170,7 @@ export function exportMaterialsToCSV(materials: MaterialItem[]): void {
     m.status,
   ]);
 
-  downloadCSV(`Stok_Material_Gudang_Indotek_${new Date().toISOString().split('T')[0]}.csv`, headers, rows);
+  downloadCSV(`Stok_Material_Gudang_Indotek_${getWitaDateISO()}.csv`, headers, rows);
 }
 
 /**
@@ -216,9 +217,7 @@ export function exportExecutiveReportToCSV(
   downloadCSV(`Laporan_Portofolio_Proyek_${period.replace(/\s+/g, '_')}.csv`, headers, rows);
 }
 
-/**
- * Downloads a sample specification document or engineering form
- */
+/** Downloads a clearly marked draft template, not an archived or verified project document. */
 export function downloadDocumentTemplate(
   docName: string,
   projectName: string,
@@ -228,29 +227,30 @@ export function downloadDocumentTemplate(
   const address = company?.companyAddress || '';
 
   const content = `================================================================================
-${name.toUpperCase()} — CONSTRUCTION MANAGEMENT SYSTEM
-DOKUMEN TEKNIS & SPESIFIKASI PROYEK
+${name.toUpperCase()} — TEMPLATE DOKUMEN PROYEK
 ================================================================================
 Proyek: ${projectName}
-Nama Dokumen: ${docName}
-Tanggal Unduh: ${new Date().toLocaleDateString('id-ID', { dateStyle: 'full' })}
-Status Verifikasi: Terdaftar di Repository Resmi Proyek
+Nama dokumen: ${docName}
+Tanggal dibuat (WITA): ${formatDateWITA()}
+Alamat perusahaan: ${address || '[Isi alamat perusahaan]'}
 
-1. TUJUAN & LINGKUP PEKERJAAN
-Dokumen ini merupakan arsip rekayasa resmi yang mengatur spesifikasi teknis,
-toleransi mutu SNI (Standar Nasional Indonesia), dan instruksi kerja lapangan
-untuk pelaksanaan pekerjaan pada site ${projectName}.
+STATUS: DRAF TEMPLATE. Dokumen ini bukan arsip resmi dan belum diverifikasi.
 
-2. STANDAR MUTU & PENGUJIAN
-- Mutu Beton: fc' 35 MPa (K-400) dengan slump test 12±2 cm.
-- Mutu Baja Tulangan: BJTS 420B (Ulir) bersertifikat SNI 2052:2017.
-- Prosedur Keselamatan Kerja: K3 Konstruksi (SMKK) Permen PUPR No. 10/2021.
+1. TUJUAN DAN LINGKUP
+[Isi tujuan, lingkup pekerjaan, dan referensi kontrak yang berlaku.]
 
-3. PENGESAHAN DOKUMEN
-Disusun oleh: Tim Enjiniring Site
-Disetujui oleh: Project Director / Konsultan Manajemen Konstruksi
+2. PERSYARATAN TEKNIS DAN MUTU
+[Isi persyaratan berdasarkan dokumen proyek yang telah disetujui.]
+
+3. KESELAMATAN KERJA
+[Isi ketentuan keselamatan kerja yang berlaku untuk pekerjaan ini.]
+
+4. PENGESAHAN
+Disusun oleh: [Nama dan jabatan]
+Diperiksa oleh: [Nama dan jabatan]
+Disetujui oleh: [Nama dan jabatan]
+
 ================================================================================
-${name}${address ? ' · ' + address : ''}
 `;
 
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });

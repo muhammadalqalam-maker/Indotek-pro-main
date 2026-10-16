@@ -9,6 +9,49 @@ export function formatCurrencyIDR(amount: number): string {
 
 export const formatRupiah = formatCurrencyIDR;
 
+export function getNameInitials(name: string | null | undefined, fallback = 'BS'): string {
+  const parts = name?.trim().split(/\s+/).filter(Boolean) || [];
+  if (parts.length === 0) return fallback;
+  const first = parts[0];
+  const last = parts.length > 1 ? parts[parts.length - 1] : first;
+  return `${first[0]}${last[0]}`.toUpperCase();
+}
+
+export function getWitaDateISO(date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Makassar',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+export function formatDateWITA(date = new Date()): string {
+  return new Intl.DateTimeFormat('id-ID', {
+    timeZone: 'Asia/Makassar',
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(date);
+}
+
+export function formatDateTimeWITA(dateStr: string): string {
+  if (!dateStr) return '-';
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return dateStr;
+  return new Intl.DateTimeFormat('id-ID', {
+    timeZone: 'Asia/Makassar',
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(date);
+}
+
 /**
  * Compact Indonesian Rupiah format for KPI cards and chart axes.
  * e.g. 84500000000 -> "Rp 84,5 M"
@@ -45,6 +88,18 @@ export function formatCompactIDR(amount: number): string {
 export function formatDateIndo(dateStr: string, fullMonth = false): string {
   if (!dateStr) return '-';
   try {
+    if (/[T ]\d{2}:\d{2}/.test(dateStr)) {
+      const date = new Date(dateStr);
+      if (!Number.isNaN(date.getTime())) {
+        return new Intl.DateTimeFormat('id-ID', {
+          timeZone: 'Asia/Makassar',
+          day: 'numeric',
+          month: fullMonth ? 'long' : 'short',
+          year: 'numeric',
+        }).format(date);
+      }
+    }
+
     const parts = dateStr.split('-');
     if (parts.length === 3) {
       const day = parseInt(parts[2], 10);
@@ -126,4 +181,3 @@ export function terbilangRupiah(amount: number): string {
   const result = (prefix + bilang(amount) + ' Rupiah').replace(/\s+/g, ' ').trim();
   return result;
 }
-

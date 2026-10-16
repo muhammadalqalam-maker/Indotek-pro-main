@@ -123,7 +123,7 @@ export const ProjectsProvider: React.FC<{ children: ReactNode }> = ({ children }
           addToast({
             type: 'warning',
             title: 'Data Proyek Tidak Lengkap',
-            message: 'Beberapa data proyek tidak dapat dimuat. Coba pilih proyek lain atau muat ulang.',
+            message: err?.message || 'Beberapa data proyek tidak dapat dimuat. Coba muat ulang.',
           });
         }
       });
@@ -137,27 +137,29 @@ export const ProjectsProvider: React.FC<{ children: ReactNode }> = ({ children }
     let isMounted = true;
     dataService.getActivities(20, workspaceId).then((act) => {
       if (isMounted && act) setActivities(act);
-    }).catch(() => {
-      // Activities load failed silently - non-critical optional data
+    }).catch((err: any) => {
+      if (isMounted) {
+        addToast({
+          type: 'danger',
+          title: 'Gagal Memuat Aktivitas',
+          message: err?.message || 'Tidak dapat mengambil aktivitas terbaru.',
+        });
+      }
     });
     return () => { isMounted = false; };
-  }, [currentUser, location.pathname, workspaceId]);
+  }, [currentUser, location.pathname, workspaceId, addToast]);
 
   const refreshProjects = async (force = true) => {
-    try {
-      const projs = await dataService.getProjects(workspaceId);
-      if (projs) setProjects(projs);
-      if (selectedProjectId) {
-        const subs = await dataService.getProjectSubcollections(selectedProjectId, workspaceId);
-        if (subs) {
-          setBudgetLines(subs.budgetLines);
-          setMilestones(subs.milestones);
-          setWbsList(subs.wbsList);
-          setBudgetVersions(subs.budgetVersions);
-        }
+    const projs = await dataService.getProjects(workspaceId);
+    if (projs) setProjects(projs);
+    if (selectedProjectId) {
+      const subs = await dataService.getProjectSubcollections(selectedProjectId, workspaceId);
+      if (subs) {
+        setBudgetLines(subs.budgetLines);
+        setMilestones(subs.milestones);
+        setWbsList(subs.wbsList);
+        setBudgetVersions(subs.budgetVersions);
       }
-    } catch (err: any) {
-      console.error('Failed refreshing projects:', err);
     }
   };
 
@@ -165,13 +167,13 @@ export const ProjectsProvider: React.FC<{ children: ReactNode }> = ({ children }
     newProj: Omit<Project, 'id' | 'totalMilestones' | 'completedMilestones'>
   ): Promise<string> => {
     try {
-      const generatedId = await dataService.addProject(newProj, actorInfo, workspaceId);
+      const generatedId = await dataService.addProject(newProj, workspaceId);
       setSelectedProjectId(generatedId);
       await refreshProjects(true);
       addToast({
         type: 'success',
         title: 'Proyek Berhasil Didaftarkan',
-        message: `Proyek "${newProj.name}" (${newProj.code}) telah disimpan ke Firestore dengan baseline v0 Kontrak Induk.`,
+        message: `Proyek "${newProj.name}" (${newProj.code}) telah disimpan ke Supabase dengan baseline v0 Kontrak Induk.`,
       });
       return generatedId;
     } catch (err: any) {
@@ -207,13 +209,13 @@ export const ProjectsProvider: React.FC<{ children: ReactNode }> = ({ children }
       addToast({
         type: 'success',
         title: 'Item RAB Ditambahkan',
-        message: `${lineData.code} (${lineData.divisionName}) berhasil disimpan ke Firestore.`,
+        message: `${lineData.code} (${lineData.divisionName}) berhasil disimpan ke Supabase.`,
       });
     } catch (err: any) {
       addToast({
         type: 'danger',
         title: 'Gagal Menambah Item RAB',
-        message: err?.message || 'Gagal menyimpan item RAB ke Firestore.',
+        message: err?.message || 'Gagal menyimpan item RAB ke Supabase.',
       });
       throw err;
     }
@@ -250,13 +252,13 @@ export const ProjectsProvider: React.FC<{ children: ReactNode }> = ({ children }
       addToast({
         type: 'success',
         title: 'Baris RAB Diperbarui',
-        message: `Perubahan pos ${oldLine?.code || lineId} berhasil disimpan ke Firestore dan audit log dicatat.`,
+        message: `Perubahan pos ${oldLine?.code || lineId} berhasil disimpan ke Supabase dan audit log dicatat.`,
       });
     } catch (err: any) {
       addToast({
         type: 'danger',
         title: 'Gagal Memperbarui RAB',
-        message: err?.message || 'Aturan keamanan Firestore menolak pembaruan RAB.',
+        message: err?.message || 'Kebijakan akses Supabase menolak pembaruan RAB.',
       });
       throw err;
     }

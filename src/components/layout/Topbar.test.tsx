@@ -4,9 +4,18 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { Topbar } from './Topbar';
 
+const mockAuthState = vi.hoisted(() => ({
+  currentUser: { displayName: 'Bambang Sujarwo' } as { displayName: string } | null,
+  userProfile: { name: 'Bambang Sujarwo', role: 'Project Manager' } as { name: string; role: string } | null,
+}));
+
 // Mock dependencies
-vi.mock('../../context/AppContext', () => ({
-  useApp: () => ({
+vi.mock('../../context/AppContext', async () => {
+  const React = await import('react');
+  return {
+    useApp: () => {
+      const [globalSearch, setGlobalSearch] = React.useState('');
+      return {
     selectedProjectId: 'proj-1',
     projects: [
       { id: 'proj-1', name: 'Bandara Yogyakarta', code: 'YOGYA-2025', client: 'PT. Jasa Marga' },
@@ -26,21 +35,18 @@ vi.mock('../../context/AppContext', () => ({
     setNotificationsOpen: vi.fn(),
     unreadNotificationCount: 3,
     setIsAddProjectModalOpen: vi.fn(),
-    globalSearch: '',
-    setGlobalSearch: vi.fn(),
+    globalSearch,
+    setGlobalSearch,
     addToast: vi.fn(),
-  }),
-}));
+      };
+    },
+  };
+});
 
 vi.mock('../../context/AuthContext', () => ({
   useAuth: () => ({
-    currentUser: {
-      displayName: 'Bambang Sujarwo',
-    },
-    userProfile: {
-      name: 'Ir. Bambang Sujarwo',
-      role: 'Project Manager',
-    },
+    currentUser: mockAuthState.currentUser,
+    userProfile: mockAuthState.userProfile,
     setIsLoginModalOpen: vi.fn(),
     activeRole: 'Project Manager',
     setActiveRole: vi.fn(),
@@ -56,9 +62,11 @@ vi.mock('../../config/routes', () => ({
 }));
 
 vi.mock('../common/Button', () => ({
-  Button: (props: any) => (
+  Button: ({ leftIcon, rightIcon, variant, size, ...props }: any) => (
     <button {...props} data-testid="button-component">
+      {leftIcon}
       {props.children}
+      {rightIcon}
     </button>
   ),
 }));
@@ -80,6 +88,11 @@ const renderWithRouter = (component: React.ReactElement) => {
 };
 
 describe('Topbar Component', () => {
+  beforeEach(() => {
+    mockAuthState.currentUser = { displayName: 'Bambang Sujarwo' };
+    mockAuthState.userProfile = { name: 'Bambang Sujarwo', role: 'Project Manager' };
+  });
+
   describe('Rendering', () => {
     it('renders header element', () => {
       const { container } = renderWithRouter(<Topbar />);
@@ -118,14 +131,13 @@ describe('Topbar Component', () => {
 
     it('renders add project button', () => {
       renderWithRouter(<Topbar />);
-      const addButton = screen.getByRole('button', { name: /Tambah Proyek/i });
-      expect(addButton).toBeInTheDocument();
+      const addButtons = screen.getAllByRole('button', { name: /Tambah Proyek/i });
+      expect(addButtons.length).toBeGreaterThan(0);
     });
 
     it('renders user profile button when logged in', () => {
       renderWithRouter(<Topbar />);
-      const profileButtons = screen.getAllByText('BS');
-      expect(profileButtons.length).toBeGreaterThan(0);
+      expect(screen.getByTitle('Profil Pengguna & Sesi')).toBeInTheDocument();
     });
   });
 
@@ -299,15 +311,15 @@ describe('Topbar Component', () => {
     it('displays first name of user when logged in', () => {
       renderWithRouter(<Topbar />);
       // User name should be displayed
-      const userArea = screen.getByText('Ir. Bambang Sujarwo');
-      expect(userArea).toBeInTheDocument();
+      const userArea = screen.getByText('Bambang');
+      expect(userArea).toHaveTextContent('Bambang');
     });
 
     it('shows login button when not authenticated', () => {
-      // This test would need mock to have currentUser as null
+      mockAuthState.currentUser = null;
+      mockAuthState.userProfile = null;
       renderWithRouter(<Topbar />);
-      // Current setup has logged in user, so login button won't show
-      expect(screen.getByText('BS')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Masuk' })).toBeInTheDocument();
     });
   });
 
@@ -363,7 +375,7 @@ describe('Topbar Component', () => {
     it('breadcrumb responsive classes', () => {
       const { container } = renderWithRouter(<Topbar />);
       const breadcrumb = container.querySelector('nav[aria-label="Breadcrumb"]');
-      expect(breadcrumb).toHaveClass('hidden', 'sm:inline');
+      expect(breadcrumb?.querySelector('button')).toHaveClass('hidden', 'sm:inline');
     });
 
     it('renders mobile search icon', () => {

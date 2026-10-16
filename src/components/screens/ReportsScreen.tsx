@@ -1,32 +1,19 @@
 import React, { useState } from 'react';
-import {
-  BarChart3,
-  Download,
-  FileSpreadsheet,
-  FileText,
-  Calendar,
-  TrendingUp,
-  Coins,
-  Boxes,
-  ShieldCheck,
-  CheckCircle2,
-  Filter
-} from 'lucide-react';
+import { BarChart3, Download, TrendingUp, Coins, ShieldCheck } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { MetricCard } from '../common/MetricCard';
 import { Button } from '../common/Button';
-import { Badge } from '../common/Badge';
 import { DataCard } from '../common/DataCard';
 import { ResponsiveTable } from '../common/ResponsiveTable';
 import {
-  formatCurrencyIDR,
   formatCompactIDR,
-  formatPercent
+  formatPercent,
+  getWitaDateISO,
+  formatDateWITA,
 } from '../../utils/formatters';
 import {
   exportExecutiveReportToCSV,
-  exportMaterialsToCSV,
-  downloadDocumentTemplate
+  exportMaterialsToCSV
 } from '../../utils/exportUtils';
 
 export const ReportsScreen: React.FC = () => {
@@ -34,9 +21,21 @@ export const ReportsScreen: React.FC = () => {
 
   const [reportType, setReportType] = useState('weekly_progress');
   const [targetProject, setTargetProject] = useState('all');
-  const [exportFormat, setExportFormat] = useState('pdf');
-  const [periodRange, setPeriodRange] = useState('oktober_2026');
   const [isExporting, setIsExporting] = useState(false);
+  const totalApprovedBudget = projects.reduce((total, project) => total + project.approvedBudget, 0);
+  const totalActualCost = projects.reduce((total, project) => total + project.actualCost, 0);
+  const totalEarnedValue = projects.reduce(
+    (total, project) => total + project.approvedBudget * project.progressActual / 100,
+    0
+  );
+  const totalPlannedValue = projects.reduce(
+    (total, project) => total + project.approvedBudget * project.progressPlanned / 100,
+    0
+  );
+  const portfolioSPI = totalPlannedValue > 0 ? totalEarnedValue / totalPlannedValue : null;
+  const portfolioCPI = totalActualCost > 0 ? totalEarnedValue / totalActualCost : null;
+  const budgetUtilization = totalApprovedBudget > 0 ? totalActualCost / totalApprovedBudget * 100 : null;
+  const snapshotDate = getWitaDateISO();
 
   const handleExport = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,26 +49,21 @@ export const ReportsScreen: React.FC = () => {
 
       const typeLabel =
         reportType === 'weekly_progress'
-          ? 'Laporan_Progres_Mingguan'
+          ? 'Laporan_Progres_Portofolio'
           : reportType === 'cost_control'
           ? 'Laporan_Evaluasi_RAB'
-          : reportType === 'materials'
-          ? 'Rekap_Logistik_Material'
-          : 'Laporan_K3_HSE';
+          : 'Rekap_Logistik_Material';
 
       if (reportType === 'materials') {
         exportMaterialsToCSV(materials);
-      } else if (reportType === 'hse') {
-        const projName = filteredProjects[0]?.name || 'Portofolio Seluruh Proyek';
-        downloadDocumentTemplate(`Laporan_Audit_K3_HSE_${periodRange}`, projName);
       } else {
-        exportExecutiveReportToCSV(filteredProjects, `${typeLabel}_${periodRange}`);
+        exportExecutiveReportToCSV(filteredProjects, `${typeLabel}_${snapshotDate}`);
       }
 
       addToast({
         type: 'success',
         title: 'Laporan Berhasil Diunduh',
-        message: `Berkas ${typeLabel}_${periodRange}.${exportFormat === 'excel' ? 'csv' : 'csv'} berhasil dibuat dan diunduh ke perangkat Anda.`,
+        message: 'Berkas laporan CSV berhasil dibuat dan diunduh ke perangkat Anda.',
       });
     } catch (err) {
       addToast({
@@ -96,7 +90,7 @@ export const ReportsScreen: React.FC = () => {
             Laporan Eksekutif & Analitika Proyek
           </h1>
           <p className="text-xs text-[#69766F] mt-0.5">
-            Kompilasi otomatis capaian fisik, deviasi kurva-s, efisiensi anggaran, dan rasio K3
+            Ringkasan progres dan anggaran berdasarkan data portofolio yang tersimpan
           </p>
         </div>
       </div>
@@ -105,30 +99,36 @@ export const ReportsScreen: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           label="SPI (Schedule Performance Index)"
-          value="1.01"
-          subtitle="Rasio kecepatan pelaksanaan"
-          trend={{ value: 'Tepat Waktu', isPositive: true }}
+          value={portfolioSPI === null ? '—' : portfolioSPI.toFixed(2)}
+          subtitle={portfolioSPI === null ? 'Data progres rencana belum tersedia' : 'EV / PV portofolio'}
+          trend={portfolioSPI === null ? undefined : {
+            value: portfolioSPI >= 1 ? 'Sesuai rencana' : 'Di bawah rencana',
+            isPositive: portfolioSPI >= 1,
+          }}
           icon={<TrendingUp className="w-4 h-4 text-[#1C6843]" />}
         />
         <MetricCard
           label="CPI (Cost Performance Index)"
-          value="1.02"
-          subtitle="Efisiensi pemakaian biaya"
-          trend={{ value: 'Hemat 2,0%', isPositive: true }}
+          value={portfolioCPI === null ? '—' : portfolioCPI.toFixed(2)}
+          subtitle={portfolioCPI === null ? 'Data realisasi biaya belum tersedia' : 'EV / AC portofolio'}
+          trend={portfolioCPI === null ? undefined : {
+            value: portfolioCPI >= 1 ? 'Efisien' : 'Perlu perhatian',
+            isPositive: portfolioCPI >= 1,
+          }}
           icon={<Coins className="w-4 h-4 text-[#285744]" />}
         />
         <MetricCard
           label="Tingkat Serapan Anggaran"
-          value="60,6%"
-          subtitle="Rp 186,3 M dari total pagu"
-          trend={{ value: 'Sesuai Termin', isPositive: true }}
+          value={budgetUtilization === null ? '—' : formatPercent(budgetUtilization)}
+          subtitle={budgetUtilization === null
+            ? 'Nilai pagu RAB belum tersedia'
+            : `${formatCompactIDR(totalActualCost)} dari ${formatCompactIDR(totalApprovedBudget)}`}
           icon={<BarChart3 className="w-4 h-4 text-[#12352B]" />}
         />
         <MetricCard
-          label="Safety Compliance (K3)"
-          value="99,4%"
-          subtitle="Audit Kemenaker Q3 2026"
-          trend={{ value: 'Sangat Baik', isPositive: true }}
+          label="Data Keselamatan Kerja (K3)"
+          value="—"
+          subtitle="Belum tersedia pada sumber data proyek"
           icon={<ShieldCheck className="w-4 h-4 text-[#1C6843]" />}
         />
       </div>
@@ -139,10 +139,10 @@ export const ReportsScreen: React.FC = () => {
         <div className="bg-white rounded-xl border border-[#E2E8E4] shadow-2xs p-5">
           <div className="flex items-center gap-2 font-bold text-sm text-[#202B26] mb-1">
             <Download className="w-4 h-4 text-[#12352B]" />
-            <span>Pusat Unduh & Cetak Laporan</span>
+            <span>Pusat Ekspor Laporan</span>
           </div>
           <p className="text-xs text-[#69766F] mb-4">
-            Ekspor komprehensif siap presentasi untuk owner dan konsultan manajemen konstruksi
+            Ekspor CSV snapshot progres, anggaran, atau material dari data yang tersimpan
           </p>
 
           <form onSubmit={handleExport} className="space-y-4 text-xs">
@@ -153,10 +153,9 @@ export const ReportsScreen: React.FC = () => {
                 onChange={(e) => setReportType(e.target.value)}
                 className="w-full p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26]"
               >
-                <option value="weekly_progress">Laporan Progres Mingguan (Weekly Report)</option>
+                <option value="weekly_progress">Snapshot Progres Portofolio</option>
                 <option value="cost_control">Laporan Evaluasi Anggaran & RAB (Cost Control)</option>
                 <option value="materials">Laporan Logistik & Mutasi Material</option>
-                <option value="hse">Laporan K3 & Keselamatan Kerja (HSE)</option>
               </select>
             </div>
 
@@ -167,7 +166,7 @@ export const ReportsScreen: React.FC = () => {
                 onChange={(e) => setTargetProject(e.target.value)}
                 className="w-full p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26]"
               >
-                <option value="all">Seluruh Portofolio Aktif (Konsolidasi)</option>
+                <option value="all">Seluruh Portofolio (Konsolidasi)</option>
                 {projects.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
@@ -177,48 +176,10 @@ export const ReportsScreen: React.FC = () => {
             </div>
 
             <div>
-              <label className="block font-medium text-[#202B26] mb-1">Periode Waktu</label>
-              <select
-                value={periodRange}
-                onChange={(e) => setPeriodRange(e.target.value)}
-                className="w-full p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26]"
-              >
-                <option value="minggu_ini">Minggu Ini (3 - 9 Okt 2026)</option>
-                <option value="oktober_2026">Bulan Berjalan (Oktober 2026)</option>
-                <option value="q3_2026">Kuartal III 2026</option>
-                <option value="ytd_2026">Tahun Berjalan (Year to Date 2026)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block font-medium text-[#202B26] mb-1">Format Berkas</label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setExportFormat('pdf')}
-                  className={`p-2.5 rounded-lg border text-left flex items-center gap-2 transition-all ${
-                    exportFormat === 'pdf'
-                      ? 'border-[#12352B] bg-[#EAEFEA] text-[#12352B] font-semibold'
-                      : 'border-[#E2E8E4] hover:bg-[#F5F7F6] text-[#202B26]'
-                  }`}
-                >
-                  <FileText className="w-4 h-4 text-[#A82A20]" />
-                  <span>PDF Eksekutif</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setExportFormat('xlsx')}
-                  className={`p-2.5 rounded-lg border text-left flex items-center gap-2 transition-all ${
-                    exportFormat === 'xlsx'
-                      ? 'border-[#12352B] bg-[#EAEFEA] text-[#12352B] font-semibold'
-                      : 'border-[#E2E8E4] hover:bg-[#F5F7F6] text-[#202B26]'
-                  }`}
-                >
-                  <FileSpreadsheet className="w-4 h-4 text-[#1C6843]" />
-                  <span>Excel (XLSX)</span>
-                </button>
-              </div>
+              <span className="block font-medium text-[#202B26] mb-1">Tanggal Snapshot (WITA)</span>
+              <p className="rounded-lg border border-[#E2E8E4] bg-[#FAFBFB] p-2 text-[#69766F]">
+                {formatDateWITA()}
+              </p>
             </div>
 
             <Button
@@ -242,7 +203,7 @@ export const ReportsScreen: React.FC = () => {
                 Matriks Kinerja Multi-Proyek Terkonsolidasi
               </h2>
               <p className="text-xs text-[#69766F] mt-0.5">
-                Perbandingan deviasi progres, efisiensi biaya, dan status keselamatan per proyek
+                Perbandingan progres dan efisiensi biaya; data keselamatan belum tersedia
               </p>
             </div>
 
@@ -265,7 +226,8 @@ export const ReportsScreen: React.FC = () => {
                       {projects.slice(0, 5).map((p) => {
                         const dev = p.progressActual - p.progressPlanned;
                         const isPositive = dev >= 0;
-                        const cpiVal = (p.approvedBudget * (p.progressActual / 100)) / (p.actualCost || 1);
+                        const earnedValue = p.approvedBudget * p.progressActual / 100;
+                        const cpiVal = p.actualCost > 0 ? earnedValue / p.actualCost : null;
 
                         return (
                           <tr key={p.id} className="hover:bg-[#F5F7F6]/80 transition-colors">
@@ -286,17 +248,15 @@ export const ReportsScreen: React.FC = () => {
                             </td>
 
                             <td className="py-3 px-4 font-mono tabular-nums text-[#202B26] text-right">
-                              {formatPercent((p.actualCost / p.approvedBudget) * 100)}
+                              {p.approvedBudget > 0 ? formatPercent((p.actualCost / p.approvedBudget) * 100) : '—'}
                             </td>
 
                             <td className="py-3 px-4 font-mono font-medium text-[#202B26] tabular-nums text-right">
-                              {cpiVal > 1.05 ? '1.04 (Efisien)' : cpiVal > 0.95 ? '1.01 (Normal)' : '0.94 (Kritis)'}
+                              {cpiVal === null ? '—' : `${cpiVal.toFixed(2)} (${cpiVal >= 1 ? 'Efisien' : 'Perlu perhatian'})`}
                             </td>
 
                             <td className="py-3 px-4 whitespace-nowrap">
-                              <Badge variant="success" size="sm">
-                                Zero Accident
-                              </Badge>
+                              <span className="text-[#69766F]">Belum tersedia</span>
                             </td>
                           </tr>
                         );
@@ -308,7 +268,8 @@ export const ReportsScreen: React.FC = () => {
               renderCard={(p) => {
                 const dev = p.progressActual - p.progressPlanned;
                 const isPositive = dev >= 0;
-                const cpiVal = (p.approvedBudget * (p.progressActual / 100)) / (p.actualCost || 1);
+                const earnedValue = p.approvedBudget * p.progressActual / 100;
+                const cpiVal = p.actualCost > 0 ? earnedValue / p.actualCost : null;
                 
                 return (
                   <DataCard
@@ -324,19 +285,24 @@ export const ReportsScreen: React.FC = () => {
                           </span>
                         ),
                       },
-                      { label: 'Utilisasi RAB', value: formatPercent((p.actualCost / p.approvedBudget) * 100) },
-                      { label: 'Indeks Biaya (CPI)', value: cpiVal > 1.05 ? '1.04 (Efisien)' : cpiVal > 0.95 ? '1.01 (Normal)' : '0.94 (Kritis)' },
-                      { label: 'Status HSE', value: <Badge variant="success" size="sm">Zero Accident</Badge> },
+                      { label: 'Utilisasi RAB', value: p.approvedBudget > 0 ? formatPercent((p.actualCost / p.approvedBudget) * 100) : '—' },
+                      { label: 'Indeks Biaya (CPI)', value: cpiVal === null ? '—' : `${cpiVal.toFixed(2)} (${cpiVal >= 1 ? 'Efisien' : 'Perlu perhatian'})` },
+                      { label: 'Status HSE', value: 'Belum tersedia' },
                     ]}
                   />
                 );
               }}
             />
+            {projects.length === 0 && (
+              <p className="py-8 text-center text-xs text-[#69766F]">
+                Belum ada data proyek untuk ditampilkan.
+              </p>
+            )}
           </div>
 
           <div className="p-4 bg-[#FAFBFB] border-t border-[#E2E8E4] flex items-center justify-between text-xs text-[#69766F]">
-            <span>Metodologi standar: Earned Value Management (EVM) PMI</span>
-            <span className="font-mono">Pembaruan data: Tiap 24 jam</span>
+            <span>Indikator EVM dihitung dari anggaran dan progres proyek</span>
+            <span className="font-mono">Snapshot: {snapshotDate} · Supabase</span>
           </div>
         </div>
       </div>

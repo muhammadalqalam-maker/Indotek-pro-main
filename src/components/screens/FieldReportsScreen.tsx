@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   FileCheck2,
   Plus,
@@ -27,11 +27,12 @@ import { Button } from '../common/Button';
 import { SearchInput } from '../common/SearchInput';
 import { Modal } from '../common/Modal';
 import { FieldReport, FieldReportStatus } from '../../types';
-import { formatDateIndo } from '../../utils/formatters';
+import { formatDateIndo, getWitaDateISO } from '../../utils/formatters';
 import { AttachmentUploader } from '../common/AttachmentUploader';
 import { generateFieldReportPDF } from '../../utils/pdfGenerator';
 import { enqueueOfflineFieldReport } from '../../utils/offlineQueue';
 import { compressImage } from '../../utils/imageCompression';
+import { supabaseDataService } from '../../services/supabaseDataService';
 
 export const FieldReportsScreen: React.FC = () => {
   const { fieldReports, addFieldReport, reviewFieldReport, projects, addToast } = useApp();
@@ -50,21 +51,37 @@ export const FieldReportsScreen: React.FC = () => {
 
   // Modal for New Field Report
   const [isNewReportModalOpen, setIsNewReportModalOpen] = useState(false);
-  const [reportForm, setReportForm] = useState({
+  const [reportForm, setReportForm] = useState<{
+    projectId: string;
+    weatherMorning: FieldReport['weatherMorning'] | '';
+    weatherAfternoon: FieldReport['weatherAfternoon'] | '';
+    workingHours: string;
+    siteSupervisor: string;
+    tukangCount: string;
+    helperCount: string;
+    completedWork: string;
+    blockers: string;
+  }>({
     projectId: projects[0]?.id || '',
-    weatherMorning: 'Cerah' as const,
-    weatherAfternoon: 'Hujan Ringan' as const,
-    workingHours: '8',
-    siteSupervisor: 'Suryanto (Pengawas Lapangan)',
-    tukangCount: '45',
-    helperCount: '30',
-    completedWork: 'Pengecoran balok zona C lantai 22 dan perakitan rebar kolom.',
-    blockers: 'Hujan sore selama 40 menit, pekerjaan luar ditunda sebentar.',
+    weatherMorning: '',
+    weatherAfternoon: '',
+    workingHours: '',
+    siteSupervisor: '',
+    tukangCount: '',
+    helperCount: '',
+    completedWork: '',
+    blockers: '',
   });
 
   // Modal for Requesting Revision
   const [isRevisionModalOpen, setIsRevisionModalOpen] = useState(false);
-  const [revisionNotes, setRevisionNotes] = useState('Volume pengecoran beton belum dilengkapi lampiran delivery ticket readymix.');
+  const [revisionNotes, setRevisionNotes] = useState('');
+
+  useEffect(() => {
+    if (!reportForm.projectId && projects.length > 0) {
+      setReportForm((form) => ({ ...form, projectId: projects[0].id }));
+    }
+  }, [projects, reportForm.projectId]);
 
   const selectedReport =
     fieldReports.find((r) => r.id === selectedReportId) || fieldReports[0] || null;
@@ -82,6 +99,14 @@ export const FieldReportsScreen: React.FC = () => {
       return matchSearch && matchProj;
     });
   }, [fieldReports, search, selectedProjectId]);
+  const approvedReportCount = fieldReports.filter((report) => report.status === 'Disetujui').length;
+  const approvedReportRate = fieldReports.length > 0
+    ? approvedReportCount / fieldReports.length * 100
+    : null;
+  const averageWorkingHours = fieldReports.length > 0
+    ? fieldReports.reduce((total, report) => total + report.workingHours, 0) / fieldReports.length
+    : null;
+  const reportsWithBlockers = fieldReports.filter((report) => !!report.blockers?.trim()).length;
 
   const [reportPhotos, setReportPhotos] = useState<File[]>([]);
   const [photoCaptions, setPhotoCaptions] = useState<string[]>(['', '', '']);
@@ -90,15 +115,36 @@ export const FieldReportsScreen: React.FC = () => {
   const handleCreateReport = async (e: React.FormEvent) => {
     e.preventDefault();
     const proj = projects.find((p) => p.id === reportForm.projectId);
-    if (!proj) return;
+    const workingHours = Number(reportForm.workingHours);
+    const tukangCount = Number(reportForm.tukangCount);
+    const helperCount = Number(reportForm.helperCount);
+    if (!proj) {
+      addToast({ type: 'danger', title: 'Proyek Belum Dipilih', message: 'Pilih proyek untuk laporan harian.' });
+      return;
+    }
+    if (!reportForm.weatherMorning || !reportForm.weatherAfternoon ||
+        !reportForm.siteSupervisor.trim() || !reportForm.completedWork.trim()) {
+      addToast({ type: 'danger', title: 'Data Laporan Belum Lengkap', message: 'Cuaca, nama pengawas, dan pekerjaan terlaksana wajib diisi.' });
+      return;
+    }
+    if (!Number.isFinite(workingHours) || workingHours <= 0 || workingHours > 24 ||
+        !reportForm.tukangCount.trim() || !reportForm.helperCount.trim() ||
+        !Number.isInteger(tukangCount) || tukangCount < 0 ||
+        !Number.isInteger(helperCount) || helperCount < 0) {
+      addToast({ type: 'danger', title: 'Data Tenaga Kerja Tidak Valid', message: 'Jam kerja harus 0–24 jam dan jumlah tenaga kerja berupa bilangan bulat positif atau nol.' });
+      return;
+    }
 
     setIsSubmittingReport(true);
     try {
       const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+      const workspaceId = userProfile?.workspaceId;
+      if (isOffline && !workspaceId) {
+        throw new Error('Workspace belum tersedia untuk menyimpan laporan offline.');
+      }
 
       // Kompres seluruh foto yang dipilih (maks 3)
       const compressedPhotos: Array<{ id: string; blob: Blob; fileName: string; mimeType: string; sizeBytes: number; caption: string }> = [];
-      const uiPhotos: Array<{ url: string; caption: string }> = [];
 
       for (let i = 0; i < reportPhotos.length; i++) {
         const file = reportPhotos[i];
@@ -112,117 +158,103 @@ export const FieldReportsScreen: React.FC = () => {
           sizeBytes: res.compressedSize,
           caption,
         });
-        uiPhotos.push({
-          url: URL.createObjectURL(res.blob),
-          caption,
-        });
       }
 
       if (isOffline) {
+        if (!workspaceId) {
+          throw new Error('Workspace belum tersedia untuk menyimpan laporan offline.');
+        }
         // Simpan ke antrean offline IndexedDB dengan idempotency key
         await enqueueOfflineFieldReport({
-          workspaceId: userProfile?.workspaceId || '',
+          workspaceId,
           projectId: proj.id,
           projectName: proj.name,
-          reportDate: new Date().toISOString().split('T')[0],
+          reportDate: getWitaDateISO(),
           weatherMorning: reportForm.weatherMorning,
           weatherAfternoon: reportForm.weatherAfternoon,
-          workingHours: Number(reportForm.workingHours) || 8,
+          workingHours,
           siteSupervisor: reportForm.siteSupervisor,
           workforce: [
-            { role: 'Tukang Besi & Cor', count: Number(reportForm.tukangCount) || 0 },
-            { role: 'Helper & Pekerja Umum', count: Number(reportForm.helperCount) || 0 },
+            { role: 'Tukang', count: tukangCount },
+            { role: 'Helper / Pekerja', count: helperCount },
           ],
           completedWorks: [reportForm.completedWork],
-          materialsUsed: [
-            { name: 'Beton Readymix FC 35', quantity: '48 m³' },
-            { name: 'Besi D16 BJTS 420B', quantity: '180 batang' },
-          ],
-          equipmentUsed: [
-            { name: 'Tower Crane 01', hours: 7 },
-            { name: 'Concrete Pump Trailer', hours: 5 },
-          ],
+          materialsUsed: [],
+          equipmentUsed: [],
           blockers: reportForm.blockers,
           photos: compressedPhotos,
         });
 
         // Tambah optimis ke layar agar pengawas tetap bisa melihat draft
-        addFieldReport({
-          projectId: proj.id,
-          projectName: proj.name,
-          date: new Date().toISOString().split('T')[0],
-          weatherMorning: reportForm.weatherMorning,
-          weatherAfternoon: reportForm.weatherAfternoon,
-          workingHours: Number(reportForm.workingHours) || 8,
-          siteSupervisor: reportForm.siteSupervisor,
-          workforce: [
-            { role: 'Tukang Besi & Cor', count: Number(reportForm.tukangCount) || 0 },
-            { role: 'Helper & Pekerja Umum', count: Number(reportForm.helperCount) || 0 },
-          ],
-          completedWorks: [reportForm.completedWork],
-          materialsUsed: [
-            { name: 'Beton Readymix FC 35', quantity: '48 m³' },
-            { name: 'Besi D16 BJTS 420B', quantity: '180 batang' },
-          ],
-          equipmentUsed: [
-            { name: 'Tower Crane 01', hours: 7 },
-            { name: 'Concrete Pump Trailer', hours: 5 },
-          ],
-          blockers: reportForm.blockers,
-          photos: uiPhotos.length > 0 ? uiPhotos : [
-            {
-              url: 'https://images.unsplash.com/photo-1541888946425-d0fbb18615f3?auto=format&fit=crop&w=800&q=80',
-              caption: 'Inspeksi penulangan slab lantai zona C sebelum pengecoran',
-            },
-          ],
-        });
-
         addToast({
           type: 'warning',
           title: 'Tersimpan di Antrean Offline (Mode Pesawat)',
-          message: `Laporan dan ${compressedPhotos.length} foto disimpan di memori perangkat. Akan otomatis disinkronkan saat online.`,
+          message: `Laporan dan ${compressedPhotos.length} foto disimpan di perangkat. Akan otomatis disinkronkan saat online.`,
         });
       } else {
-        // Online: simpan langsung
-        addFieldReport({
+        if (compressedPhotos.length > 0 && !workspaceId) {
+          throw new Error('Workspace belum tersedia untuk mengunggah foto laporan.');
+        }
+        const reportId = await addFieldReport({
           projectId: proj.id,
           projectName: proj.name,
-          date: new Date().toISOString().split('T')[0],
+          date: getWitaDateISO(),
           weatherMorning: reportForm.weatherMorning,
           weatherAfternoon: reportForm.weatherAfternoon,
-          workingHours: Number(reportForm.workingHours) || 8,
+          workingHours,
           siteSupervisor: reportForm.siteSupervisor,
           workforce: [
-            { role: 'Tukang Besi & Cor', count: Number(reportForm.tukangCount) || 0 },
-            { role: 'Helper & Pekerja Umum', count: Number(reportForm.helperCount) || 0 },
+            { role: 'Tukang', count: tukangCount },
+            { role: 'Helper / Pekerja', count: helperCount },
           ],
           completedWorks: [reportForm.completedWork],
-          materialsUsed: [
-            { name: 'Beton Readymix FC 35', quantity: '48 m³' },
-            { name: 'Besi D16 BJTS 420B', quantity: '180 batang' },
-          ],
-          equipmentUsed: [
-            { name: 'Tower Crane 01', hours: 7 },
-            { name: 'Concrete Pump Trailer', hours: 5 },
-          ],
+          materialsUsed: [],
+          equipmentUsed: [],
           blockers: reportForm.blockers,
-          photos: uiPhotos.length > 0 ? uiPhotos : [
-            {
-              url: 'https://images.unsplash.com/photo-1541888946425-d0fbb18615f3?auto=format&fit=crop&w=800&q=80',
-              caption: 'Inspeksi penulangan slab lantai zona C sebelum pengecoran',
-            },
-          ],
-        });
+          photos: [],
+        }, crypto.randomUUID());
 
-        addToast({
-          type: 'success',
-          title: 'Laporan Diterbitkan',
-          message: `Laporan harian berhasil dikirim ke server.`,
-        });
+        let photoUploadError: string | undefined;
+        for (const photo of compressedPhotos) {
+          try {
+            await supabaseDataService.uploadAttachment({
+              workspaceId,
+              recordType: 'field_report',
+              recordId: reportId,
+              fileBlob: photo.blob,
+              fileName: photo.fileName,
+              mimeType: photo.mimeType,
+              sizeBytes: photo.sizeBytes,
+              caption: photo.caption,
+              userId: currentUser?.uid,
+            });
+          } catch (err) {
+            photoUploadError = err instanceof Error ? err.message : 'Kesalahan tidak diketahui.';
+            break;
+          }
+        }
+        if (photoUploadError) {
+          addToast({
+            type: 'danger',
+            title: 'Laporan Tersimpan, Foto Gagal Diunggah',
+            message: `Laporan sudah tersimpan. Unggah ulang foto melalui detail laporan. ${photoUploadError}`,
+          });
+        }
       }
 
       setReportPhotos([]);
       setPhotoCaptions(['', '', '']);
+      setReportForm((form) => ({
+        ...form,
+        weatherMorning: '',
+        weatherAfternoon: '',
+        workingHours: '',
+        siteSupervisor: '',
+        tukangCount: '',
+        helperCount: '',
+        completedWork: '',
+        blockers: '',
+      }));
       setIsNewReportModalOpen(false);
     } catch (err: any) {
       addToast({
@@ -294,22 +326,25 @@ export const FieldReportsScreen: React.FC = () => {
         />
         <MetricCard
           label="Telah Disetujui PM"
-          value={`${fieldReports.filter((r) => r.status === 'Disetujui').length} Laporan`}
-          subtitle="Verifikasi konsultan pengawas lengkap"
-          trend={{ value: '100% Sah', isPositive: true }}
+          value={`${approvedReportCount} Laporan`}
+          subtitle="Laporan dengan status disetujui"
+          trend={approvedReportRate === null ? undefined : {
+            value: `${approvedReportRate.toFixed(0)}% disetujui`,
+            isPositive: approvedReportRate === 100,
+            isNeutral: approvedReportRate > 0 && approvedReportRate < 100,
+          }}
           icon={<CheckCircle2 className="w-4 h-4 text-[#1C6843]" />}
         />
         <MetricCard
           label="Jam Kerja Efektif Rata-rata"
-          value="8,2 Jam / Hari"
-          subtitle="Toleransi lembur cuaca 1,5 jam"
+          value={averageWorkingHours === null ? '—' : `${averageWorkingHours.toFixed(1).replace('.', ',')} Jam`}
+          subtitle={averageWorkingHours === null ? 'Belum ada data jam kerja' : `Dari ${fieldReports.length} laporan`}
           icon={<Clock className="w-4 h-4 text-[#285744]" />}
         />
         <MetricCard
           label="Catatan Kendala & K3"
-          value={`${fieldReports.filter((r) => r.blockers).length} Catatan`}
-          subtitle="Semua blocker tertangani di site"
-          trend={{ value: 'Zero Incident', isPositive: true }}
+          value={`${reportsWithBlockers} Catatan`}
+          subtitle="Laporan dengan kendala yang dicatat"
           icon={<AlertTriangle className="w-4 h-4 text-[#9E6B05]" />}
         />
       </div>
@@ -483,7 +518,7 @@ export const FieldReportsScreen: React.FC = () => {
                 {selectedReport.verifiedBy && (
                   <p className="text-[#69766F] text-xs">
                     Diverifikasi oleh: <strong className="text-[#202B26]">{selectedReport.verifiedBy}</strong>
-                    {selectedReport.verifiedAt && ` pada ${formatDateIndo(selectedReport.verifiedAt.split('T')[0])}`}
+                    {selectedReport.verifiedAt && ` pada ${formatDateIndo(selectedReport.verifiedAt)}`}
                   </p>
                 )}
                 {selectedReport.reviewerNotes && (
@@ -698,8 +733,10 @@ export const FieldReportsScreen: React.FC = () => {
             <select
               value={reportForm.projectId}
               onChange={(e) => setReportForm({ ...reportForm, projectId: e.target.value })}
+              required
               className="w-full min-h-[44px] p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26]"
             >
+              <option value="">Pilih proyek</option>
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.code} — {p.name}
@@ -710,12 +747,40 @@ export const FieldReportsScreen: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
+              <label className="block font-medium text-[#202B26] mb-1">Nama Pengawas Lapangan</label>
+              <input
+                type="text"
+                value={reportForm.siteSupervisor}
+                onChange={(e) => setReportForm({ ...reportForm, siteSupervisor: e.target.value })}
+                required
+                className="w-full min-h-[44px] p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26]"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-[#202B26] mb-1">Jam Kerja Efektif</label>
+              <input
+                type="number"
+                value={reportForm.workingHours}
+                onChange={(e) => setReportForm({ ...reportForm, workingHours: e.target.value })}
+                min="0.1"
+                max="24"
+                step="0.1"
+                required
+                className="w-full min-h-[44px] p-2 bg-white border border-[#E2E8E4] rounded-lg font-mono text-[#202B26]"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
               <label className="block font-medium text-[#202B26] mb-1">Cuaca Pagi</label>
               <select
                 value={reportForm.weatherMorning}
-                onChange={(e) => setReportForm({ ...reportForm, weatherMorning: e.target.value as any })}
+                onChange={(e) => setReportForm({ ...reportForm, weatherMorning: e.target.value as FieldReport['weatherMorning'] | '' })}
+                required
                 className="w-full min-h-[44px] p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26]"
               >
+                <option value="">Pilih cuaca pagi</option>
                 <option value="Cerah">Cerah</option>
                 <option value="Berawan">Berawan</option>
                 <option value="Hujan Ringan">Hujan Ringan</option>
@@ -727,9 +792,11 @@ export const FieldReportsScreen: React.FC = () => {
               <label className="block font-medium text-[#202B26] mb-1">Cuaca Sore</label>
               <select
                 value={reportForm.weatherAfternoon}
-                onChange={(e) => setReportForm({ ...reportForm, weatherAfternoon: e.target.value as any })}
+                onChange={(e) => setReportForm({ ...reportForm, weatherAfternoon: e.target.value as FieldReport['weatherAfternoon'] | '' })}
+                required
                 className="w-full min-h-[44px] p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26]"
               >
+                <option value="">Pilih cuaca sore</option>
                 <option value="Cerah">Cerah</option>
                 <option value="Berawan">Berawan</option>
                 <option value="Hujan Ringan">Hujan Ringan</option>
@@ -745,6 +812,9 @@ export const FieldReportsScreen: React.FC = () => {
                 type="number"
                 value={reportForm.tukangCount}
                 onChange={(e) => setReportForm({ ...reportForm, tukangCount: e.target.value })}
+                min="0"
+                step="1"
+                required
                 className="w-full min-h-[44px] p-2 bg-white border border-[#E2E8E4] rounded-lg font-mono text-[#202B26]"
               />
             </div>
@@ -755,6 +825,9 @@ export const FieldReportsScreen: React.FC = () => {
                 type="number"
                 value={reportForm.helperCount}
                 onChange={(e) => setReportForm({ ...reportForm, helperCount: e.target.value })}
+                min="0"
+                step="1"
+                required
                 className="w-full min-h-[44px] p-2 bg-white border border-[#E2E8E4] rounded-lg font-mono text-[#202B26]"
               />
             </div>
@@ -766,6 +839,7 @@ export const FieldReportsScreen: React.FC = () => {
               rows={2}
               value={reportForm.completedWork}
               onChange={(e) => setReportForm({ ...reportForm, completedWork: e.target.value })}
+              required
               className="w-full p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26] min-h-[60px]"
             />
           </div>

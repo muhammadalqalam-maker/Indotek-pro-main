@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
+import { getWitaDateISO } from '../../utils/formatters';
 import { MetricCard } from '../common/MetricCard';
 import { Button } from '../common/Button';
 import { SearchInput } from '../common/SearchInput';
@@ -123,7 +124,7 @@ export const MaterialsScreen: React.FC = () => {
       await addStockMutation({
         materialId: mat.id,
         materialName: mat.name,
-        date: new Date().toISOString().split('T')[0],
+        date: getWitaDateISO(),
         type: mutationForm.type,
         quantity: qty,
         unit: mat.unit,

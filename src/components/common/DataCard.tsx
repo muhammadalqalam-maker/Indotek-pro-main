@@ -23,17 +23,17 @@ export const DataCard: React.FC<DataCardProps> = ({
 }) => {
   return (
     <div
-      className={`bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs p-4 space-y-3 ${
-        onClick ? 'cursor-pointer hover:border-success dark:hover:border-success transition-colors' : ''
+      className={`bg-surface rounded-xl border border-border-subtle shadow-2xs p-4 space-y-3 ${
+        onClick ? 'cursor-pointer hover:border-primary/40 hover:shadow-xs transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40' : ''
       }`}
       onClick={onClick}
     >
       <div className="space-y-1">
-        <h3 className="font-semibold text-base text-slate-900 dark:text-slate-100">
+        <h3 className="font-semibold text-base text-text-primary">
           {title}
         </h3>
         {subtitle && (
-          <p className="text-sm text-slate-600 dark:text-slate-400">
+          <p className="text-sm text-text-secondary">
             {subtitle}
           </p>
         )}
@@ -42,13 +42,13 @@ export const DataCard: React.FC<DataCardProps> = ({
       <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
         {metadata.map((item, idx) => (
           <div key={idx} className={item.highlight ? 'col-span-2' : ''}>
-            <div className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">
+            <div className="text-xs text-text-muted mb-0.5">
               {item.label}
             </div>
             <div className={`text-sm font-medium ${
               item.highlight
-                ? 'text-success dark:text-success'
-                : 'text-slate-900 dark:text-slate-100'
+                ? 'text-success'
+                : 'text-text-primary'
             }`}>
               {item.value}
             </div>
@@ -57,7 +57,7 @@ export const DataCard: React.FC<DataCardProps> = ({
       </div>
 
       {actions && (
-        <div className="pt-2 border-t border-slate-100 dark:border-slate-700">
+        <div className="pt-2 border-t border-border-subtle">
           {actions}
         </div>
       )}

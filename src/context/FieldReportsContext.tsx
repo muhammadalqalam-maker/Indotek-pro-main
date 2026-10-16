@@ -16,7 +16,10 @@ import { useUI, getScreenIdFromPathname } from './UIContext';
 export interface FieldReportsContextType {
   fieldReports: FieldReport[];
   setFieldReports: React.Dispatch<React.SetStateAction<FieldReport[]>>;
-  addFieldReport: (report: Omit<FieldReport, 'id' | 'reportNumber' | 'status'>) => Promise<void>;
+  addFieldReport: (
+    report: Omit<FieldReport, 'id' | 'reportNumber' | 'status'>,
+    idempotencyKey?: string
+  ) => Promise<string>;
   reviewFieldReport: (reportId: string, reviewerName: string, status: FieldReportStatus, notes?: string) => Promise<void>;
 }
 
@@ -53,15 +56,17 @@ export const FieldReportsProvider: React.FC<{ children: ReactNode }> = ({ childr
   }, [currentUser, isTabVisible, location.pathname, projectDetailTab, workspaceId]);
 
   const addFieldReport = async (
-    reportData: Omit<FieldReport, 'id' | 'reportNumber' | 'status' | 'createdAt' | 'updatedAt'>
+    reportData: Omit<FieldReport, 'id' | 'reportNumber' | 'status' | 'createdAt' | 'updatedAt'>,
+    idempotencyKey?: string
   ) => {
     try {
-      await dataService.addFieldReport(reportData, actorInfo, workspaceId);
+      const reportId = await dataService.addFieldReport(reportData, actorInfo, workspaceId, idempotencyKey);
       addToast({
         type: 'success',
         title: 'Laporan Lapangan Terkirim',
-        message: `LHP berhasil disimpan ke Firestore untuk diverifikasi Site Manager.`,
+        message: `LHP berhasil disimpan ke Supabase untuk diverifikasi Site Manager.`,
       });
+      return reportId;
     } catch (err: any) {
       addToast({
         type: 'danger',

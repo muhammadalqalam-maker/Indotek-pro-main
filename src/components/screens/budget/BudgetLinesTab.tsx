@@ -50,7 +50,7 @@ export const BudgetLinesTab: React.FC<BudgetLinesTabProps> = ({
             Distribusi Serapan Biaya per Divisi Pekerjaan
           </h2>
           <p className="text-xs text-[#69766F] mb-4">
-            Dihitung terpusat dari subkoleksi baris RAB proyek di Firestore
+            Dihitung terpusat dari tabel baris RAB proyek di Supabase
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -82,7 +82,7 @@ export const BudgetLinesTab: React.FC<BudgetLinesTabProps> = ({
           <div>
             <h2 className="text-sm font-bold text-[#202B26]">Rincian Item Pekerjaan RAB / BOQ</h2>
             <p className="text-xs text-[#69766F] mt-0.5">
-              Subkoleksi Firestore: <span className="font-mono">workspaces/{currentProject.code}/projects/{currentProject.id}/budget_lines</span>
+              Tabel Supabase: <span className="font-mono">budget_lines (workspace_id, project_id)</span>
             </p>
           </div>
 

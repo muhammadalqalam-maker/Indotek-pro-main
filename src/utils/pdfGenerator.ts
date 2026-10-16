@@ -15,7 +15,7 @@
  */
 
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
-import { formatCurrencyIDR, formatDateIndo, terbilangRupiah } from './formatters';
+import { formatCurrencyIDR, formatDateIndo, getWitaDateISO, terbilangRupiah } from './formatters';
 import { FieldReport, PurchaseOrder, Milestone, Project, BOQItem, BOQSummary } from '../types';
 
 export interface CompanyHeaderInfo {
@@ -254,7 +254,7 @@ export async function generateBastMilestonePDF(
   });
 
   y -= 25;
-  const p1 = `Pada hari ini, ${formatDateIndo(milestone.actualDate || new Date().toISOString().split('T')[0], true)}, bertempat di lokasi proyek ${project.name}, telah dilaksanakan serah terima penyelesaian tahapan pekerjaan konstruksi (Milestone Sign-off) dengan rincian:`;
+  const p1 = `Pada hari ini, ${formatDateIndo(milestone.actualDate || getWitaDateISO(), true)}, bertempat di lokasi proyek ${project.name}, telah dilaksanakan serah terima penyelesaian tahapan pekerjaan konstruksi (Milestone Sign-off) dengan rincian:`;
   page.drawText(p1, { x: 40, y, size: 8.5, font: fontRegular, maxWidth: 515 });
 
   y -= 35;
@@ -344,7 +344,7 @@ export async function generatePurchaseOrderPDF(
   page.drawText(`Alokasi Proyek : ${project?.name || po.projectName || 'Proyek Umum'}`, { x: 50, y: y - 28, size: 8, font: fontRegular });
   page.drawText(`Pemohon (Site) : ${po.requester}`, { x: 50, y: y - 42, size: 8, font: fontRegular });
 
-  page.drawText(`Tanggal PO   : ${formatDateIndo(po.createdAt?.split('T')[0] || new Date().toISOString().split('T')[0])}`, { x: 330, y: y - 14, size: 8, font: fontRegular });
+  page.drawText(`Tanggal PO   : ${formatDateIndo(po.createdAt || getWitaDateISO())}`, { x: 330, y: y - 14, size: 8, font: fontRegular });
   page.drawText(`Target Kirim : ${formatDateIndo(po.targetDeliveryDate)}`, { x: 330, y: y - 28, size: 8, font: fontRegular });
   page.drawText(`Status PO    : ${po.status}`, { x: 330, y: y - 42, size: 8, font: fontBold, color: rgb(0.11, 0.41, 0.26) });
 

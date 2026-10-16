@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { HardHat, LogIn, ShieldCheck, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useUI } from '../../context/UIContext';
 import { Button } from '../common/Button';
 
 export const LoginModal: React.FC = () => {
@@ -13,6 +14,7 @@ export const LoginModal: React.FC = () => {
     signOutUser,
     isLoading
   } = useAuth();
+  const { addToast } = useUI();
 
   const [authError, setAuthError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,13 +28,9 @@ export const LoginModal: React.FC = () => {
       await signInWithGoogle();
       setIsLoginModalOpen(false);
     } catch (err: any) {
-      if (err?.code === 'auth/popup-closed-by-user') {
-        setAuthError('Jendela masuk ditutup sebelum proses selesai.');
-      } else if (err?.code === 'auth/network-request-failed') {
-        setAuthError('Gagal terhubung ke server autentikasi. Periksa koneksi internet Anda.');
-      } else {
-        setAuthError(err?.message || 'Gagal masuk. Silakan coba lagi.');
-      }
+      const message = err?.message || 'Gagal masuk. Silakan coba lagi.';
+      setAuthError(message);
+      addToast({ type: 'danger', title: 'Gagal Masuk', message });
     } finally {
       setIsSubmitting(false);
     }
@@ -82,19 +80,25 @@ export const LoginModal: React.FC = () => {
           </h2>
           <p className="text-xs text-text-muted/70 mt-1 leading-relaxed">
             {currentUser
-              ? 'Sesi Firebase Authentication aktif dengan hak akses tingkat proyek.'
+              ? 'Sesi Supabase Auth aktif dengan hak akses tingkat proyek.'
               : 'Autentikasi terpusat untuk monitoring proyek, approval RAB, dan pelaporan lapangan.'}
           </p>
         </div>
 
         {/* Content Body */}
         <div className="p-6 space-y-4 text-xs">
+          {authError && (
+            <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-danger text-xs flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{authError}</span>
+            </div>
+          )}
           {currentUser ? (
             <div className="space-y-4">
               <div className="p-4 rounded-xl border border-border-subtle bg-canvas space-y-2">
                 <div className="flex items-center gap-2 text-xs font-semibold text-success">
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>Autentikasi Firebase Aktif</span>
+                  <span>Autentikasi Supabase Aktif</span>
                 </div>
                 <div className="pt-2 border-t border-border-subtle/60 space-y-1">
                   <div className="flex justify-between">
@@ -128,8 +132,19 @@ export const LoginModal: React.FC = () => {
                   variant="danger"
                   size="sm"
                   onClick={async () => {
-                    await signOutUser();
-                    setIsLoginModalOpen(false);
+                    setAuthError(null);
+                    try {
+                      await signOutUser();
+                      setIsLoginModalOpen(false);
+                    } catch (error) {
+                      const message = error instanceof Error ? error.message : String(error);
+                      setAuthError(message);
+                      addToast({
+                        type: 'danger',
+                        title: 'Gagal keluar akun',
+                        message,
+                      });
+                    }
                   }}
                 >
                   Keluar Akun
@@ -141,13 +156,6 @@ export const LoginModal: React.FC = () => {
               <p className="text-text-muted/80 leading-relaxed">
                 Gunakan kredensial resmi Google Workspace perusahaan Anda untuk memverifikasi identitas dan hak akses RAB/PO.
               </p>
-
-              {authError && (
-                <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-danger text-xs flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{authError}</span>
-                </div>
-              )}
 
               <button
                 type="button"
@@ -177,7 +185,7 @@ export const LoginModal: React.FC = () => {
               </button>
 
               <div className="pt-2 text-xs text-text-muted text-center">
-                <span>Dilindungi oleh Firebase Security Rules & RBAC</span>
+                <span>Dilindungi oleh Supabase Row Level Security & RBAC</span>
               </div>
             </div>
           )}

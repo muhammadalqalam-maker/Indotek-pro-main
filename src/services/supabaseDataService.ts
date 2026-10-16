@@ -15,6 +15,7 @@
  */
 
 import { supabase } from '../lib/supabase';
+import { getWitaDateISO } from '../utils/formatters';
 import {
   Project,
   PurchaseOrder,
@@ -523,12 +524,13 @@ export const supabaseDataService = {
 
     // Resolve project UUID if legacy id
     let pid = projectId;
-    const { data: pRow } = await supabase
+    const { data: pRow, error: projectLookupError } = await supabase
       .from('projects')
       .select('id, legacy_id')
       .eq('workspace_id', ws)
       .or(`id.eq.${projectId.length === 36 ? projectId : '00000000-0000-0000-0000-000000000000'},legacy_id.eq.${projectId}`)
       .maybeSingle();
+    if (projectLookupError) throw new Error(`[getProjectSubcollections/project] ${projectLookupError.message}`);
 
     if (pRow) {
       pid = pRow.id;
@@ -912,7 +914,6 @@ export const supabaseDataService = {
   // Projects
   async addProject(
     projectData: Omit<Project, 'id' | 'totalMilestones' | 'completedMilestones'>,
-    actorInfo: ActorInfo,
     wsId?: string
   ): Promise<string> {
     const ws = resolveWorkspaceId(wsId);
@@ -921,17 +922,23 @@ export const supabaseDataService = {
       p_name: projectData.name,
       p_code: projectData.code,
       p_client: projectData.client,
+      p_category: projectData.category,
       p_location: projectData.location,
-      p_start_date: projectData.startDate,
-      p_end_date: projectData.targetEndDate,
+      p_project_manager: projectData.projectManager,
+      p_site_engineer: projectData.siteEngineer,
       p_contract_value: projectData.contractValue,
-      p_manager: projectData.projectManager,
+      p_approved_budget: projectData.approvedBudget,
+      p_start_date: projectData.startDate,
+      p_target_end_date: projectData.targetEndDate,
+      p_status: projectData.status,
+      p_image_url: projectData.image || null,
       p_description: projectData.description || '',
-      p_actor_name: actorInfo.actorName,
-      p_actor_role: actorInfo.actorRole,
     });
     if (error) throw new Error(`[addProject] ${error.message}`);
-    return String(data);
+    if (!data || typeof data !== 'object' || !('id' in data) || typeof data.id !== 'string') {
+      throw new Error('[addProject] RPC returned an invalid project result.');
+    }
+    return data.id;
   },
 
   async updateProject(
@@ -1272,28 +1279,31 @@ export const supabaseDataService = {
   async addFieldReport(
     reportData: Omit<FieldReport, 'id' | 'reportNumber' | 'status' | 'createdAt' | 'updatedAt'>,
     actorInfo: ActorInfo,
-    wsId?: string
+    wsId?: string,
+    idempotencyKey: string = crypto.randomUUID()
   ): Promise<string> {
     const ws = resolveWorkspaceId(wsId);
     const { data, error } = await supabase.rpc('create_field_report', {
       p_workspace_id: ws,
-      p_report_number: '',
       p_project_id: reportData.projectId,
       p_report_date: reportData.date,
-      p_reported_by: reportData.siteSupervisor,
-      p_weather_condition: `${reportData.weatherMorning}/${reportData.weatherAfternoon}`,
-      p_progress: reportData.completedWorks.join('; '),
-      p_workforce_present: JSON.stringify(reportData.workforce),
-      p_material_usage: JSON.stringify(reportData.materialsUsed),
-      p_equipment_status: JSON.stringify(reportData.equipmentUsed),
-      p_observations: reportData.blockers || '',
-      p_safety_incidents: '',
-      p_photos: reportData.photos || [],
-      p_actor_name: actorInfo.actorName,
-      p_actor_role: actorInfo.actorRole,
+      p_site_supervisor_name: reportData.siteSupervisor.trim(),
+      p_weather_morning: reportData.weatherMorning,
+      p_weather_afternoon: reportData.weatherAfternoon,
+      p_working_hours: reportData.workingHours,
+      p_workforce: reportData.workforce,
+      p_completed_works: reportData.completedWorks,
+      p_materials_used: reportData.materialsUsed,
+      p_equipment_used: reportData.equipmentUsed,
+      p_blockers: reportData.blockers || null,
+      p_idempotency_key: idempotencyKey,
     });
     if (error) throw new Error(`[addFieldReport] ${error.message}`);
-    return String(data);
+    const reportId = data?.data?.id;
+    if (typeof reportId !== 'string' || !reportId) {
+      throw new Error('[addFieldReport] RPC tidak mengembalikan ID laporan yang valid.');
+    }
+    return reportId;
   },
 
   async reviewFieldReport(
@@ -1518,7 +1528,7 @@ export const supabaseDataService = {
     let q = supabase
       .from('petty_cash')
       .select(
-        'id,petty_cash_no,project_id,category,description,amount,status,submitted_by_name,approved_by_name,disbursed_at,submitted_at,created_at,rejection_reason,projects(name,legacy_id)',
+        'id,workspace_id,legacy_id,petty_cash_no,project_id,category,purpose,receipt_path,amount,status,requester_id,requester_name,reviewed_by,reviewed_at,disbursed_by,disbursed_at,submitted_at,created_at,updated_at,rejection_reason,projects(name,legacy_id)',
         { count: 'exact' }
       )
       .eq('workspace_id', ws)
@@ -1655,7 +1665,7 @@ export const supabaseDataService = {
       p_satuan: payload.satuan,
       p_harga: Math.round(payload.harga),
       p_wilayah: payload.wilayah ?? '',
-      p_berlaku_mulai: payload.berlakuMulai || new Date().toISOString().split('T')[0],
+      p_berlaku_mulai: payload.berlakuMulai || getWitaDateISO(),
       p_berlaku_sampai: payload.berlakuSampai || null,
       p_spesifikasi: payload.spesifikasi || null,
       p_id: payload.id || null,
@@ -2019,7 +2029,7 @@ export const supabaseDataService = {
       p_project_id: payload.projectId,
       p_id: payload.id,
       p_status: payload.status,
-      p_tanggal: payload.tanggal || new Date().toISOString().split('T')[0],
+      p_tanggal: payload.tanggal || getWitaDateISO(),
       p_keterangan: payload.keterangan || null,
     });
     if (error) throw new Error(`[updatePaymentTermStatus] ${error.message}`);
@@ -2167,7 +2177,3 @@ export const supabaseDataService = {
     return { message: 'Lampiran berhasil dihapus.' };
   },
 };
-
-
-
-

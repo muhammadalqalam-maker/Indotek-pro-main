@@ -6,7 +6,7 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AppSettings, dataService, resolveWorkspaceId, type ActorInfo } from '../services/dataService';
 import { useAuth } from './AuthContext';
 import { NotificationItem, AuditLogEntry, AuditActionType } from '../types';
@@ -28,18 +28,18 @@ export type ScreenId =
 
 export function getScreenIdFromPathname(pathname: string): ScreenId {
   if (pathname === '/') return 'dashboard';
-  if (pathname.startsWith('/projects/')) return 'project-detail';
-  if (pathname.startsWith('/projects')) return 'projects';
-  if (pathname.startsWith('/schedule')) return 'schedule';
-  if (pathname.startsWith('/budget')) return 'budget';
-  if (pathname.startsWith('/materials')) return 'materials';
-  if (pathname.startsWith('/procurement')) return 'procurement';
-  if (pathname.startsWith('/field-reports')) return 'field-reports';
-  if (pathname.startsWith('/resource-prices')) return 'resource-prices';
-  if (pathname.startsWith('/ahsp-templates')) return 'ahsp-templates';
-  if (pathname.startsWith('/team')) return 'team';
-  if (pathname.startsWith('/reports')) return 'reports';
-  if (pathname.startsWith('/settings')) return 'settings';
+  if (pathname.startsWith('/proyek/') || pathname.startsWith('/projects/')) return 'project-detail';
+  if (pathname === '/proyek' || pathname.startsWith('/projects')) return 'projects';
+  if (pathname.startsWith('/jadwal') || pathname.startsWith('/schedule')) return 'schedule';
+  if (pathname.startsWith('/anggaran') || pathname.startsWith('/budget')) return 'budget';
+  if (pathname.startsWith('/material') || pathname.startsWith('/materials')) return 'materials';
+  if (pathname.startsWith('/pengadaan') || pathname.startsWith('/procurement')) return 'procurement';
+  if (pathname.startsWith('/laporan-harian') || pathname.startsWith('/field-report')) return 'field-reports';
+  if (pathname.startsWith('/harga-dasar') || pathname.startsWith('/resource-prices')) return 'resource-prices';
+  if (pathname.startsWith('/ahsp') || pathname.startsWith('/ahsp-templates')) return 'ahsp-templates';
+  if (pathname.startsWith('/tim') || pathname.startsWith('/team')) return 'team';
+  if (pathname.startsWith('/laporan') || pathname.startsWith('/reports')) return 'reports';
+  if (pathname.startsWith('/pengaturan') || pathname.startsWith('/settings')) return 'settings';
   return 'dashboard';
 }
 
@@ -127,6 +127,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { currentUser, userProfile, activeRole, isAdmin } = useAuth();
   const workspaceId = resolveWorkspaceId(userProfile?.workspaceId);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [projectDetailTab, setProjectDetailTab] = useState<string>('overview');
@@ -178,6 +179,18 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     return typeof document !== 'undefined' ? document.visibilityState === 'visible' : true;
   });
 
+  const addToast = useCallback((toast: Omit<ToastMessage, 'id'>) => {
+    const id = `toast-${crypto.randomUUID()}`;
+    setToasts((prev) => [...prev, { ...toast, id }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4500);
+  }, []);
+
+  const removeToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
   // Tab visibility listener
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -196,11 +209,16 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     let isMounted = true;
     dataService.getSettings(workspaceId).then((s) => {
       if (isMounted && s) setSettings(s);
-    }).catch(() => {
-      // Settings load optional—use defaults
+    }).catch((error: unknown) => {
+      if (!isMounted) return;
+      addToast({
+        type: 'danger',
+        title: 'Gagal Memuat Pengaturan',
+        message: error instanceof Error ? error.message : String(error),
+      });
     });
     return () => { isMounted = false; };
-  }, [currentUser, workspaceId]);
+  }, [currentUser, workspaceId, addToast]);
 
   // Notifications Realtime Subscription (Global when visible)
   useEffect(() => {
@@ -219,28 +237,21 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     let isMounted = true;
     dataService.getAuditLogsPaged({ pageSize: 50, wsId: workspaceId }).then((a) => {
       if (isMounted && a) setAuditLogs(a.items);
-    }).catch(() => {
-      // Audit logs optional—use empty
+    }).catch((error: unknown) => {
+      if (!isMounted) return;
+      addToast({
+        type: 'danger',
+        title: 'Gagal Memuat Log Audit',
+        message: error instanceof Error ? error.message : String(error),
+      });
     });
     return () => { isMounted = false; };
-  }, [currentUser, location.pathname, workspaceId]);
-
-  const addToast = useCallback((toast: Omit<ToastMessage, 'id'>) => {
-    const id = `toast-${crypto.randomUUID()}`;
-    setToasts((prev) => [...prev, { ...toast, id }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4500);
-  }, []);
-
-  const removeToast = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  }, []);
+  }, [currentUser, location.pathname, workspaceId, addToast]);
 
   const navigateToProjectDetail = (projectId: string, tab = 'overview') => {
     setSelectedProjectId(projectId);
     setProjectDetailTab(tab);
-    // Navigation handled by router—no setCurrentScreen needed
+    navigate(`/proyek/${encodeURIComponent(projectId)}${tab === 'overview' ? '' : `/${encodeURIComponent(tab)}`}`);
   };
 
   const updateSettings = async (newSettings: Partial<AppSettings>) => {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   Calendar,
   MapPin,
@@ -7,8 +7,6 @@ import {
   UserCheck,
   Coins,
   FileCheck2,
-  FileText,
-  Download,
   Boxes,
   Clock,
   ArrowLeft,
@@ -23,18 +21,20 @@ import { Tabs } from '../common/Tabs';
 import { Badge } from '../common/Badge';
 import { ProgressBar } from '../common/ProgressBar';
 import { Button } from '../common/Button';
+import { EmptyState } from '../common/EmptyState';
 import {
   formatCurrencyIDR,
   formatCompactIDR,
   formatPercent,
-  formatDateIndo
+  formatDateIndo,
+  getWitaDateISO,
 } from '../../utils/formatters';
 import { SCurveChart } from '../charts/SCurveChart';
 import { generateProjectSCurve } from '../../utils/scurve';
-import { downloadDocumentTemplate } from '../../utils/exportUtils';
 
 export const ProjectDetailScreen: React.FC = () => {
   const navigate = useNavigate();
+  const { id: routeProjectId, tab: routeTab } = useParams();
   const {
     projects,
     selectedProjectId,
@@ -46,63 +46,66 @@ export const ProjectDetailScreen: React.FC = () => {
     budgetLines,
     milestones,
     wbsList,
-    addToast,
   } = useApp();
+
+  React.useEffect(() => {
+    if (routeProjectId) setSelectedProjectId(routeProjectId);
+    setProjectDetailTab(
+      routeTab && ['overview', 'schedule', 'budget', 'materials', 'field-reports', 'documents'].includes(routeTab)
+        ? routeTab
+        : 'overview'
+    );
+  }, [routeProjectId, routeTab, setSelectedProjectId, setProjectDetailTab]);
 
   const currentProject =
     projects.find((p) => p.id === selectedProjectId) || projects[0];
 
-  const projectMilestones = milestones.filter(
-    (m) => m.projectId === currentProject.id
-  );
-  const projectWBS = wbsList.filter((w) => w.projectId === currentProject.id);
-  const projectBudgets = budgetLines.filter(
-    (b) => b.projectId === currentProject.id
-  );
-  const projectMaterials = materials.filter(
-    (m) => m.allocatedProject.toLowerCase().includes(currentProject.name.slice(0, 10).toLowerCase())
-  );
-  const projectReports = fieldReports.filter(
-    (r) => r.projectId === currentProject.id
-  );
+  const projectMilestones = currentProject
+    ? milestones.filter((m) => m.projectId === currentProject.id)
+    : [];
+  const projectWBS = currentProject
+    ? wbsList.filter((w) => w.projectId === currentProject.id)
+    : [];
+  const projectBudgets = currentProject
+    ? budgetLines.filter((b) => b.projectId === currentProject.id)
+    : [];
+  const projectMaterials = currentProject
+    ? materials.filter((m) => m.allocatedProject.toLowerCase().includes(currentProject.name.slice(0, 10).toLowerCase()))
+    : [];
+  const projectReports = currentProject
+    ? fieldReports.filter((r) => r.projectId === currentProject.id)
+    : [];
 
   const tabs = [
     { id: 'overview', label: 'Ringkasan Proyek' },
-    { id: 'schedule', label: 'Jadwal & WBS', count: projectWBS.length || 8 },
-    { id: 'budget', label: 'RAB & Biaya', count: projectBudgets.length || 6 },
-    { id: 'materials', label: 'Material Proyek', count: projectMaterials.length || 4 },
-    { id: 'field-reports', label: 'Laporan Lapangan', count: projectReports.length || 2 },
-    { id: 'documents', label: 'Dokumen & Gambar', count: 5 },
+    { id: 'schedule', label: 'Jadwal & WBS', count: projectWBS.length },
+    { id: 'budget', label: 'RAB & Biaya', count: projectBudgets.length },
+    { id: 'materials', label: 'Material Proyek', count: projectMaterials.length },
+    { id: 'field-reports', label: 'Laporan Lapangan', count: projectReports.length },
+    { id: 'documents', label: 'Dokumen & Gambar' },
   ];
 
   const projectSCurveData = React.useMemo(() => {
+    if (!currentProject) return null;
     return generateProjectSCurve({
       projectId: currentProject.id,
       projectName: currentProject.name,
       startDate: currentProject.startDate,
       endDate: currentProject.targetEndDate,
       currentActualProgress: currentProject.progressActual,
-      reportingDate: '2026-10-09',
+      reportingDate: getWitaDateISO(),
       wbsItems: projectWBS,
     });
   }, [currentProject, projectWBS]);
 
-  const handleDownloadDoc = (docName: string) => {
-    try {
-      downloadDocumentTemplate(docName, currentProject.name);
-      addToast({
-        type: 'success',
-        title: 'Dokumen Diunduh',
-        message: `Berkas ${docName} berhasil diunduh dari arsip rekayasa ${currentProject.code}.`,
-      });
-    } catch (err) {
-      addToast({
-        type: 'danger',
-        title: 'Gagal Mengunduh',
-        message: `Tidak dapat memproses unduhan ${docName}.`,
-      });
-    }
-  };
+  if (!currentProject || !projectSCurveData) {
+    return (
+      <EmptyState
+        title="Proyek tidak ditemukan"
+        description="Pilih proyek dari portofolio untuk melihat detail, anggaran, jadwal, dan laporan."
+      />
+    );
+  }
 
   const scheduleVariant =
     currentProject.scheduleStatus === 'Tepat Waktu'
@@ -116,7 +119,7 @@ export const ProjectDetailScreen: React.FC = () => {
       {/* Top Navigation & Back Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <button
-          onClick={() => navigate('/projects')}
+          onClick={() => navigate('/proyek')}
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#285744] hover:text-[#12352B] transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -128,7 +131,7 @@ export const ProjectDetailScreen: React.FC = () => {
           <span className="text-xs text-[#69766F] select-none">Pilih Proyek:</span>
           <select
             value={currentProject.id}
-            onChange={(e) => setSelectedProjectId(e.target.value)}
+            onChange={(e) => navigate(`/proyek/${encodeURIComponent(e.target.value)}`)}
             className="h-9 bg-white border border-[#E2E8E4] rounded-lg px-3 text-xs font-semibold text-[#202B26] hover:border-[#CBD5CF] focus:outline-none focus:border-[#12352B] focus:ring-1 focus:ring-[#12352B] transition-colors cursor-pointer"
           >
             {projects.map((p) => (
@@ -372,7 +375,7 @@ export const ProjectDetailScreen: React.FC = () => {
               <h3 className="text-sm font-bold text-[#202B26]">Struktur Rincian Kerja (WBS)</h3>
               <p className="text-xs text-[#69766F]">Daftar paket pekerjaan dan bobot penyelesaian</p>
             </div>
-            <Button variant="secondary" size="sm" onClick={() => navigate('/schedule')}>
+            <Button variant="secondary" size="sm" onClick={() => navigate('/jadwal')}>
               Buka Modul Jadwal Penuh
             </Button>
           </div>
@@ -423,7 +426,7 @@ export const ProjectDetailScreen: React.FC = () => {
               <h3 className="text-sm font-bold text-[#202B26]">Rencana Anggaran Biaya (RAB Proyek)</h3>
               <p className="text-xs text-[#69766F]">Rincian pagu anggaran per divisi pekerjaan</p>
             </div>
-            <Button variant="secondary" size="sm" onClick={() => navigate('/budget')}>
+            <Button variant="secondary" size="sm" onClick={() => navigate('/anggaran')}>
               Buka Pengendalian Biaya Penuh
             </Button>
           </div>
@@ -469,7 +472,7 @@ export const ProjectDetailScreen: React.FC = () => {
               <h3 className="text-sm font-bold text-[#202B26]">Logistik Material Lapangan</h3>
               <p className="text-xs text-[#69766F]">Alokasi stok dan status kebutuhan material</p>
             </div>
-            <Button variant="secondary" size="sm" onClick={() => navigate('/materials')}>
+            <Button variant="secondary" size="sm" onClick={() => navigate('/material')}>
               Kelola Gudang Penuh
             </Button>
           </div>
@@ -525,7 +528,7 @@ export const ProjectDetailScreen: React.FC = () => {
               <h3 className="text-sm font-bold text-[#202B26]">Laporan Harian Proyek</h3>
               <p className="text-xs text-[#69766F]">Catatan cuaca, tenaga kerja, dan aktivitas fisik harian</p>
             </div>
-            <Button variant="secondary" size="sm" onClick={() => navigate('/field-reports')}>
+            <Button variant="secondary" size="sm" onClick={() => navigate('/laporan-harian')}>
               Buka Semua Laporan Lapangan
             </Button>
           </div>
@@ -584,67 +587,8 @@ export const ProjectDetailScreen: React.FC = () => {
             </div>
           </div>
 
-          <div className="divide-y divide-[#E2E8E4]/70">
-            {[
-              {
-                title: 'Surat Perjanjian Kontrak Kerja Konstruksi (Adendum 01)',
-                code: 'KTR-2025-JKT-001-ADD1.pdf',
-                size: '4.8 MB',
-                date: '15 Jan 2026',
-                type: 'PDF Kontrak',
-              },
-              {
-                title: 'Detail Engineering Design (DED) Struktur Kolom & Balok Lt. 1-24',
-                code: 'DED-STR-REV-04.dwg.pdf',
-                size: '28.4 MB',
-                date: '10 Feb 2026',
-                type: 'Gambar Kerja',
-              },
-              {
-                title: 'Bill of Quantities (BoQ) Terverifikasi Konsultan QS',
-                code: 'BOQ-VERIFIED-FINAL.xlsx',
-                size: '2.1 MB',
-                date: '28 Mei 2025',
-                type: 'Spreadsheet RAB',
-              },
-              {
-                title: 'Laporan Investigasi Tanah & Bor Log Sondir Lapangan',
-                code: 'SOIL-TEST-GEOTECH-REPORT.pdf',
-                size: '12.0 MB',
-                date: '14 Mei 2025',
-                type: 'Laporan Teknis',
-              },
-              {
-                title: 'Rencana Keselamatan Konstruksi (RKK) & Manual K3',
-                code: 'RKK-HSE-INDOTEK-REV2.pdf',
-                size: '3.6 MB',
-                date: '01 Jun 2025',
-                type: 'K3 / HSE',
-              },
-            ].map((doc, idx) => (
-              <div key={idx} className="py-3.5 flex items-center justify-between gap-4 text-xs">
-                <div className="flex items-start gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-[#EAEFEA] text-[#285744] flex items-center justify-center shrink-0">
-                    <FileText className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-semibold text-[#202B26] truncate">{doc.title}</div>
-                    <div className="text-xs text-[#69766F] font-mono mt-0.5 tabular-nums">
-                      {doc.code} · {doc.size} · {doc.date}
-                    </div>
-                  </div>
-                </div>
-
-                <Button
-                  variant="secondary"
-                  size="xs"
-                  onClick={() => handleDownloadDoc(doc.code)}
-                  leftIcon={<Download className="w-3.5 h-3.5" />}
-                >
-                  Unduh
-                </Button>
-              </div>
-            ))}
+          <div className="py-10 text-center text-xs text-[#69766F]">
+            Belum ada arsip dokumen yang terhubung ke proyek ini.
           </div>
         </div>
       )}

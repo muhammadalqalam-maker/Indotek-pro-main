@@ -417,61 +417,61 @@ export const BOQItemizedTab: React.FC<BOQItemizedTabProps> = ({
     <div className="space-y-6">
       {/* KARTU RINGKASAN BOQ / REKAPITULASI KONTRAK */}
       {summary && (
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
+        <div className="bg-white  rounded-xl border border-border-subtle  p-6 shadow-sm">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Subtotal BOQ (Fisik)</span>
-              <div className="text-xl font-bold font-mono text-slate-900 dark:text-white mt-1">
+            <div className="p-4 rounded-xl bg-canvas  border border-border-subtle ">
+              <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Subtotal BOQ (Fisik)</span>
+              <div className="text-xl font-bold font-mono text-text-primary  mt-1">
                 {formatCurrencyIDR(summary.subtotal)}
               </div>
-              <span className="text-xs text-slate-400 mt-1 block">{summary.totalItems} item pekerjaan</span>
+              <span className="text-xs text-text-muted mt-1 block">{summary.totalItems} item pekerjaan</span>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+            <div className="p-4 rounded-xl bg-canvas  border border-border-subtle ">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">PPN ({summary.ppnPercent}%)</span>
+                <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">PPN ({summary.ppnPercent}%)</span>
                 <button
                   onClick={() => setShowPpnModal(true)}
-                  className="text-xs text-blue-600 hover:underline font-semibold"
+                  className="text-xs text-primary hover:underline font-semibold"
                 >
                   Ubah
                 </button>
               </div>
-              <div className="text-xl font-bold font-mono text-amber-600 dark:text-amber-400 mt-1">
+              <div className="text-xl font-bold font-mono text-warning  mt-1">
                 {formatCurrencyIDR(summary.ppnNominal)}
               </div>
-              <span className="text-xs text-slate-400 mt-1 block">UU HPP No. 7/2021</span>
+              <span className="text-xs text-text-muted mt-1 block">UU HPP No. 7/2021</span>
             </div>
 
-            <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
-              <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wider">
+            <div className="p-4 rounded-xl bg-primary/10  border border-primary/20 ">
+              <span className="text-xs font-semibold text-primary  uppercase tracking-wider">
                 Total Kontrak (Incl. PPN)
               </span>
-              <div className="text-xl font-bold font-mono text-blue-700 dark:text-blue-300 mt-1">
+              <div className="text-xl font-bold font-mono text-primary  mt-1">
                 {formatCurrencyIDR(summary.grandTotal)}
               </div>
-              <span className="text-xs text-blue-600/80 dark:text-blue-400 mt-1 block">Nilai Pagu Anggaran</span>
+              <span className="text-xs text-primary/80  mt-1 block">Nilai Pagu Anggaran</span>
             </div>
 
-            <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
-              <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
+            <div className="p-4 rounded-xl bg-success-bg  border border-success-border ">
+              <span className="text-xs font-semibold text-success  uppercase tracking-wider">
                 Progres Fisik Terbobot
               </span>
-              <div className="text-xl font-bold font-mono text-emerald-700 dark:text-emerald-300 mt-1">
+              <div className="text-xl font-bold font-mono text-success  mt-1">
                 {formatPercent(summary.progressActual, 2)}
               </div>
-              <span className="text-xs text-emerald-600/80 dark:text-emerald-400 mt-1 block">
+              <span className="text-xs text-success/80  mt-1 block">
                 Agregat dari bobot BOQ
               </span>
             </div>
           </div>
 
           {/* Kotak Terbilang Resmi */}
-          <div className="mt-4 p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-lg border border-slate-200 dark:border-slate-700 flex items-start gap-3">
-            <BookOpen className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+          <div className="mt-4 p-3.5 bg-canvas  rounded-lg border border-border-subtle  flex items-start gap-3">
+            <BookOpen className="w-4 h-4 text-text-muted shrink-0 mt-0.5" />
             <div className="text-xs">
-              <span className="font-semibold text-slate-700 dark:text-slate-300">Terbilang Resmi: </span>
-              <span className="italic text-slate-600 dark:text-slate-400 font-serif">
+              <span className="font-semibold text-text-secondary ">Terbilang Resmi: </span>
+              <span className="italic text-text-secondary  font-serif">
                 &ldquo;{summary.terbilang}&rdquo;
               </span>
             </div>
@@ -479,16 +479,16 @@ export const BOQItemizedTab: React.FC<BOQItemizedTabProps> = ({
 
           {/* Rekapitulasi Baris Divisi yang Tersinkron ke budget_lines */}
           {summary.divisions && summary.divisions.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-              <div className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">
+            <div className="mt-4 pt-4 border-t border-border-subtle ">
+              <div className="text-xs font-semibold text-text-muted mb-2 uppercase tracking-wider">
                 Rekapitulasi Divisi (Tersinkronisasi Otomatis ke Pagu Budget Lines)
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                 {summary.divisions.map((d) => (
-                  <div key={d.kategori} className="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-900 text-xs">
-                    <div className="font-semibold truncate text-slate-800 dark:text-slate-200">{d.kategori}</div>
-                    <div className="font-mono text-slate-600 dark:text-slate-300 mt-1">{formatCurrencyIDR(d.total)}</div>
-                    <div className="text-xs text-slate-400 mt-0.5 font-mono">{formatPercent(d.bobotPersen, 2)} bobot</div>
+                  <div key={d.kategori} className="p-2.5 rounded-lg bg-neutral-bg  text-xs">
+                    <div className="font-semibold truncate text-text-primary ">{d.kategori}</div>
+                    <div className="font-mono text-text-secondary  mt-1">{formatCurrencyIDR(d.total)}</div>
+                    <div className="text-xs text-text-muted mt-0.5 font-mono">{formatPercent(d.bobotPersen, 2)} bobot</div>
                   </div>
                 ))}
               </div>
@@ -498,23 +498,23 @@ export const BOQItemizedTab: React.FC<BOQItemizedTabProps> = ({
       )}
 
       {/* TOOLBAR & FILTER */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-3 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-3 bg-white  p-4 rounded-xl border border-border-subtle ">
         <div className="flex items-center gap-3 w-full md:w-auto flex-1">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
             <input
               type="text"
               placeholder="Cari kode item atau uraian pekerjaan..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+              className="w-full pl-9 pr-4 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg focus:ring-2 focus:ring-primary text-text-primary "
             />
           </div>
 
           <select
             value={selectedDivision}
             onChange={(e) => setSelectedDivision(e.target.value)}
-            className="px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
+            className="px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg text-text-primary "
           >
             <option value="Semua">Semua Divisi</option>
             <option value="Pekerjaan Persiapan">Pekerjaan Persiapan</option>
@@ -529,10 +529,10 @@ export const BOQItemizedTab: React.FC<BOQItemizedTabProps> = ({
           {items.length === 0 && (
             <button
               onClick={handleSeedRealRAB}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-amber-900 dark:text-amber-200 bg-amber-100 hover:bg-amber-200 rounded-lg transition"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-text-primary  bg-warning-bg hover:bg-warning-bg rounded-lg transition"
               title="Buat 20 item contoh RAB pekerjaan sipil"
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+              <Sparkles className="w-3.5 h-3.5 text-warning" />
               <span>Contoh 20 Item RAB</span>
             </button>
           )}
@@ -540,7 +540,7 @@ export const BOQItemizedTab: React.FC<BOQItemizedTabProps> = ({
           {/* Unduh Template Excel */}
           <button
             onClick={downloadBOQTemplate}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-lg transition"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-text-secondary  bg-neutral-bg hover:bg-neutral-bg   rounded-lg transition"
             title="Unduh template Excel kosong untuk impor BOQ"
           >
             <FileDown className="w-3.5 h-3.5" />
@@ -558,7 +558,7 @@ export const BOQItemizedTab: React.FC<BOQItemizedTabProps> = ({
           <button
             onClick={() => importInputRef.current?.click()}
             disabled={importLoading}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-900 dark:text-emerald-200 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:hover:bg-emerald-800/40 rounded-lg transition disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-success  bg-success-border hover:bg-success-border   rounded-lg transition disabled:opacity-50"
             title="Impor item BOQ dari berkas Excel (.xlsx) atau CSV"
           >
             {importLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
@@ -569,7 +569,7 @@ export const BOQItemizedTab: React.FC<BOQItemizedTabProps> = ({
           {items.length > 0 && (
             <button
               onClick={handleExportExcel}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-blue-900 dark:text-blue-200 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/40 dark:hover:bg-blue-800/40 rounded-lg transition min-h-[44px]"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-primary  bg-primary/20 hover:bg-primary/20   rounded-lg transition min-h-[44px]"
               title="Ekspor BOQ ke format Excel (.xlsx) standar kontraktor"
             >
               <Download className="w-3.5 h-3.5" />
@@ -587,7 +587,7 @@ export const BOQItemizedTab: React.FC<BOQItemizedTabProps> = ({
                   summary
                 );
               }}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-rose-900 dark:text-rose-200 bg-rose-100 hover:bg-rose-200 dark:bg-rose-900/40 dark:hover:bg-rose-800/40 rounded-lg transition min-h-[44px]"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-danger  bg-danger hover:bg-danger   rounded-lg transition min-h-[44px]"
               title="Cetak Rencana Anggaran Biaya (RAB PDF A4)"
             >
               <Printer className="w-3.5 h-3.5" />
@@ -597,7 +597,7 @@ export const BOQItemizedTab: React.FC<BOQItemizedTabProps> = ({
 
           <button
             onClick={() => openItemModal()}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-primary hover:bg-primary-hover rounded-lg shadow-sm transition"
           >
             <Plus className="w-4 h-4" />
             <span>Tambah Item BOQ</span>
@@ -609,10 +609,10 @@ export const BOQItemizedTab: React.FC<BOQItemizedTabProps> = ({
       <ResponsiveTable
         data={filteredItems}
         renderTable={() => (
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+          <div className="bg-white  rounded-xl border border-border-subtle  overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-700">
+                <thead className="bg-canvas  text-text-secondary  font-semibold border-b border-border-subtle ">
                   <tr>
                     <th className="py-3 px-3 text-center w-12">No</th>
                     <th className="py-3 px-3 w-20">Kode</th>
@@ -626,55 +626,55 @@ export const BOQItemizedTab: React.FC<BOQItemizedTabProps> = ({
                     <th className="py-3 px-3 text-center w-20">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
+                <tbody className="divide-y divide-slate-100 ">
                   {loading ? (
                     <tr>
-                      <td colSpan={10} className="py-12 text-center text-slate-400">
-                        <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-500" />
+                      <td colSpan={10} className="py-12 text-center text-text-muted">
+                        <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-primary" />
                         Memuat rincian BOQ...
                       </td>
                     </tr>
                   ) : filteredItems.length === 0 ? (
                     <tr>
                       <td colSpan={10} className="py-12 text-center">
-                        <Layers className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-                        <p className="font-semibold text-slate-700 dark:text-slate-300">Belum ada item pekerjaan BOQ</p>
-                        <p className="text-xs text-slate-400 mt-1">
+                        <Layers className="w-10 h-10 text-text-muted  mx-auto mb-3" />
+                        <p className="font-semibold text-text-secondary ">Belum ada item pekerjaan BOQ</p>
+                        <p className="text-xs text-text-muted mt-1">
                           Klik &ldquo;Tambah Item BOQ&rdquo; atau gunakan &ldquo;Contoh 20 Item RAB&rdquo; untuk mengisi otomatis.
                         </p>
                       </td>
                     </tr>
                   ) : (
                     filteredItems.map((item, idx) => (
-                      <tr key={item.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-700/20 transition group">
-                        <td className="py-3 px-3 text-center text-slate-400 text-xs font-mono">{idx + 1}</td>
-                        <td className="py-3 px-3 font-mono font-semibold text-slate-700 dark:text-slate-300">
+                      <tr key={item.id} className="hover:bg-canvas/70  transition group">
+                        <td className="py-3 px-3 text-center text-text-muted text-xs font-mono">{idx + 1}</td>
+                        <td className="py-3 px-3 font-mono font-semibold text-text-secondary ">
                           {item.kode}
                         </td>
                         <td className="py-3 px-3">
-                          <div className="font-medium text-slate-900 dark:text-white">{item.uraian}</div>
-                          <div className="text-xs text-slate-400 mt-0.5">
+                          <div className="font-medium text-text-primary ">{item.uraian}</div>
+                          <div className="text-xs text-text-muted mt-0.5">
                             Divisi: {item.divisionCategory}
                             {item.ahspId && (
-                              <span className="ml-2 text-blue-600 dark:text-blue-400 font-mono">
+                              <span className="ml-2 text-primary  font-mono">
                                 • [AHSP PUPR]
                               </span>
                             )}
                           </div>
                         </td>
-                        <td className="py-3 px-3 text-center font-mono text-slate-600 dark:text-slate-300">
+                        <td className="py-3 px-3 text-center font-mono text-text-secondary ">
                           {item.satuan}
                         </td>
-                        <td className="py-3 px-3 text-right font-mono font-semibold text-slate-800 dark:text-slate-200">
+                        <td className="py-3 px-3 text-right font-mono font-semibold text-text-primary ">
                           {formatQuantity(item.volume)}
                         </td>
-                        <td className="py-3 px-3 text-right font-mono text-slate-700 dark:text-slate-300">
+                        <td className="py-3 px-3 text-right font-mono text-text-secondary ">
                           {formatCurrencyIDR(item.hargaSatuan)}
                         </td>
-                        <td className="py-3 px-3 text-right font-mono font-bold text-slate-900 dark:text-white">
+                        <td className="py-3 px-3 text-right font-mono font-bold text-text-primary ">
                           {formatCurrencyIDR(item.jumlahHarga)}
                         </td>
-                        <td className="py-3 px-3 text-right font-mono text-blue-600 dark:text-blue-400 font-semibold">
+                        <td className="py-3 px-3 text-right font-mono text-primary  font-semibold">
                           {formatPercent(item.bobotPersen, 2)}
                         </td>
                         <td className="py-3 px-3 text-center">
@@ -683,7 +683,7 @@ export const BOQItemizedTab: React.FC<BOQItemizedTabProps> = ({
                               setProgItem(item);
                               setProgInput(String(item.progresPersen));
                             }}
-                            className="px-2 py-1 rounded text-xs font-mono font-bold bg-slate-100 hover:bg-blue-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 transition"
+                            className="px-2 py-1 rounded text-xs font-mono font-bold bg-neutral-bg hover:bg-primary/20  text-text-primary  transition"
                             title="Klik untuk ubah progres lapangan"
                           >
                             {item.progresPersen}%
@@ -694,14 +694,14 @@ export const BOQItemizedTab: React.FC<BOQItemizedTabProps> = ({
                             <button
                               onClick={() => openItemModal(item)}
                               title="Edit Item"
-                              className="p-1 text-slate-400 hover:text-blue-600 rounded"
+                              className="p-1 text-text-muted hover:text-primary rounded"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => handleDeleteItem(item)}
                               title="Hapus Item"
-                              className="p-1 text-slate-400 hover:text-red-600 rounded"
+                              className="p-1 text-text-muted hover:text-danger rounded"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -733,21 +733,21 @@ export const BOQItemizedTab: React.FC<BOQItemizedTabProps> = ({
                     setProgItem(item);
                     setProgInput(String(item.progresPersen));
                   }}
-                  className="px-2 py-1 text-xs rounded bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/30 text-blue-600 dark:text-blue-300 transition"
+                  className="px-2 py-1 text-xs rounded bg-primary/10 hover:bg-primary/20  text-primary  transition"
                   title="Ubah progres"
                 >
                   Progress
                 </button>
                 <button
                   onClick={() => openItemModal(item)}
-                  className="px-2 py-1 text-xs rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 transition"
+                  className="px-2 py-1 text-xs rounded bg-neutral-bg hover:bg-neutral-bg  text-text-secondary  transition"
                   title="Edit"
                 >
                   Edit
                 </button>
                 <button
                   onClick={() => handleDeleteItem(item)}
-                  className="px-2 py-1 text-xs rounded bg-red-50 hover:bg-red-100 dark:bg-red-950/30 text-red-600 dark:text-red-300 transition"
+                  className="px-2 py-1 text-xs rounded bg-danger-bg hover:bg-danger  text-danger  transition"
                   title="Hapus"
                 >
                   Hapus
@@ -762,12 +762,12 @@ export const BOQItemizedTab: React.FC<BOQItemizedTabProps> = ({
       {/* MODAL: Tambah / Edit Item BOQ */}
       {showItemModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-              <h3 className="font-bold text-slate-900 dark:text-white">
+          <div className="bg-white  rounded-xl shadow-xl border border-border-subtle  w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-6 py-4 border-b border-border-subtle  flex items-center justify-between">
+              <h3 className="font-bold text-text-primary ">
                 {editingItem ? 'Edit Item Pekerjaan BOQ' : 'Tambah Item Pekerjaan BOQ'}
               </h3>
-              <button onClick={() => setShowItemModal(false)} className="text-slate-400 hover:text-slate-600">
+              <button onClick={() => setShowItemModal(false)} className="text-text-muted hover:text-text-secondary">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -775,15 +775,15 @@ export const BOQItemizedTab: React.FC<BOQItemizedTabProps> = ({
             <form onSubmit={handleSaveItem} className="p-6 space-y-4">
               {/* Opsi Sinkronisasi dengan AHSP Template */}
               {ahspList.length > 0 && (
-                <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-lg border border-blue-200 dark:border-blue-900">
-                  <label className="block text-xs font-semibold text-blue-900 dark:text-blue-200 mb-1 flex items-center gap-1.5">
-                    <Calculator className="w-3.5 h-3.5 text-blue-600" />
+                <div className="p-3 bg-primary/10  rounded-lg border border-primary/20 ">
+                  <label className="block text-xs font-semibold text-primary  mb-1 flex items-center gap-1.5">
+                    <Calculator className="w-3.5 h-3.5 text-primary" />
                     <span>Pilih dari Pustaka AHSP PUPR (Opsional)</span>
                   </label>
                   <select
                     value={form.ahspId}
                     onChange={(e) => handleSelectAHSP(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-700 rounded-lg text-slate-900 dark:text-white"
+                    className="w-full px-3 py-1.5 text-xs bg-white  border border-primary/20  rounded-lg text-text-primary "
                   >
                     <option value="">-- Pilih Template AHSP untuk mengisi otomatis --</option>
                     {ahspList.map((tpl) => (
@@ -797,13 +797,13 @@ export const BOQItemizedTab: React.FC<BOQItemizedTabProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Divisi Pekerjaan <span className="text-red-500">*</span>
+                  <label className="block text-xs font-semibold text-text-secondary  mb-1">
+                    Divisi Pekerjaan <span className="text-danger">*</span>
                   </label>
                   <select
                     value={form.divisionCategory}
                     onChange={(e) => setForm({ ...form, divisionCategory: e.target.value as DivisionCategory })}
-                    className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg text-text-primary "
                   >
                     <option value="Pekerjaan Persiapan">Pekerjaan Persiapan</option>
                     <option value="Pekerjaan Struktur">Pekerjaan Struktur</option>
@@ -814,8 +814,8 @@ export const BOQItemizedTab: React.FC<BOQItemizedTabProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Kode Item <span className="text-red-500">*</span>
+                  <label className="block text-xs font-semibold text-text-secondary  mb-1">
+                    Kode Item <span className="text-danger">*</span>
                   </label>
                   <input
                     type="text"
@@ -823,14 +823,14 @@ export const BOQItemizedTab: React.FC<BOQItemizedTabProps> = ({
                     placeholder="Contoh: 1.1, 2.1"
                     value={form.kode}
                     onChange={(e) => setForm({ ...form, kode: e.target.value })}
-                    className="w-full px-3 py-2 text-sm font-mono bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-sm font-mono bg-canvas  border border-border-subtle  rounded-lg text-text-primary "
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Uraian Pekerjaan <span className="text-red-500">*</span>
+                <label className="block text-xs font-semibold text-text-secondary  mb-1">
+                  Uraian Pekerjaan <span className="text-danger">*</span>
                 </label>
                 <input
                   type="text"
@@ -838,14 +838,14 @@ export const BOQItemizedTab: React.FC<BOQItemizedTabProps> = ({
                   placeholder="Contoh: Pasangan pondasi batu belah camp. 1:4"
                   value={form.uraian}
                   onChange={(e) => setForm({ ...form, uraian: e.target.value })}
-                  className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
+                  className="w-full px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg text-text-primary "
                 />
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Satuan <span className="text-red-500">*</span>
+                  <label className="block text-xs font-semibold text-text-secondary  mb-1">
+                    Satuan <span className="text-danger">*</span>
                   </label>
                   <input
                     type="text"
@@ -853,13 +853,13 @@ export const BOQItemizedTab: React.FC<BOQItemizedTabProps> = ({
                     placeholder="m2, m3, kg, dll."
                     value={form.satuan}
                     onChange={(e) => setForm({ ...form, satuan: e.target.value })}
-                    className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-sm bg-canvas  border border-border-subtle  rounded-lg text-text-primary "
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Volume <span className="text-red-500">*</span>
+                  <label className="block text-xs font-semibold text-text-secondary  mb-1">
+                    Volume <span className="text-danger">*</span>
                   </label>
                   <input
                     type="number"
@@ -868,13 +868,13 @@ export const BOQItemizedTab: React.FC<BOQItemizedTabProps> = ({
                     required
                     value={form.volume}
                     onChange={(e) => setForm({ ...form, volume: e.target.value })}
-                    className="w-full px-3 py-2 text-sm font-semibold bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-sm font-semibold bg-canvas  border border-border-subtle  rounded-lg text-text-primary "
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Harga Satuan (Rp) <span className="text-red-500">*</span>
+                  <label className="block text-xs font-semibold text-text-secondary  mb-1">
+                    Harga Satuan (Rp) <span className="text-danger">*</span>
                   </label>
                   <input
                     type="number"
@@ -882,30 +882,30 @@ export const BOQItemizedTab: React.FC<BOQItemizedTabProps> = ({
                     required
                     value={form.hargaSatuan}
                     onChange={(e) => setForm({ ...form, hargaSatuan: e.target.value })}
-                    className="w-full px-3 py-2 text-sm font-semibold bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-sm font-semibold bg-canvas  border border-border-subtle  rounded-lg text-text-primary "
                   />
                 </div>
               </div>
 
-              <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg flex justify-between items-center text-xs">
-                <span className="text-slate-500 font-medium">Estimasi Subtotal Item:</span>
-                <span className="font-mono font-bold text-slate-900 dark:text-white text-sm">
+              <div className="p-3 bg-canvas  rounded-lg flex justify-between items-center text-xs">
+                <span className="text-text-muted font-medium">Estimasi Subtotal Item:</span>
+                <span className="font-mono font-bold text-text-primary  text-sm">
                   {formatCurrencyIDR(Math.round(parseFloat(form.volume || '0') * parseInt(form.hargaSatuan || '0', 10)))}
                 </span>
               </div>
 
-              <div className="pt-3 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-2">
+              <div className="pt-3 border-t border-border-subtle  flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowItemModal(false)}
-                  className="px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 rounded-lg"
+                  className="px-4 py-2 text-sm text-text-secondary  hover:bg-neutral-bg rounded-lg"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={formSubmitting}
-                  className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-2"
+                  className="px-4 py-2 text-sm font-semibold text-white bg-primary hover:bg-primary-hover rounded-lg flex items-center gap-2"
                 >
                   {formSubmitting && <RefreshCw className="w-4 h-4 animate-spin" />}
                   <span>Simpan Item BOQ</span>
@@ -919,16 +919,16 @@ export const BOQItemizedTab: React.FC<BOQItemizedTabProps> = ({
       {/* MODAL: Ubah Tarif PPN */}
       {showPpnModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-              <h3 className="font-bold text-slate-900 dark:text-white">Ubah Tarif PPN Proyek</h3>
-              <button onClick={() => setShowPpnModal(false)} className="text-slate-400 hover:text-slate-600">
+          <div className="bg-white  rounded-xl shadow-xl border border-border-subtle  w-full max-w-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-border-subtle  flex items-center justify-between">
+              <h3 className="font-bold text-text-primary ">Ubah Tarif PPN Proyek</h3>
+              <button onClick={() => setShowPpnModal(false)} className="text-text-muted hover:text-text-secondary">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleSavePPN} className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-text-secondary  mb-1">
                   Persentase PPN (%)
                 </label>
                 <input
@@ -939,22 +939,22 @@ export const BOQItemizedTab: React.FC<BOQItemizedTabProps> = ({
                   required
                   value={ppnInput}
                   onChange={(e) => setPpnInput(e.target.value)}
-                  className="w-full px-3 py-2 text-sm font-mono font-bold bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
+                  className="w-full px-3 py-2 text-sm font-mono font-bold bg-canvas  border border-border-subtle  rounded-lg text-text-primary "
                 />
-                <span className="text-xs text-slate-400 mt-1 block">Tarif standar UU HPP: 11%</span>
+                <span className="text-xs text-text-muted mt-1 block">Tarif standar UU HPP: 11%</span>
               </div>
-              <div className="pt-3 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-2">
+              <div className="pt-3 border-t border-border-subtle  flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowPpnModal(false)}
-                  className="px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 rounded-lg"
+                  className="px-4 py-2 text-sm text-text-secondary  hover:bg-neutral-bg rounded-lg"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={ppnSubmitting}
-                  className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-2"
+                  className="px-4 py-2 text-sm font-semibold text-white bg-primary hover:bg-primary-hover rounded-lg flex items-center gap-2"
                 >
                   {ppnSubmitting && <RefreshCw className="w-4 h-4 animate-spin" />}
                   <span>Simpan Tarif PPN</span>
@@ -968,20 +968,20 @@ export const BOQItemizedTab: React.FC<BOQItemizedTabProps> = ({
       {/* MODAL: Update Progres Cepat Item */}
       {progItem && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-              <h3 className="font-bold text-slate-900 dark:text-white">Update Progres Lapangan</h3>
-              <button onClick={() => setProgItem(null)} className="text-slate-400 hover:text-slate-600">
+          <div className="bg-white  rounded-xl shadow-xl border border-border-subtle  w-full max-w-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-border-subtle  flex items-center justify-between">
+              <h3 className="font-bold text-text-primary ">Update Progres Lapangan</h3>
+              <button onClick={() => setProgItem(null)} className="text-text-muted hover:text-text-secondary">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleSaveProgress} className="p-6 space-y-4">
               <div>
-                <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <div className="text-xs font-semibold text-text-secondary  mb-1">
                   {progItem.uraian} ({progItem.kode})
                 </div>
-                <div className="text-xs text-slate-400 mb-3">Bobot item: {progItem.bobotPersen}% terhadap total proyek</div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <div className="text-xs text-text-muted mb-3">Bobot item: {progItem.bobotPersen}% terhadap total proyek</div>
+                <label className="block text-xs font-semibold text-text-secondary  mb-1">
                   Progres Aktual (%)
                 </label>
                 <input
@@ -992,21 +992,21 @@ export const BOQItemizedTab: React.FC<BOQItemizedTabProps> = ({
                   required
                   value={progInput}
                   onChange={(e) => setProgInput(e.target.value)}
-                  className="w-full px-3 py-2 text-sm font-mono font-bold bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
+                  className="w-full px-3 py-2 text-sm font-mono font-bold bg-canvas  border border-border-subtle  rounded-lg text-text-primary "
                 />
               </div>
-              <div className="pt-3 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-2">
+              <div className="pt-3 border-t border-border-subtle  flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setProgItem(null)}
-                  className="px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 rounded-lg"
+                  className="px-4 py-2 text-sm text-text-secondary  hover:bg-neutral-bg rounded-lg"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={progSubmitting}
-                  className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-2"
+                  className="px-4 py-2 text-sm font-semibold text-white bg-primary hover:bg-primary-hover rounded-lg flex items-center gap-2"
                 >
                   {progSubmitting && <RefreshCw className="w-4 h-4 animate-spin" />}
                   <span>Simpan Progres</span>

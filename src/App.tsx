@@ -4,7 +4,7 @@
  */
 
 import React, { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppProvider } from './context/AppContext';
 import { UIProvider } from './context/UIContext';
@@ -13,9 +13,16 @@ import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { ScreenSkeleton } from './components/common/LoadingSkeleton';
 import { HardHat } from 'lucide-react';
 import { ROUTES, type RouteConfig, NotFoundScreen } from './config/routes';
+import { useUI } from './context/UIContext';
 
 const LoginScreen = lazy(() => import('./components/screens/LoginScreen').then(m => ({ default: m.LoginScreen })));
 const OnboardingWizard = lazy(() => import('./components/screens/OnboardingWizard').then(m => ({ default: m.OnboardingWizard })));
+
+const LegacyProjectRedirect: React.FC = () => {
+  const { id, tab } = useParams();
+  if (!id) return <Navigate to="/proyek" replace />;
+  return <Navigate to={`/proyek/${encodeURIComponent(id)}${tab ? `/${encodeURIComponent(tab)}` : ''}`} replace />;
+};
 
 // Protected route wrapper with RBAC check
 const ProtectedRoute: React.FC<{ route: RouteConfig }> = ({ route }) => {
@@ -47,6 +54,21 @@ const ProtectedRoute: React.FC<{ route: RouteConfig }> = ({ route }) => {
 };
 
 const AppRoutes: React.FC = () => {
+  const legacyRedirects = [
+    ['/dashboard', '/'],
+    ['/schedule', '/jadwal'],
+    ['/budget', '/anggaran'],
+    ['/resource-prices', '/harga-dasar'],
+    ['/ahsp-templates', '/ahsp'],
+    ['/materials', '/material'],
+    ['/procurement', '/pengadaan'],
+    ['/field-report', '/laporan-harian'],
+    ['/field-reports', '/laporan-harian'],
+    ['/team', '/tim'],
+    ['/reports', '/laporan'],
+    ['/settings', '/pengaturan'],
+  ] as const;
+
   return (
     <Routes>
       {ROUTES.map((route) => (
@@ -56,6 +78,14 @@ const AppRoutes: React.FC = () => {
           element={<ProtectedRoute route={route} />}
         />
       ))}
+      <Route path="/projects/:id/:tab?" element={<LegacyProjectRedirect />} />
+      <Route path="/projects" element={<Navigate to="/proyek" replace />} />
+      <Route path="/procurement/*" element={<Navigate to="/pengadaan" replace />} />
+      <Route path="/materials/*" element={<Navigate to="/material" replace />} />
+      <Route path="/budget/*" element={<Navigate to="/anggaran" replace />} />
+      {legacyRedirects.map(([path, destination]) => (
+        <Route key={path} path={path} element={<Navigate to={destination} replace />} />
+      ))}
       {/* 404 fallback */}
       <Route path="*" element={<NotFoundScreen />} />
     </Routes>
@@ -63,7 +93,18 @@ const AppRoutes: React.FC = () => {
 };
 
 const AuthenticatedApp: React.FC = () => {
-  const { currentUser, userProfile, isLoading } = useAuth();
+  const { currentUser, userProfile, isLoading, authError, isPasswordRecovery } = useAuth();
+  const { addToast } = useUI();
+
+  React.useEffect(() => {
+    if (authError) {
+      addToast({
+        type: 'danger',
+        title: 'Gagal memuat akun',
+        message: authError,
+      });
+    }
+  }, [authError, addToast]);
 
   if (isLoading) {
     return (
@@ -78,6 +119,38 @@ const AuthenticatedApp: React.FC = () => {
           </span>
         </div>
         <p className="text-xs text-[#69766F] mt-2 font-mono">Memuat sesi otorisasi enterprise...</p>
+      </div>
+    );
+  }
+
+  if (isPasswordRecovery) {
+    return (
+      <ErrorBoundary screenName="Pemulihan Kata Sandi">
+        <Suspense fallback={
+          <div className="h-screen w-screen flex items-center justify-center bg-[#F5F7F6]">
+            <div className="w-10 h-10 border-2 border-[#12352B] border-t-transparent rounded-full animate-spin" />
+          </div>
+        }>
+          <LoginScreen />
+        </Suspense>
+      </ErrorBoundary>
+    );
+  }
+
+  if (authError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F5F7F6] p-6">
+        <div className="max-w-md text-center">
+          <h1 className="text-xl font-bold text-[#202B26]">Akun belum dapat dimuat</h1>
+          <p className="mt-2 text-sm text-[#69766F]">{authError}</p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-5 rounded-lg bg-[#12352B] px-4 py-2 text-sm font-semibold text-white"
+          >
+            Coba lagi
+          </button>
+        </div>
       </div>
     );
   }
@@ -98,7 +171,7 @@ const AuthenticatedApp: React.FC = () => {
   }
 
   // User logged in but has no workspace membership → show onboarding wizard
-  const hasNoWorkspace = !userProfile || !userProfile.workspaceId || userProfile.workspaceId === 'indotek-jkt';
+  const hasNoWorkspace = !userProfile || !userProfile.workspaceId;
   if (hasNoWorkspace) {
     return (
       <ErrorBoundary screenName="Onboarding">

@@ -29,7 +29,7 @@ declare global {
 }
 
 /**
- * Middleware that authenticates the caller via Supabase JWT or Firebase Auth ID Token,
+ * Middleware that authenticates the caller via a Supabase JWT,
  * validates workspace membership strictly, and fetches the trusted role, status,
  * and assignedProjects from the database.
  * NEVER trusts the role or permissions passed in the request body.
@@ -125,11 +125,12 @@ export async function authenticateTrustedActor(
     name = supaUser.user.user_metadata?.full_name || (email ? email.split('@')[0] : 'User');
 
     // Get full name from profiles if available
-    const { data: profile } = await supabaseAdmin
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('full_name')
       .eq('id', uid)
       .maybeSingle();
+    if (profileError) throw new Error(`Gagal memuat profil: ${profileError.message}`);
 
     if (profile?.full_name) {
       name = profile.full_name;
@@ -148,7 +149,8 @@ export async function authenticateTrustedActor(
       supaMemberQuery = supaMemberQuery.eq('workspace_id', requestedWsId);
     }
 
-    const { data: members } = await supaMemberQuery;
+    const { data: members, error: membersError } = await supaMemberQuery;
+    if (membersError) throw new Error(`Gagal memuat keanggotaan workspace: ${membersError.message}`);
     const member = members && members.length > 0 ? members[0] : null;
 
     if (!member) {
@@ -172,12 +174,15 @@ export async function authenticateTrustedActor(
 
     let assignedProjectIds: string[] = ['*'];
     if (!member.all_projects && !['owner', 'finance', 'auditor'].includes(dbRole)) {
-      const { data: pMembers } = await supabaseAdmin
+      const { data: pMembers, error: projectMembersError } = await supabaseAdmin
         .from('project_members')
         .select('project_id')
         .eq('workspace_id', wsId)
         .eq('user_id', uid);
-      assignedProjectIds = pMembers?.map((p: any) => p.project_id) || [];
+      if (projectMembersError) {
+        throw new Error(`Gagal memuat akses proyek: ${projectMembersError.message}`);
+      }
+      assignedProjectIds = (pMembers || []).map((p: any) => p.project_id);
     }
 
     req.actor = {
@@ -198,8 +203,8 @@ export async function authenticateTrustedActor(
     next();
   } catch (err: any) {
     console.error('Authentication Error:', err);
-    res.status(401).json({
-      error: `Autentikasi gagal: ${err?.message || 'Token tidak valid atau kedaluwarsa.'}`,
+    res.status(500).json({
+      error: `Gagal memverifikasi akses workspace: ${err?.message || 'Kesalahan server tidak diketahui.'}`,
     });
   }
 }

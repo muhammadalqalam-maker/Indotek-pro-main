@@ -35,6 +35,7 @@ export interface OfflineFieldReportItem {
   equipmentUsed: Array<{ name: string; hours: number }>;
   blockers?: string;
   photos: OfflinePhotoItem[];
+  uploadedPhotoIds?: string[];
   createdAt: string;
   status: 'pending' | 'syncing' | 'synced' | 'conflict';
   error?: string;
@@ -81,6 +82,7 @@ export async function enqueueOfflineFieldReport(
 
   const record: OfflineFieldReportItem = {
     ...item,
+    uploadedPhotoIds: [],
     localId,
     idempotencyKey,
     createdAt: new Date().toISOString(),
@@ -94,6 +96,29 @@ export async function enqueueOfflineFieldReport(
 
     req.onsuccess = () => resolve(record);
     req.onerror = () => reject(req.error);
+  });
+}
+
+export async function markOfflinePhotoUploaded(localId: string, photoId: string): Promise<void> {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_REPORTS, 'readwrite');
+    const store = tx.objectStore(STORE_REPORTS);
+    const getReq = store.get(localId);
+
+    getReq.onsuccess = () => {
+      const item = getReq.result as OfflineFieldReportItem | undefined;
+      if (!item) {
+        reject(new Error(`Laporan offline ${localId} tidak ditemukan saat memperbarui status foto.`));
+        return;
+      }
+
+      item.uploadedPhotoIds = [...new Set([...(item.uploadedPhotoIds || []), photoId])];
+      const putReq = store.put(item);
+      putReq.onsuccess = () => resolve();
+      putReq.onerror = () => reject(putReq.error);
+    };
+    getReq.onerror = () => reject(getReq.error);
   });
 }
 

@@ -40,6 +40,10 @@ export const LoginScreen: React.FC = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [updatePasswordSubmitting, setUpdatePasswordSubmitting] = useState(false);
+  const [updatePasswordFeedback, setUpdatePasswordFeedback] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
 
   // Detect PASSWORD_RECOVERY event
   useEffect(() => {
@@ -138,32 +142,43 @@ export const LoginScreen: React.FC = () => {
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    setUpdatePasswordFeedback(null);
 
     if (!newPassword) {
-      addToast({ type: 'danger', message: 'Harap masukkan kata sandi baru.' });
+      setUpdatePasswordFeedback({ type: 'error', text: 'Harap masukkan kata sandi baru.' });
       return;
     }
 
     if (newPassword.length < 12) {
-      addToast({ type: 'danger', message: 'Kata sandi baru minimal 12 karakter untuk memenuhi standar keamanan enterprise.' });
+      setUpdatePasswordFeedback({
+        type: 'error',
+        text: 'Kata sandi baru minimal 12 karakter untuk memenuhi standar keamanan enterprise.',
+      });
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      addToast({ type: 'danger', message: 'Konfirmasi kata sandi tidak cocok. Harap periksa kembali.' });
+      setUpdatePasswordFeedback({
+        type: 'error',
+        text: 'Konfirmasi kata sandi tidak cocok. Harap periksa kembali.',
+      });
       return;
     }
 
     setUpdatePasswordSubmitting(true);
     try {
       await updatePassword(newPassword);
-      addToast({ type: 'success', message: 'Kata sandi berhasil diperbarui. Anda dapat login dengan kata sandi baru.' });
-      setIsUpdatePasswordModalOpen(false);
-      setIsPasswordRecovery(false);
+      setUpdatePasswordFeedback({
+        type: 'success',
+        text: 'Kata sandi berhasil diperbarui. Anda dapat melanjutkan menggunakan akun Anda.',
+      });
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
-      addToast({ type: 'danger', message: err?.message || 'Gagal memperbarui kata sandi. Silakan coba lagi.' });
+      setUpdatePasswordFeedback({
+        type: 'error',
+        text: err?.message || 'Gagal memperbarui kata sandi. Silakan coba lagi.',
+      });
     } finally {
       setUpdatePasswordSubmitting(false);
     }
@@ -431,6 +446,7 @@ export const LoginScreen: React.FC = () => {
                 onClick={() => {
                   setIsUpdatePasswordModalOpen(false);
                   setIsPasswordRecovery(false);
+                  setUpdatePasswordFeedback(null);
                 }}
                 className="p-1 hover:bg-bg-subtle rounded-lg transition-colors"
               >
@@ -439,6 +455,18 @@ export const LoginScreen: React.FC = () => {
             </div>
 
             <form onSubmit={handleUpdatePassword} className="space-y-4">
+              {updatePasswordFeedback && (
+                <div
+                  role={updatePasswordFeedback.type === 'error' ? 'alert' : 'status'}
+                  className={`p-3 rounded-xl text-xs ${
+                    updatePasswordFeedback.type === 'success'
+                      ? 'bg-success/10 text-success border border-success/30'
+                      : 'bg-danger/10 text-danger border border-danger/30'
+                  }`}
+                >
+                  {updatePasswordFeedback.text}
+                </div>
+              )}
               {/* New Password Field */}
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-2">Kata Sandi Baru</label>
@@ -490,18 +518,23 @@ export const LoginScreen: React.FC = () => {
                   onClick={() => {
                     setIsUpdatePasswordModalOpen(false);
                     setIsPasswordRecovery(false);
+                    setUpdatePasswordFeedback(null);
                   }}
                   disabled={updatePasswordSubmitting}
                 >
-                  Batal
+                  {updatePasswordFeedback?.type === 'success' ? 'Selesai' : 'Batal'}
                 </Button>
                 <Button
                   type="submit"
                   variant="primary"
                   size="sm"
-                  disabled={updatePasswordSubmitting}
+                  disabled={updatePasswordSubmitting || updatePasswordFeedback?.type === 'success'}
                 >
-                  {updatePasswordSubmitting ? 'Memperbarui...' : 'Perbarui Kata Sandi'}
+                  {updatePasswordSubmitting
+                    ? 'Memperbarui...'
+                    : updatePasswordFeedback?.type === 'success'
+                      ? 'Kata Sandi Diperbarui'
+                      : 'Perbarui Kata Sandi'}
                 </Button>
               </div>
             </form>
