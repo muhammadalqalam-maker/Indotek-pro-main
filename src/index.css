@@ -108,12 +108,16 @@
     outline-offset: 2px;
   }
   /* Keep dense desktop controls compact; enforce touch targets on mobile. */
-  button, [role="button"], input[type="button"], input[type="submit"] {
+  button, input[type="button"], input[type="submit"] {
     min-height: 0;
     min-width: 0;
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+  [role="button"] {
+    min-height: 0;
+    min-width: 0;
   }
   input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
   textarea,
@@ -149,7 +153,11 @@
 
 @layer components {
   @media (max-width: 767px) {
-    button, [role="button"], input[type="button"], input[type="submit"] {
+    button, input[type="button"], input[type="submit"] {
+      min-height: 44px;
+      min-width: 44px;
+    }
+    [role="button"] {
       min-height: 44px;
       min-width: 44px;
     }
