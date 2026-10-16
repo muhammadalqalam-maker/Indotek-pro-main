@@ -693,12 +693,26 @@ export const supabaseDataService = {
     const ws = resolveWorkspaceId(wsId);
     const { data, error } = await supabase
       .from('stock_adjustments')
-      .select('*, materials(name, code, unit, legacy_id), projects(name, legacy_id)')
+      .select('*, materials(name, code, unit, legacy_id)')
       .eq('workspace_id', ws)
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(`[getStockAdjustments] ${error.message}`);
-    return (data || []).map(mapStockAdjustment);
+    const adjustments = data || [];
+    const projectIds = [...new Set(adjustments.map((row) => row.project_id).filter(Boolean))];
+    const projectsById = new Map<string, { name: string; legacy_id?: string | null }>();
+    if (projectIds.length > 0) {
+      const { data: projects, error: projectsError } = await supabase
+        .from('projects')
+        .select('id, name, legacy_id')
+        .in('id', projectIds);
+      if (projectsError) throw new Error(`[getStockAdjustments] ${projectsError.message}`);
+      for (const project of projects || []) projectsById.set(project.id, project);
+    }
+    return adjustments.map((row) => mapStockAdjustment({
+      ...row,
+      projects: row.project_id ? projectsById.get(row.project_id) || null : null,
+    }));
   },
 
   /** stock_adjustments tidak ada di supabase_realtime publication — one-shot fetch. */
