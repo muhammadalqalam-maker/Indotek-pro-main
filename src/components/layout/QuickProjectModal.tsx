@@ -128,10 +128,11 @@ export const QuickProjectModal: React.FC = () => {
         )}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <label className="block font-medium text-text-primary mb-1">
+            <label htmlFor="project-code" className="block font-medium text-text-primary mb-1">
               Kode Proyek (opsional)
             </label>
             <input
+              id="project-code"
               type="text"
               value={formData.code}
               onChange={(e) => setFormData({ ...formData, code: e.target.value })}
@@ -142,10 +143,11 @@ export const QuickProjectModal: React.FC = () => {
           </div>
 
           <div className="sm:col-span-2">
-            <label className="block font-medium text-text-primary mb-1">
+            <label htmlFor="project-name" className="block font-medium text-text-primary mb-1">
               Nama Proyek <span className="text-danger">*</span>
             </label>
             <input
+              id="project-name"
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -160,10 +162,11 @@ export const QuickProjectModal: React.FC = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block font-medium text-text-primary mb-1">
+            <label htmlFor="project-client" className="block font-medium text-text-primary mb-1">
               Pemilik / Klien (Owner) <span className="text-danger">*</span>
             </label>
             <input
+              id="project-client"
               type="text"
               value={formData.client}
               onChange={(e) => setFormData({ ...formData, client: e.target.value })}
@@ -176,8 +179,9 @@ export const QuickProjectModal: React.FC = () => {
           </div>
 
           <div>
-            <label className="block font-medium text-text-primary mb-1">Kategori Konstruksi</label>
+            <label htmlFor="project-category" className="block font-medium text-text-primary mb-1">Kategori Konstruksi</label>
             <select
+              id="project-category"
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value as ProjectCategory })}
               className="w-full p-2 bg-white border border-border-subtle rounded-lg text-text-primary"
@@ -192,10 +196,11 @@ export const QuickProjectModal: React.FC = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block font-medium text-text-primary mb-1">
+            <label htmlFor="project-location" className="block font-medium text-text-primary mb-1">
               Lokasi Pekerjaan <span className="text-danger">*</span>
             </label>
             <input
+              id="project-location"
               type="text"
               value={formData.location}
               onChange={(e) => setFormData({ ...formData, location: e.target.value })}
@@ -208,8 +213,9 @@ export const QuickProjectModal: React.FC = () => {
           </div>
 
           <div>
-            <label className="block font-medium text-text-primary mb-1">Project Manager (PM)</label>
+            <label htmlFor="project-manager" className="block font-medium text-text-primary mb-1">Project Manager (PM)</label>
             <select
+              id="project-manager"
               value={formData.projectManager}
               onChange={(e) => setFormData({ ...formData, projectManager: e.target.value })}
               className="w-full p-2 bg-white border border-border-subtle rounded-lg text-text-primary"
@@ -225,10 +231,11 @@ export const QuickProjectModal: React.FC = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block font-medium text-[#202B26] mb-1">
+            <label htmlFor="project-contract-value" className="block font-medium text-[#202B26] mb-1">
               Nilai Kontrak (IDR) <span className="text-[#A82A20]">*</span>
             </label>
             <input
+              id="project-contract-value"
               type="number"
               value={formData.contractValue}
               onChange={(e) => {
@@ -245,10 +252,11 @@ export const QuickProjectModal: React.FC = () => {
           </div>
 
           <div>
-            <label className="block font-medium text-[#202B26] mb-1">
+            <label htmlFor="project-approved-budget" className="block font-medium text-[#202B26] mb-1">
               Pagu Anggaran RAB (85% Target Margin)
             </label>
             <input
+              id="project-approved-budget"
               type="number"
               value={formData.approvedBudget}
               onChange={(e) => setFormData({ ...formData, approvedBudget: e.target.value })}
@@ -260,8 +268,9 @@ export const QuickProjectModal: React.FC = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block font-medium text-[#202B26] mb-1">Tanggal Mulai SPMK</label>
+            <label htmlFor="project-start-date" className="block font-medium text-[#202B26] mb-1">Tanggal Mulai SPMK</label>
             <input
+              id="project-start-date"
               type="date"
               value={formData.startDate}
               onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
@@ -270,8 +279,9 @@ export const QuickProjectModal: React.FC = () => {
           </div>
 
           <div>
-            <label className="block font-medium text-[#202B26] mb-1">Target Selesai (Serah Terima 1)</label>
+            <label htmlFor="project-target-end-date" className="block font-medium text-[#202B26] mb-1">Target Selesai (Serah Terima 1)</label>
             <input
+              id="project-target-end-date"
               type="date"
               value={formData.targetEndDate}
               onChange={(e) => setFormData({ ...formData, targetEndDate: e.target.value })}
@@ -281,8 +291,9 @@ export const QuickProjectModal: React.FC = () => {
         </div>
 
         <div>
-          <label className="block font-medium text-[#202B26] mb-1">Deskripsi & Ruang Lingkup Singkat</label>
+          <label htmlFor="project-description" className="block font-medium text-[#202B26] mb-1">Deskripsi & Ruang Lingkup Singkat</label>
           <textarea
+            id="project-description"
             rows={2}
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}

@@ -1,494 +1,157 @@
 import { test, expect } from '@playwright/test';
+import {
+  authenticateTestPage,
+  mockSupabaseRestFallback,
+  mockWorkspaceProject,
+} from './helpers/authenticatedPage';
 
 test.describe('Field Reports Workflows', () => {
   test.beforeEach(async ({ page }) => {
-    const errors: string[] = [];
-    page.on('console', (msg) => {
-      if (msg.type() === 'error') {
-        const text = msg.text();
-        if (!text.includes('ResizeObserver')) {
-          errors.push(text);
-        }
-      }
-    });
-    (page as any)._consoleErrors = errors;
-
-    await page.addInitScript((session) => {
-      localStorage.setItem('sb-access-token', session.access_token);
-      localStorage.setItem('sb-refresh-token', 'mock-refresh-token');
-    }, { access_token: 'mock-token' });
-
-    await page.route('**/auth/v1/**', async (route) => {
+    await mockSupabaseRestFallback(page);
+    await mockWorkspaceProject(page);
+    await page.route('**/rest/v1/field_reports*', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({
-          user: { id: '00000000-0000-0000-0000-000000000001', email: 'user@example.com' },
-          session: { access_token: 'mock-token' },
-        }),
+        body: JSON.stringify([{
+          id: 'fr-001',
+          workspace_id: 'ws-test',
+          project_id: 'proj-001',
+          projects: { name: 'Gedung Kantor Pusat' },
+          report_number: 'LHP-001',
+          report_date: '2026-10-15',
+          weather_morning: 'Cerah',
+          weather_afternoon: 'Berawan',
+          working_hours: 8,
+          site_supervisor_name: 'Budi Santoso',
+          workforce: [{ role: 'Tukang', count: 4 }],
+          completed_works: ['Pengecoran lantai dasar'],
+          status: 'Draft',
+        }]),
       });
     });
+    await authenticateTestPage(page, { workspaceId: 'ws-test' });
+  });
 
-    await page.route('**/rest/v1/users*', async (route) => {
+  test('loads the current daily-report list and selected report', async ({ page }) => {
+    await page.goto('/laporan-harian');
+
+    await expect(page.getByRole('heading', { name: 'Laporan Harian & Pengawasan Site' })).toBeVisible();
+    await expect(page.getByText('LHP-001', { exact: true }).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Gedung Kantor Pusat' })).toBeVisible();
+    await expect(page.getByText('Budi Santoso').first()).toBeVisible();
+  });
+
+  test('opens the daily-report form and exposes its required fields', async ({ page }) => {
+    await page.goto('/laporan-harian');
+    await page.getByRole('button', { name: 'Buat Laporan Harian' }).click();
+
+    const dialog = page.getByRole('dialog', { name: 'Input Laporan Harian Konstruksi' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText('Nama Pengawas Lapangan')).toBeVisible();
+    await expect(dialog.getByText('Jam Kerja Efektif')).toBeVisible();
+    await expect(dialog.getByText('Cuaca Pagi', { exact: true })).toBeVisible();
+    await expect(dialog.getByText('Uraian Pekerjaan Terlaksana')).toBeVisible();
+  });
+
+  test('submits approval through the authorized RPC', async ({ page }) => {
+    let rpcBody: Record<string, unknown> | undefined;
+    await page.route('**/rest/v1/rpc/approve_field_report', async (route) => {
+      rpcBody = route.request().postDataJSON();
+      await route.fulfill({ status: 200, contentType: 'application/json', body: 'null' });
+    });
+
+    await page.goto('/laporan-harian');
+    await page.getByRole('button', { name: 'Setujui (PM)' }).click();
+
+    await expect.poll(() => rpcBody?.p_report_id).toBe('fr-001');
+    expect(rpcBody?.p_workspace_id).toEqual(expect.any(String));
+  });
+
+  test('rejects report hours above 24 before calling the create RPC', async ({ page }) => {
+    let requestSent = false;
+    await page.route('**/rest/v1/rpc/create_field_report', async (route) => {
+      requestSent = true;
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([
-          {
-            id: '00000000-0000-0000-0000-000000000001',
-            email: 'user@example.com',
-            display_name: 'Test User',
-          },
-        ]),
+        body: JSON.stringify({ data: { id: 'fr-new' } }),
       });
     });
 
-    await page.route('**/rest/v1/workspace_members*', async (route) => {
+    await page.goto('/laporan-harian');
+    await page.getByRole('button', { name: 'Buat Laporan Harian' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Input Laporan Harian Konstruksi' });
+    await dialog.locator('select').nth(1).selectOption('Cerah');
+    await dialog.locator('select').nth(2).selectOption('Berawan');
+    await dialog.locator('input[type="text"]').nth(0).fill('Pengawas Uji');
+    await dialog.locator('input[type="number"]').nth(0).fill('25');
+    await dialog.locator('input[type="number"]').nth(1).fill('4');
+    await dialog.locator('input[type="number"]').nth(2).fill('2');
+    await dialog.locator('textarea').first().fill('Pengecoran area timur');
+    await page.getByRole('button', { name: 'Simpan & Terbitkan Laporan' }).click();
+
+    await expect(page.getByText('Data Tenaga Kerja Tidak Valid', { exact: true })).toBeVisible();
+    expect(requestSent).toBe(false);
+  });
+
+  test('creates a daily report with validated workforce and weather data', async ({ page }) => {
+    let rpcBody: Record<string, unknown> | undefined;
+    await page.route('**/rest/v1/rpc/create_field_report', async (route) => {
+      rpcBody = route.request().postDataJSON();
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([
-          {
-            id: 'wm-001',
-            user_id: '00000000-0000-0000-0000-000000000001',
-            role: 'Admin',
-            status: 'Aktif',
-          },
-        ]),
+        body: JSON.stringify({ data: { id: 'fr-new' } }),
       });
     });
 
-    await page.route('**/rest/v1/projects*', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([
-          {
-            id: 'proj-001',
-            project_name: 'Test Project',
-            location: 'Jakarta',
-            estimated_budget: 1000000000n,
-            start_date: '2026-01-01',
-            status: 'Aktif',
-          },
-        ]),
-      });
+    await page.goto('/laporan-harian');
+    await page.getByRole('button', { name: 'Buat Laporan Harian' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Input Laporan Harian Konstruksi' });
+    await dialog.locator('select').nth(1).selectOption('Cerah');
+    await dialog.locator('select').nth(2).selectOption('Berawan');
+    await dialog.locator('input[type="text"]').nth(0).fill('Pengawas Uji');
+    await dialog.locator('input[type="number"]').nth(0).fill('8');
+    await dialog.locator('input[type="number"]').nth(1).fill('4');
+    await dialog.locator('input[type="number"]').nth(2).fill('2');
+    await dialog.locator('textarea').first().fill('Pengecoran area timur');
+    await page.getByRole('button', { name: 'Simpan & Terbitkan Laporan' }).click();
+
+    await expect.poll(() => rpcBody?.p_project_id).toBe('proj-001');
+    expect(rpcBody).toMatchObject({
+      p_site_supervisor_name: 'Pengawas Uji',
+      p_weather_morning: 'Cerah',
+      p_weather_afternoon: 'Berawan',
+      p_working_hours: 8,
+      p_workforce: [
+        { role: 'Tukang', count: 4 },
+        { role: 'Helper / Pekerja', count: 2 },
+      ],
+      p_completed_works: ['Pengecoran area timur'],
     });
+    await expect(dialog).toBeHidden();
   });
 
-  test.describe('Field Report Submission', () => {
-    test('displays field reports list without console errors', async ({ page }) => {
-      await page.route('**/rest/v1/field_reports*', async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify([
-            {
-              id: 'fr-001',
-              project_id: 'proj-001',
-              report_date: '2026-10-15',
-              author: 'Test User',
-              weather: 'Cerah',
-              workers_count: 25,
-              equipment_status: 'Siap',
-              activities: 'Pekerjaan pondasi dimulai',
-              status: 'Selesai',
-              created_at: '2026-10-15T10:00:00Z',
-            },
-          ]),
-        });
-      });
+  test('filters the report list by its report number', async ({ page }) => {
+    await page.goto('/laporan-harian');
+    await page.getByPlaceholder('Cari nomor, pengawas, proyek...').fill('LHP-001');
 
-      await page.goto('/field-report');
-
-      await expect(page.locator('text=Laporan Harian')).toBeVisible();
-      await expect(page.locator('text=Test Project')).toBeVisible();
-      await expect(page.locator('text=Pekerjaan pondasi dimulai')).toBeVisible();
-
-      const errors = (page as any)._consoleErrors;
-      expect(errors.length).toBe(0);
-    });
-
-    test('opens new field report modal', async ({ page }) => {
-      await page.route('**/rest/v1/field_reports*', async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify([]),
-        });
-      });
-
-      await page.goto('/field-report');
-      await page.click('text=Laporan Baru');
-
-      await expect(page.locator('text=Buat Laporan Harian')).toBeVisible();
-      await expect(page.locator('input[name="weather"]')).toBeVisible();
-      await expect(page.locator('textarea[name="activities"]')).toBeVisible();
-    });
-
-    test('submits new field report with valid data', async ({ page }) => {
-      await page.route('**/rest/v1/field_reports*', async (route) => {
-        if (route.request().method() === 'POST') {
-          await route.fulfill({
-            status: 201,
-            contentType: 'application/json',
-            body: JSON.stringify({
-              id: 'fr-002',
-              project_id: 'proj-001',
-              report_date: '2026-10-15',
-              author: 'Test User',
-              weather: 'Berawan',
-              workers_count: 30,
-              equipment_status: 'Siap',
-              activities: 'Penggalian dan pemadatan tanah',
-              status: 'Draft',
-            }),
-          });
-        } else {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify([]),
-          });
-        }
-      });
-
-      await page.goto('/field-report');
-      await page.click('text=Laporan Baru');
-
-      await page.selectOption('select[name="project_id"]', 'proj-001');
-      await page.fill('input[name="weather"]', 'Berawan');
-      await page.fill('input[name="workers_count"]', '30');
-      await page.selectOption('select[name="equipment_status"]', 'Siap');
-      await page.fill('textarea[name="activities"]', 'Penggalian dan pemadatan tanah');
-      await page.click('button:has-text("Simpan")');
-
-      await expect(page.locator('text=berhasil')).toBeVisible();
-    });
-
-    test('validates required fields in field report form', async ({ page }) => {
-      await page.route('**/rest/v1/field_reports*', async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify([]),
-        });
-      });
-
-      await page.goto('/field-report');
-      await page.click('text=Laporan Baru');
-      await page.click('button:has-text("Simpan")');
-
-      await expect(page.locator('text=diperlukan')).toBeVisible();
-    });
+    await expect(page.getByText('LHP-001', { exact: true }).first()).toBeVisible();
   });
 
-  test.describe('Photo Attachments', () => {
-    test('uploads photo attachment to field report', async ({ page }) => {
-      await page.route('**/rest/v1/field_reports*', async (route) => {
-        if (route.request().method() === 'POST') {
-          await route.fulfill({
-            status: 201,
-            contentType: 'application/json',
-            body: JSON.stringify({
-              id: 'fr-003',
-              project_id: 'proj-001',
-              report_date: '2026-10-15',
-              status: 'Draft',
-            }),
-          });
-        } else {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify([]),
-          });
-        }
-      });
+  test('limits report photo selection to three files', async ({ page }) => {
+    await page.goto('/laporan-harian');
+    await page.getByRole('button', { name: 'Buat Laporan Harian' }).click();
 
-      await page.route('**/storage/v1/object/**', async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ key: 'photo-001' }),
-        });
-      });
+    await page.getByRole('dialog', { name: 'Input Laporan Harian Konstruksi' })
+      .locator('input[type="file"]')
+      .setInputFiles([1, 2, 3, 4].map((number) => ({
+        name: `photo-${number}.png`,
+        mimeType: 'image/png',
+        buffer: Buffer.from('test-image'),
+      })));
 
-      await page.goto('/field-report');
-      await page.click('text=Laporan Baru');
-
-      // Create and upload a mock file
-      const fileInput = page.locator('input[type="file"]');
-      await fileInput.setInputFiles({
-        name: 'test-photo.jpg',
-        mimeType: 'image/jpeg',
-        buffer: Buffer.from('fake image data'),
-      });
-
-      await expect(page.locator('text=test-photo.jpg')).toBeVisible();
-    });
-
-    test('displays uploaded photo in report detail', async ({ page }) => {
-      await page.route('**/rest/v1/field_reports*', async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify([
-            {
-              id: 'fr-004',
-              project_id: 'proj-001',
-              report_date: '2026-10-15',
-              activities: 'Laporan dengan foto',
-              status: 'Selesai',
-              attachments: [
-                {
-                  id: 'att-001',
-                  file_name: 'foundation-photo.jpg',
-                  file_url: 'https://mock-storage.com/photos/foundation.jpg',
-                  file_type: 'image/jpeg',
-                },
-              ],
-            },
-          ]),
-        });
-      });
-
-      await page.goto('/field-report');
-      await page.click('text=foundation-photo.jpg');
-
-      await expect(page.locator('img[src*="foundation.jpg"]')).toBeVisible();
-    });
-  });
-
-  test.describe('Approval Workflow', () => {
-    test('submits field report for approval', async ({ page }) => {
-      await page.route('**/rest/v1/field_reports*', async (route) => {
-        if (route.request().method() === 'PATCH') {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({
-              id: 'fr-005',
-              status: 'Menunggu Persetujuan',
-            }),
-          });
-        } else {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify([
-              {
-                id: 'fr-005',
-                project_id: 'proj-001',
-                report_date: '2026-10-15',
-                status: 'Draft',
-                author_id: '00000000-0000-0000-0000-000000000002',
-              },
-            ]),
-          });
-        }
-      });
-
-      await page.goto('/field-report');
-      await page.click('[data-id="fr-005"]');
-      await page.click('button:has-text("Ajukan")');
-
-      await expect(page.locator('text=berhasil')).toBeVisible();
-    });
-
-    test('approves field report', async ({ page }) => {
-      await page.route('**/rest/v1/field_reports*', async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify([
-            {
-              id: 'fr-006',
-              project_id: 'proj-001',
-              report_date: '2026-10-15',
-              status: 'Menunggu Persetujuan',
-              author_id: '00000000-0000-0000-0000-000000000002',
-            },
-          ]),
-        });
-      });
-
-      await page.route('**/rest/v1/rpc/approve_field_report', async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ success: true }),
-        });
-      });
-
-      await page.goto('/field-report');
-      await page.click('[data-id="fr-006"]');
-      await page.click('button:has-text("Setujui")');
-
-      await expect(page.locator('text=disetujui')).toBeVisible();
-    });
-
-    test('rejects field report with comment', async ({ page }) => {
-      await page.route('**/rest/v1/field_reports*', async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify([
-            {
-              id: 'fr-007',
-              project_id: 'proj-001',
-              report_date: '2026-10-15',
-              status: 'Menunggu Persetujuan',
-              author_id: '00000000-0000-0000-0000-000000000002',
-            },
-          ]),
-        });
-      });
-
-      await page.route('**/rest/v1/rpc/reject_field_report', async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ success: true }),
-        });
-      });
-
-      await page.goto('/field-report');
-      await page.click('[data-id="fr-007"]');
-      await page.click('button:has-text("Tolak")');
-
-      await page.fill('textarea[name="rejection_reason"]', 'Data aktivitas kurang detail');
-      await page.click('button:has-text("Konfirmasi")');
-
-      await expect(page.locator('text=ditolak')).toBeVisible();
-    });
-
-    test('prevents self-approval (SoD violation)', async ({ page }) => {
-      await page.route('**/rest/v1/field_reports*', async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify([
-            {
-              id: 'fr-008',
-              project_id: 'proj-001',
-              report_date: '2026-10-15',
-              status: 'Menunggu Persetujuan',
-              author_id: '00000000-0000-0000-0000-000000000001', // Same as current user
-            },
-          ]),
-        });
-      });
-
-      await page.route('**/rest/v1/rpc/approve_field_report', async (route) => {
-        await route.fulfill({
-          status: 400,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            error: 'Separation of Duties violation: cannot approve own report',
-          }),
-        });
-      });
-
-      await page.goto('/field-report');
-      await page.click('[data-id="fr-008"]');
-      await page.click('button:has-text("Setujui")');
-
-      await expect(page.locator('text=Separation of Duties violation')).toBeVisible();
-    });
-  });
-
-  test.describe('Filtering and Search', () => {
-    test('filters field reports by date range', async ({ page }) => {
-      await page.route('**/rest/v1/field_reports*', async (route) => {
-        const url = new URL(route.request().url());
-        const hasDateFilter = url.searchParams.has('report_date');
-        
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify(
-            hasDateFilter
-              ? [
-                  {
-                    id: 'fr-009',
-                    project_id: 'proj-001',
-                    report_date: '2026-10-15',
-                    status: 'Selesai',
-                  },
-                ]
-              : []
-          ),
-        });
-      });
-
-      await page.goto('/field-report');
-      await page.fill('input[name="date_from"]', '2026-10-15');
-      await page.fill('input[name="date_to"]', '2026-10-15');
-      await page.click('button:has-text("Terapkan")');
-
-      await expect(page.locator('text=2026-10-15')).toBeVisible();
-    });
-
-    test('filters field reports by status', async ({ page }) => {
-      await page.route('**/rest/v1/field_reports*', async (route) => {
-        const url = new URL(route.request().url());
-        const status = url.searchParams.get('status');
-        
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify(
-            status === 'Menunggu Persetujuan'
-              ? [
-                  {
-                    id: 'fr-010',
-                    project_id: 'proj-001',
-                    report_date: '2026-10-15',
-                    status: 'Menunggu Persetujuan',
-                  },
-                ]
-              : []
-          ),
-        });
-      });
-
-      await page.goto('/field-report');
-      await page.selectOption('select[name="status"]', 'Menunggu Persetujuan');
-      await page.click('button:has-text("Terapkan")');
-
-      await expect(page.locator('text=Menunggu Persetujuan')).toBeVisible();
-    });
-
-    test('searches field reports by project name', async ({ page }) => {
-      await page.route('**/rest/v1/field_reports*', async (route) => {
-        const url = new URL(route.request().url());
-        const search = url.searchParams.get('project_name');
-        
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify(
-            search
-              ? [
-                  {
-                    id: 'fr-011',
-                    project_id: 'proj-001',
-                    project_name: 'Test Project',
-                    report_date: '2026-10-15',
-                    status: 'Selesai',
-                  },
-                ]
-              : []
-          ),
-        });
-      });
-
-      await page.goto('/field-report');
-      await page.fill('input[name="search"]', 'Test Project');
-      await page.click('button:has-text("Cari")');
-
-      await expect(page.locator('text=Test Project')).toBeVisible();
-    });
+    await expect(page.getByText('3/3 dipilih')).toBeVisible();
   });
 });

@@ -90,20 +90,24 @@ export const AcceptInvitationScreen: React.FC = () => {
     }
   };
 
-  // Loading state while fetching token
-  if (!token && !searchParams.has('token')) {
+  if (!searchParams.has('token')) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-canvas">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-text-secondary">Memuat...</p>
+      <div className="min-h-screen flex items-center justify-center bg-canvas px-4">
+        <div className="max-w-md w-full bg-surface rounded-2xl border border-border-subtle shadow-lg p-8 text-center space-y-6">
+          <div className="mx-auto w-16 h-16 bg-warning-bg rounded-full flex items-center justify-center">
+            <AlertCircle className="w-8 h-8 text-warning" />
+          </div>
+          <h2 className="text-2xl font-bold text-text-primary">Undangan tidak valid</h2>
+          <p className="text-text-secondary">Token undangan tidak ditemukan.</p>
+          <Button onClick={() => navigate('/masuk')} className="w-full">
+            Masuk
+          </Button>
         </div>
       </div>
     );
   }
 
-  // Already accepted or expired
-  if (success && error) {
+  if (!success && error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-canvas px-4">
         <div className="max-w-md w-full bg-surface rounded-2xl border border-border-subtle shadow-lg p-8 text-center space-y-6">

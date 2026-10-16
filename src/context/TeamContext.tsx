@@ -163,7 +163,7 @@ export const TeamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Invitation failed: ${response.statusText}`);
+        throw new Error(errorData.message || errorData.error || `Invitation failed: ${response.statusText}`);
       }
 
       await loadTeamData();

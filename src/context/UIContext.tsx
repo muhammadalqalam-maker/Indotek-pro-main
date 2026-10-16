@@ -10,6 +10,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { AppSettings, dataService, resolveWorkspaceId, type ActorInfo } from '../services/dataService';
 import { useAuth } from './AuthContext';
 import { NotificationItem, AuditLogEntry, AuditActionType } from '../types';
+import type { AppRole } from '../types/rbac';
 
 export type ScreenId =
   | 'dashboard'
@@ -170,7 +171,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
   const actorInfo: ActorInfo = {
     actorName: userProfile?.name || currentUser?.displayName || 'Pengguna',
-    actorRole: activeRole || 'Viewer',
+    actorRole: activeRole || 'Read-only Auditor',
   };
 
   const isActionPending = (id: string): boolean => Boolean(pendingActions[id]);

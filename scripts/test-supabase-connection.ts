@@ -21,10 +21,11 @@ async function testSupabaseConnection() {
       console.error(`[Auth] ✗ Gagal list users: ${error.message}`);
       allOk = false;
     } else {
-      console.log(`[Auth] ✓ Layanan Auth terhubung! Jumlah akun: ${data?.users?.length ?? 0}`);
-      data?.users?.forEach((u) => {
-        console.log(`       - ${u.email} (${u.id})`);
-      });
+      const users = data?.users ?? [];
+      console.log(`[Auth] ✓ Layanan Auth terhubung! Jumlah akun: ${users.length}`);
+      for (const user of users) {
+        console.log(`       - ${user.email ?? '(tanpa email)'} (${user.id})`);
+      }
     }
   } catch (err: any) {
     console.error(`[Auth] ✗ Exception Auth: ${err?.message || err}`);

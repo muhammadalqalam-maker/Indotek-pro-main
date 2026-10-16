@@ -54,13 +54,13 @@ export const TeamInviteModal: React.FC<TeamInviteModalProps> = ({
           <Button variant="secondary" size="sm" onClick={onClose}>
             Batal
           </Button>
-          <Button variant="primary" size="sm" onClick={onSubmit}>
+          <Button variant="primary" size="sm" type="submit" form="team-invite-form">
             Kirim Undangan & Terbitkan Akun
           </Button>
         </>
       }
     >
-      <form onSubmit={onSubmit} className="space-y-3.5 text-xs">
+      <form id="team-invite-form" onSubmit={onSubmit} className="space-y-3.5 text-xs">
         <div>
           <label htmlFor="invite-name" className="block font-medium text-[#202B26] mb-1">
             Nama Lengkap & Gelar <span className="text-[#A82A20]">*</span>

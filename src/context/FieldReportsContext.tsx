@@ -39,7 +39,7 @@ export const FieldReportsProvider: React.FC<{ children: ReactNode }> = ({ childr
 
     const needsFieldReportsRealtime =
       screenId === 'field-reports' ||
-      (screenId === 'project-detail' && projectDetailTab === 'reports');
+      (screenId === 'project-detail' && projectDetailTab === 'field-reports');
 
     if (!needsFieldReportsRealtime) return;
 

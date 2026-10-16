@@ -2,6 +2,7 @@
 import { supabase } from '../lib/supabase';
 import { MaterialItem, StockMutation, StockAdjustment } from '../types';
 import { resolveCurrentWorkspaceId } from './projects';
+import { mapMaterial } from '../services/supabaseDataService';
 
 /** Get all material catalog entries */
 export async function getMaterials(): Promise<MaterialItem[]> {
@@ -12,7 +13,7 @@ export async function getMaterials(): Promise<MaterialItem[]> {
     .eq('workspace_id', wsId)
     .order('code', { ascending: true });
   if (error) throw new Error(error.message);
-  return data as MaterialItem[];
+  return (data || []).map(mapMaterial);
 }
 
 /** Create a new material (descriptive fields only) */

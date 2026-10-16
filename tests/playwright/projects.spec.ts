@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { authenticateTestPage } from './helpers/authenticatedPage';
 
 test.describe('Project Management Flows', () => {
   test.beforeEach(async ({ page }) => {
@@ -10,107 +11,129 @@ test.describe('Project Management Flows', () => {
     });
     (page as any).consoleErrors = consoleErrors;
 
-    // Authenticated session
-    await page.addInitScript((session) => {
-      localStorage.setItem('sb-mock-auth-token', JSON.stringify(session));
-    }, {
-      access_token: 'mock-token',
-      user: { id: '00000000-0000-0000-0000-000000000001' },
-    });
-
-    await page.route('**/auth/v1/**', async (route) => {
+    await page.route('**/rest/v1/**', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({
-          user: { id: '00000000-0000-0000-0000-000000000001' },
-          session: { access_token: 'mock-token' },
-        }),
-      });
-    });
-
-    await page.route('**/rest/v1/users*', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([{
-          id: '00000000-0000-0000-0000-000000000001',
-          email: 'test@indotek.com',
-          name: 'Test User',
-          role: 'Owner',
-          workspace_id: 'ws-test',
-          is_onboarding_complete: true,
-        }]),
-      });
-    });
-
-    await page.route('**/rest/v1/workspace_members*', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([{
-          id: 'member-1',
-          user_id: '00000000-0000-0000-0000-000000000001',
-          workspace_id: 'ws-test',
-          role: 'Owner',
-          status: 'Aktif',
-        }]),
+        body: JSON.stringify([]),
+        headers: { 'Content-Range': '0-0/0' },
       });
     });
 
     await page.route('**/rest/v1/projects*', async (route) => {
-      const method = route.request().method();
-      if (method === 'POST') {
-        await route.fulfill({
-          status: 201,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            id: 'proj-123',
-            name: 'Gedung Kantor Pusat',
-            code: 'PROJ-001',
-            location: 'Jakarta Selatan',
-            workspace_id: 'ws-test',
-            created_at: new Date().toISOString(),
-          }),
-        });
-      } else {
+      const requestUrl = new URL(route.request().url());
+      const selectedColumns = requestUrl.searchParams.get('select');
+      if (selectedColumns === 'id,legacy_id') {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify([
-            {
-              id: 'proj-123',
-              name: 'Gedung Kantor Pusat',
-              code: 'PROJ-001',
-              location: 'Jakarta Selatan',
-              budget: 5000000000,
-              progress: 35,
-              status: 'Sedang Berjalan',
-              workspace_id: 'ws-test',
-              created_at: '2026-06-15T10:00:00Z',
-            },
-            {
-              id: 'proj-124',
-              name: 'Perumahan Terintegrasi',
-              code: 'PROJ-002',
-              location: 'Tangerang',
-              budget: 8000000000,
-              progress: 15,
-              status: 'Sedang Berjalan',
-              workspace_id: 'ws-test',
-              created_at: '2026-07-01T10:00:00Z',
-            },
-          ]),
+          body: JSON.stringify([{ id: 'proj-123', legacy_id: 'proj-123' }]),
         });
+        return;
       }
+
+      const method = route.request().method();
+      if (method !== 'GET') {
+        await route.fulfill({ status: 405, body: 'Method not allowed' });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          {
+            id: 'proj-123',
+            name: 'Gedung Kantor Pusat',
+            code: 'PROJ-001',
+            client: 'PT Indotek',
+            location: 'Jakarta Selatan',
+            contract_value: 5000000000,
+            progress_actual: 35,
+            status: 'Berjalan',
+            workspace_id: 'ws-test',
+            created_at: '2026-06-15T10:00:00Z',
+          },
+          {
+            id: 'proj-124',
+            name: 'Perumahan Terintegrasi',
+            code: 'PROJ-002',
+            client: 'PT Indotek',
+            location: 'Tangerang',
+            contract_value: 8000000000,
+            progress_actual: 15,
+            status: 'Berjalan',
+            workspace_id: 'ws-test',
+            created_at: '2026-07-01T10:00:00Z',
+          },
+        ]),
+      });
     });
+
+    await page.route('**/rest/v1/budget_lines*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          {
+            id: 'bl-1',
+            code: 'BL-001',
+            division_name: 'Pekerjaan Fondasi',
+            planned_amount: 500000000,
+            actual_amount: 0,
+            variance_amount: 500000000,
+            project_id: 'proj-123',
+            workspace_id: 'ws-test',
+          },
+          {
+            id: 'bl-2',
+            code: 'BL-002',
+            division_name: 'Pekerjaan Struktur',
+            planned_amount: 2000000000,
+            actual_amount: 0,
+            variance_amount: 2000000000,
+            project_id: 'proj-123',
+            workspace_id: 'ws-test',
+          },
+        ]),
+      });
+    });
+
+    await page.route('**/rest/v1/field_reports*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([{
+          id: 'fr-1',
+          report_number: 'LHP-001',
+          report_date: '2026-10-14',
+          weather_morning: 'Cerah',
+          site_supervisor_name: 'Budi Santoso',
+          project_id: 'proj-123',
+          workspace_id: 'ws-test',
+        }]),
+      });
+    });
+
+    const projectRpcRequests: Array<Record<string, unknown>> = [];
+    (page as any).projectRpcRequests = projectRpcRequests;
+    await page.route('**/rest/v1/rpc/create_project', async (route) => {
+      projectRpcRequests.push(route.request().postDataJSON());
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ id: 'proj-new' }),
+      });
+    });
+
+    await authenticateTestPage(page);
   });
 
   test.describe('Project Creation', () => {
     test('displays projects list without console errors', async ({ page }) => {
       await page.goto('/proyek');
 
-      await expect(page.locator('text=Portofolio Proyek')).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Daftar Portofolio Proyek' })).toBeVisible();
       await expect(page.locator('text=Gedung Kantor Pusat')).toBeVisible();
       await expect(page.locator('text=Perumahan Terintegrasi')).toBeVisible();
 
@@ -121,26 +144,31 @@ test.describe('Project Management Flows', () => {
     test('opens project creation modal', async ({ page }) => {
       await page.goto('/proyek');
 
-      await page.click('button:has-text("Buat Proyek")');
+      await page.locator('main').getByRole('button', { name: 'Tambah Proyek Baru' }).click();
 
-      await expect(page.locator('text=Buat Proyek Baru')).toBeVisible();
-      await expect(page.locator('input[placeholder*="Nama"]')).toBeVisible();
+      await expect(page.getByRole('dialog', { name: 'Tambah Proyek Konstruksi Baru' })).toBeVisible();
+      await expect(page.getByLabel(/Nama Proyek/)).toBeVisible();
     });
 
     test('creates new project with valid data', async ({ page }) => {
       await page.goto('/proyek');
 
-      await page.click('button:has-text("Buat Proyek")');
+      await page.locator('main').getByRole('button', { name: 'Tambah Proyek Baru' }).click();
+      await page.getByLabel(/Nama Proyek/).fill('Jembatan Sungai Kapuas');
+      await page.getByLabel(/Pemilik \/ Klien/).fill('PT Indotek');
+      await page.getByLabel(/Lokasi Pekerjaan/).fill('Pontianak, Kalbar');
+      await page.getByLabel(/Nilai Kontrak/).fill('2500000000');
+      await page.getByRole('button', { name: 'Simpan & Buka Portofolio' }).click();
 
-      await page.fill('input[placeholder*="Nama"]', 'Jembatan Sungai Kapuas');
-      await page.fill('input[placeholder*="Kode"]', 'JEMBATAN-001');
-      await page.fill('input[placeholder*="Lokasi"]', 'Pontianak, Kalbar');
-      await page.fill('input[placeholder*="Budget"]', '2500000000');
-
-      await page.click('button:has-text("Simpan")');
-
-      await expect(page.locator('text=Proyek berhasil dibuat')).toBeVisible({ timeout: 3000 });
-      await page.waitForTimeout(500);
+      await expect(page.getByRole('dialog')).toBeHidden();
+      const requests = (page as any).projectRpcRequests as Array<Record<string, unknown>>;
+      await expect.poll(() => requests.length).toBe(1);
+      expect(requests[0]).toMatchObject({
+        p_name: 'Jembatan Sungai Kapuas',
+        p_client: 'PT Indotek',
+        p_location: 'Pontianak, Kalbar',
+        p_contract_value: 2500000000,
+      });
       
       const errors = (page as any).consoleErrors;
       expect(errors.filter((e: string) => !e.includes('ResizeObserver'))).toHaveLength(0);
@@ -149,25 +177,24 @@ test.describe('Project Management Flows', () => {
     test('validates required fields in project form', async ({ page }) => {
       await page.goto('/proyek');
 
-      await page.click('button:has-text("Buat Proyek")');
+      await page.locator('main').getByRole('button', { name: 'Tambah Proyek Baru' }).click();
 
       // Try to submit empty form
-      await page.click('button:has-text("Simpan")');
+      await page.getByRole('button', { name: 'Simpan & Buka Portofolio' }).click();
 
-      await expect(page.locator('text=Nama wajib diisi')).toBeVisible();
+      await expect(page.getByText('Nama proyek wajib diisi')).toBeVisible();
     });
 
     test('formats budget currency input', async ({ page }) => {
       await page.goto('/proyek');
 
-      await page.click('button:has-text("Buat Proyek")');
+      await page.locator('main').getByRole('button', { name: 'Tambah Proyek Baru' }).click();
 
-      const budgetInput = page.locator('input[placeholder*="Budget"]');
+      const budgetInput = page.getByLabel(/Nilai Kontrak/);
       await budgetInput.fill('1000000000');
 
-      // Check if formatted
       const value = await budgetInput.inputValue();
-      expect(value).toBeTruthy();
+      expect(value).toBe('1000000000');
     });
   });
 
@@ -184,81 +211,39 @@ test.describe('Project Management Flows', () => {
     });
 
     test('displays budget tab with RAB data', async ({ page }) => {
-      await page.route('**/rest/v1/budget_lines*', async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify([
-            {
-              id: 'bl-1',
-              code: 'BL-001',
-              item: 'Pekerjaan Fondasi',
-              quantity: 1,
-              unit: 'unit',
-              unit_price: 500000000,
-              total_price: 500000000,
-              project_id: 'proj-123',
-            },
-            {
-              id: 'bl-2',
-              code: 'BL-002',
-              item: 'Pekerjaan Struktur',
-              quantity: 1,
-              unit: 'unit',
-              unit_price: 2000000000,
-              total_price: 2000000000,
-              project_id: 'proj-123',
-            },
-          ]),
-        });
-      });
+      await page.goto('/proyek/proj-123/budget');
 
-      await page.goto('/proyek');
-      await page.click('text=Gedung Kantor Pusat');
-
-      await page.click('button:has-text("Anggaran")');
-
-      await expect(page.locator('text=Pekerjaan Fondasi')).toBeVisible({ timeout: 3000 });
-      await expect(page.locator('text=Pekerjaan Struktur')).toBeVisible();
+      await expect(page.getByText('Pekerjaan Fondasi')).toBeVisible();
+      await expect(page.getByText('Pekerjaan Struktur')).toBeVisible();
     });
 
     test('displays field reports tab', async ({ page }) => {
-      await page.route('**/rest/v1/field_reports*', async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify([
-            {
-              id: 'fr-1',
-              date: '2026-10-14',
-              site_condition: 'Cerah',
-              workers: 25,
-              equipment: 'Excavator, Dumptruck',
-              progress_percentage: 35,
-              notes: 'Pekerjaan fondasi selesai 70%, lanjut struktur',
-              project_id: 'proj-123',
-            },
-          ]),
-        });
-      });
+      await page.goto('/proyek/proj-123/field-reports');
 
-      await page.goto('/proyek');
-      await page.click('text=Gedung Kantor Pusat');
-
-      await page.click('button:has-text("Laporan Harian")');
-
-      await expect(page.locator('text=2026-10-14')).toBeVisible({ timeout: 3000 });
-      await expect(page.locator('text=Cerah')).toBeVisible();
+      await expect(page.getByText('LHP-001')).toBeVisible();
+      await expect(page.getByText('Cerah').first()).toBeVisible();
     });
 
     test('displays all screen tabs without errors', async ({ page }) => {
       await page.goto('/proyek/proj-123');
 
-      const tabs = ['Ringkasan', 'Anggaran', 'Jadwal', 'Laporan Harian'];
+      const tabs = [
+        'Ringkasan Proyek',
+        'Jadwal & WBS',
+        'RAB & Biaya',
+        'Material Proyek',
+        'Laporan Lapangan',
+        'Dokumen & Gambar',
+      ];
 
-      for (const tab of tabs) {
-        await page.click(`button:has-text("${tab}")`);
-        await page.waitForTimeout(300);
+      let activeTab = page.getByRole('tab', { name: new RegExp(tabs[0]) });
+      await activeTab.click();
+      await expect(activeTab).toHaveAttribute('aria-selected', 'true');
+
+      for (const tab of tabs.slice(1)) {
+        await activeTab.press('ArrowRight');
+        activeTab = page.getByRole('tab', { name: new RegExp(tab) });
+        await expect(activeTab).toHaveAttribute('aria-selected', 'true');
 
         const errors = (page as any).consoleErrors;
         const filteredErrors = errors.filter((e: string) => !e.includes('ResizeObserver'));

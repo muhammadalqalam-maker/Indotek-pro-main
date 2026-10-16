@@ -10,6 +10,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useLocation } from 'react-router-dom';
 import { MaterialItem, StockMutation, StockAdjustment } from '../types';
 import { getMaterials, getStockMutations, createStockMutation, createStockAdjustment, decideStockAdjustment } from '../data/materials';
+import { supabaseDataService } from '../services/supabaseDataService';
 import { useAuth } from './AuthContext';
 import { useUI, getScreenIdFromPathname } from './UIContext';
 
@@ -43,12 +44,14 @@ export const MaterialsProvider: React.FC<{ children: ReactNode }> = ({ children 
   const loadMaterialsData = async () => {
     setLoadingMaterials(true);
     try {
-      const [mats, muts] = await Promise.all([
+      const [mats, muts, adjustments] = await Promise.all([
         getMaterials(),
         getStockMutations(),
+        supabaseDataService.getStockAdjustments(workspaceId),
       ]);
       if (mats) setMaterials(mats);
       if (muts) setStockMutations(muts);
+      setStockAdjustments(adjustments);
     } catch (err: any) {
       addToast({
         type: 'danger',
@@ -98,6 +101,16 @@ export const MaterialsProvider: React.FC<{ children: ReactNode }> = ({ children 
         type: 'danger',
         title: 'Gagal Memuat Mutasi Stock',
         message: err?.message || 'Tidak dapat mengambil mutasi stock.',
+      });
+    });
+
+    supabaseDataService.getStockAdjustments(workspaceId).then((adjustments) => {
+      if (isMounted) setStockAdjustments(adjustments);
+    }).catch((err) => {
+      addToast({
+        type: 'danger',
+        title: 'Gagal Memuat Pengajuan Opname',
+        message: err?.message || 'Tidak dapat mengambil pengajuan penyesuaian stok.',
       });
     });
 

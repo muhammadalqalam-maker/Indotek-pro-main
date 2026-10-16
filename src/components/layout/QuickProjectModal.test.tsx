@@ -28,15 +28,15 @@ describe('QuickProjectModal', () => {
     render(<QuickProjectModal />);
     const user = userEvent.setup();
     await user.type(
-      screen.getByPlaceholderText('Contoh: Gedung Laboratorium Terpadu ITB'),
+      screen.getByLabelText(/Nama Proyek/),
       'Gedung Uji'
     );
     await user.type(
-      screen.getByPlaceholderText('Contoh: PT Metropolitan Land Tbk'),
+      screen.getByLabelText(/Pemilik \/ Klien/),
       'PT Klien Uji'
     );
     await user.type(
-      screen.getByPlaceholderText('Contoh: Jl. Ganesha No. 10, Bandung'),
+      screen.getByLabelText(/Lokasi Pekerjaan/),
       'Makassar'
     );
     return user;
@@ -89,9 +89,7 @@ describe('QuickProjectModal', () => {
     await user.click(screen.getByRole('button', { name: 'Simpan & Buka Portofolio' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Kode proyek sudah digunakan.');
-    expect(screen.getByPlaceholderText('Contoh: Gedung Laboratorium Terpadu ITB')).toHaveValue(
-      'Gedung Uji'
-    );
+    expect(screen.getByLabelText(/Nama Proyek/)).toHaveValue('Gedung Uji');
     expect(projectActions.setIsAddProjectModalOpen).not.toHaveBeenCalled();
   });
 

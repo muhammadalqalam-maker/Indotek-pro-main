@@ -693,7 +693,7 @@ export const supabaseDataService = {
     const ws = resolveWorkspaceId(wsId);
     const { data, error } = await supabase
       .from('stock_adjustments')
-      .select('*, materials(name, legacy_id)')
+      .select('*, materials(name, code, unit, legacy_id), projects(name, legacy_id)')
       .eq('workspace_id', ws)
       .order('created_at', { ascending: false });
 
