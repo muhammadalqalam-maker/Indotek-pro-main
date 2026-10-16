@@ -13,6 +13,9 @@ import { createClient } from '@supabase/supabase-js';
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { method, url } = req;
   const pathname = new URL(url || '/', `http://${req.headers.host}`).pathname;
+  const requestId = String(req.headers['x-request-id'] || crypto.randomUUID());
+  res.setHeader('x-request-id', requestId);
+  res.setHeader('Cache-Control', 'no-store');
 
   // Health check
   if (method === 'GET' && pathname === '/api/health') {
@@ -21,6 +24,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       service: 'indotek-pro-api',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
+      requestId,
     });
   }
 

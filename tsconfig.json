@@ -23,5 +23,6 @@
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "noEmit": true
-  }
+  },
+  "exclude": ["node_modules", "dist", "test-results", "playwright-report", ".vercel"]
 }
