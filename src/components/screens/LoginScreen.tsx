@@ -17,11 +17,13 @@ import { useUI } from '../../context/UIContext';
 import { Button } from '../common/Button';
 
 export const LoginScreen: React.FC = () => {
-  const { signInWithEmail, signInWithGoogle, sendPasswordReset, updatePassword, isPasswordRecovery, setIsPasswordRecovery } = useAuth();
+  const { signInWithEmail, signUpWithEmail, signInWithGoogle, sendPasswordReset, updatePassword, isPasswordRecovery, setIsPasswordRecovery } = useAuth();
   const { addToast } = useUI();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -75,9 +77,21 @@ export const LoginScreen: React.FC = () => {
       return;
     }
 
+    if (isSignUp && !fullName.trim()) {
+      setErrorMsg('Harap masukkan nama lengkap.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      await signInWithEmail(email, password);
+      if (isSignUp) {
+        const needsConfirmation = await signUpWithEmail(email, password, fullName);
+        setErrorMsg(null);
+        addToast({ type: 'success', title: 'Pendaftaran berhasil', message: needsConfirmation ? 'Periksa email untuk verifikasi sebelum masuk.' : 'Akun siap digunakan.' });
+        setIsSignUp(false);
+      } else {
+        await signInWithEmail(email, password);
+      }
     } catch (err: any) {
       const message = err?.message?.toLowerCase();
       if (message?.includes('invalid') && message?.includes('credential')) {
@@ -218,7 +232,7 @@ export const LoginScreen: React.FC = () => {
               <HardHat className="w-6 h-6 text-primary" />
             </div>
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary">
-              Masuk ke Akun
+              {isSignUp ? 'Buat Akun Baru' : 'Masuk ke Akun'}
             </h1>
             <p className="text-xs text-text-muted mt-1 max-w-xs mx-auto leading-relaxed">
               Akses portal monitoring proyek, kendali RAB, logistik material, dan persetujuan pengadaan.
@@ -235,9 +249,15 @@ export const LoginScreen: React.FC = () => {
 
           {/* Form */}
           <form onSubmit={handleAuthSubmit} className="space-y-4">
+            {isSignUp && (
+              <div>
+                <label className="block text-xs font-semibold text-text-primary mb-1">Nama Lengkap <span className="text-danger">*</span></label>
+                <input type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nama lengkap" className="w-full h-11 px-3.5 bg-white border border-border-muted rounded-xl text-xs text-text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+              </div>
+            )}
             <div>
               <label className="block text-xs font-semibold text-text-primary mb-1">
-                Alamat Email Perusahaan <span className="text-danger">*</span>
+              Alamat Email <span className="text-danger">*</span>
               </label>
               <div className="relative">
                 <input
@@ -299,6 +319,10 @@ export const LoginScreen: React.FC = () => {
               {isSubmitting ? 'Memverifikasi...' : 'Masuk ke Portal Proyek'}
             </Button>
           </form>
+
+          <button type="button" onClick={() => { setIsSignUp(!isSignUp); setErrorMsg(null); }} className="w-full mt-4 text-xs font-semibold text-primary hover:underline">
+            {isSignUp ? 'Sudah punya akun? Masuk' : 'Belum punya akun? Daftar dengan email'}
+          </button>
 
           {/* Divider */}
           <div className="relative my-5">

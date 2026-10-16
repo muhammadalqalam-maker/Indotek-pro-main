@@ -25,6 +25,7 @@ interface AuthContextType {
   authError: string | null;
   signInWithGoogle: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string, fullName: string) => Promise<boolean>;
   sendPasswordReset: (email: string) => Promise<void>;
   updatePassword: (newPassword: string) => Promise<void>;
   signOutUser: () => Promise<void>;
@@ -234,6 +235,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return !!data.user?.email_confirmed_at;
   };
 
+  const signUpWithEmail = async (email: string, password: string, fullName: string) => {
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: {
+        data: { full_name: fullName.trim() },
+        emailRedirectTo: window.location.origin,
+      },
+    });
+    if (error) throw error;
+    return !data.session;
+  };
+
   const sendPasswordReset = async (email: string) => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
@@ -305,6 +319,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         authError,
         signInWithGoogle,
         signInWithEmail,
+        signUpWithEmail,
         sendPasswordReset,
         updatePassword,
         signOutUser,
