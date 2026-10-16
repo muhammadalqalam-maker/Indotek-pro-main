@@ -65,6 +65,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
             onChange={(e) => setAdjForm({ ...adjForm, materialId: e.target.value })}
             className="w-full p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26]"
           >
+            <option value="" disabled>Pilih material target</option>
             {materials.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.code} — {m.name} (Stok Saat Ini: {m.currentStock} {m.unit})

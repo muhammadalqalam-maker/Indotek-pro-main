@@ -76,6 +76,18 @@ export const MaterialsScreen: React.FC = () => {
     evidenceRef: 'BA-OPNAME-SITE-01.pdf',
   });
 
+  // Data loads asynchronously; keep both dropdowns aligned with available material IDs.
+  useEffect(() => {
+    const firstMaterialId = materials[0]?.id || '';
+    if (!firstMaterialId) return;
+    setMutationForm((current) => materials.some((m) => m.id === current.materialId)
+      ? current
+      : { ...current, materialId: firstMaterialId });
+    setAdjForm((current) => materials.some((m) => m.id === current.materialId)
+      ? current
+      : { ...current, materialId: firstMaterialId });
+  }, [materials]);
+
   // Modal State for Rejecting Adjustment
   const [rejectingAdj, setRejectingAdj] = useState<StockAdjustment | null>(null);
   const [adjRejectReason, setAdjRejectReason] = useState('Volume selisih belum diverifikasi oleh tim Quantity Surveyor.');

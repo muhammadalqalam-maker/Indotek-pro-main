@@ -65,6 +65,7 @@ export const StockMutationModal: React.FC<StockMutationModalProps> = ({
             onChange={(e) => setMutationForm({ ...mutationForm, materialId: e.target.value })}
             className="w-full p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26]"
           >
+            <option value="" disabled>Pilih material</option>
             {materials.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.code} — {m.name} (Stok: {m.currentStock} {m.unit})
