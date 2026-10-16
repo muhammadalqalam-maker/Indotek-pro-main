@@ -25,7 +25,9 @@ export const Modal: React.FC<ModalProps> = ({
 }) => {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
   const isMobile = useIsMobile();
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -36,7 +38,7 @@ export const Modal: React.FC<ModalProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
 
@@ -69,7 +71,7 @@ export const Modal: React.FC<ModalProps> = ({
 
     // Focus the dialog or the close button
     const timer = setTimeout(() => {
-      if (dialogRef.current) {
+      if (dialogRef.current && !dialogRef.current.contains(document.activeElement)) {
         const firstFocusable = dialogRef.current.querySelector<HTMLElement>(
           'button, input, select, textarea, [tabindex]:not([tabindex="-1"])'
         );
@@ -89,7 +91,7 @@ export const Modal: React.FC<ModalProps> = ({
         previousActiveElementRef.current.focus();
       }
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

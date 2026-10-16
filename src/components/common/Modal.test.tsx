@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { useState } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Modal } from './Modal';
@@ -138,6 +139,30 @@ describe('Modal', () => {
       const closeButton = screen.getByRole('button', { name: 'Tutup Dialog' });
       expect(document.activeElement).toBe(closeButton);
     }, { timeout: 200 });
+  });
+
+  it('keeps focus in the input when the parent rerenders while typing', async () => {
+    const user = userEvent.setup({ delay: 10 });
+    const ModalWithInlineClose = () => {
+      const [value, setValue] = useState('');
+      return (
+        <Modal isOpen onClose={() => {}} title="Typing test">
+          <input
+            aria-label="Project name"
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+          />
+        </Modal>
+      );
+    };
+
+    render(<ModalWithInlineClose />);
+    const input = screen.getByRole('textbox', { name: 'Project name' });
+    await user.click(input);
+    await user.type(input, 'Project');
+
+    expect(input).toHaveValue('Project');
+    expect(document.activeElement).toBe(input);
   });
 
   it('contains close button with accessible label', () => {

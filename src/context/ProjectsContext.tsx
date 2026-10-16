@@ -169,11 +169,20 @@ export const ProjectsProvider: React.FC<{ children: ReactNode }> = ({ children }
     try {
       const generatedId = await dataService.addProject(newProj, workspaceId);
       setSelectedProjectId(generatedId);
-      await refreshProjects(true);
+      try {
+        await refreshProjects(true);
+      } catch (err: any) {
+        addToast({
+          type: 'danger',
+          title: 'Proyek Tersimpan, Gagal Memuat Ulang',
+          message: err?.message || 'Proyek berhasil dibuat, tetapi daftar proyek belum dapat dimuat ulang.',
+        });
+        return generatedId;
+      }
       addToast({
         type: 'success',
         title: 'Proyek Berhasil Didaftarkan',
-        message: `Proyek "${newProj.name}" (${newProj.code}) telah disimpan ke Supabase dengan baseline v0 Kontrak Induk.`,
+        message: `Proyek "${newProj.name}" telah disimpan ke Supabase.`,
       });
       return generatedId;
     } catch (err: any) {
