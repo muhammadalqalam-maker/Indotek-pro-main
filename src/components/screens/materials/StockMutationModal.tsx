@@ -58,20 +58,19 @@ export const StockMutationModal: React.FC<StockMutationModalProps> = ({
     >
       <form onSubmit={onSubmit} className="space-y-4 text-xs">
         <div>
-          <label htmlFor="mutation-mat-select" className="block font-medium text-[#202B26] mb-1">Pilih Material</label>
-          <select
-            id="mutation-mat-select"
+          <label htmlFor="mutation-mat-input" className="block font-medium text-[#202B26] mb-1">Pilih Material</label>
+          <input
+            id="mutation-mat-input"
+            type="text"
             value={mutationForm.materialId}
             onChange={(e) => setMutationForm({ ...mutationForm, materialId: e.target.value })}
+            placeholder="Ketik kode atau nama material"
+            list="mutation-material-options"
             className="w-full p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26]"
-          >
-            <option value="" disabled>Pilih material</option>
-            {materials.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.code} — {m.name} (Stok: {m.currentStock} {m.unit})
-              </option>
-            ))}
-          </select>
+          />
+          <datalist id="mutation-material-options">
+            {materials.map((m) => <option key={m.id} value={m.id}>{m.code} — {m.name}</option>)}
+          </datalist>
         </div>
 
         <div className="grid grid-cols-2 gap-3">

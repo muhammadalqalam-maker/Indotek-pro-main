@@ -58,20 +58,19 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
     >
       <form onSubmit={onSubmit} className="space-y-3.5 text-xs">
         <div>
-          <label htmlFor="adj-mat-select" className="block font-medium text-[#202B26] mb-1">Pilih Material Target</label>
-          <select
-            id="adj-mat-select"
+          <label htmlFor="adj-mat-input" className="block font-medium text-[#202B26] mb-1">Pilih Material Target</label>
+          <input
+            id="adj-mat-input"
+            type="text"
             value={adjForm.materialId}
             onChange={(e) => setAdjForm({ ...adjForm, materialId: e.target.value })}
+            placeholder="Ketik kode atau nama material"
+            list="adjustment-material-options"
             className="w-full p-2 bg-white border border-[#E2E8E4] rounded-lg text-[#202B26]"
-          >
-            <option value="" disabled>Pilih material target</option>
-            {materials.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.code} — {m.name} (Stok Saat Ini: {m.currentStock} {m.unit})
-              </option>
-            ))}
-          </select>
+          />
+          <datalist id="adjustment-material-options">
+            {materials.map((m) => <option key={m.id} value={m.id}>{m.code} — {m.name}</option>)}
+          </datalist>
         </div>
 
         <div className="p-3 bg-[#FAFBFB] rounded-lg border border-[#E2E8E4] space-y-1.5">

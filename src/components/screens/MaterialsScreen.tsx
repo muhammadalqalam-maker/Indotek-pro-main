@@ -121,8 +121,16 @@ export const MaterialsScreen: React.FC = () => {
       return;
     }
 
-    const mat = materials.find((m) => m.id === mutationForm.materialId);
-    if (!mat) return;
+    const materialInput = mutationForm.materialId.trim().toLowerCase();
+    const mat = materials.find((m) =>
+      m.id.toLowerCase() === materialInput ||
+      m.code.toLowerCase() === materialInput ||
+      m.name.toLowerCase() === materialInput
+    );
+    if (!mat) {
+      addToast({ type: 'warning', message: 'Material tidak ditemukan. Ketik ID, kode, atau nama material yang valid.' });
+      return;
+    }
 
     if (mutationForm.type === 'Keluar' && qty > mat.currentStock) {
       addToast({
@@ -164,8 +172,16 @@ export const MaterialsScreen: React.FC = () => {
       return;
     }
 
-    const mat = materials.find((m) => m.id === adjForm.materialId);
-    if (!mat) return;
+    const materialInput = adjForm.materialId.trim().toLowerCase();
+    const mat = materials.find((m) =>
+      m.id.toLowerCase() === materialInput ||
+      m.code.toLowerCase() === materialInput ||
+      m.name.toLowerCase() === materialInput
+    );
+    if (!mat) {
+      addToast({ type: 'warning', message: 'Material tidak ditemukan. Ketik ID, kode, atau nama material yang valid.' });
+      return;
+    }
 
     const diff = phys - mat.currentStock;
     if (diff === 0) {
